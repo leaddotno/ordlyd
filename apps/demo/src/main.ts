@@ -1,9 +1,17 @@
 import {
   SpeechController,
+  configureLocalAssets,
   tokenizeWords,
-  voiceIsStored,
   DEFAULT_VOICE,
 } from "@skrivestotte/tts";
+
+// Samme offline-oppsett som utvidelsen: stemme og WASM serveres lokalt
+configureLocalAssets({
+  voiceBaseUrl: "/voices",
+  onnxWasmBaseUrl: "/ort/",
+  piperWasmUrl: "/piper/piper_phonemize.wasm",
+  piperDataUrl: "/piper/piper_phonemize.data",
+});
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -116,6 +124,4 @@ speakBtn.addEventListener("click", async () => {
   });
 });
 
-voiceIsStored().then((stored) => {
-  addLog(stored ? "Norsk stemme er allerede lastet ned." : "Norsk stemme lastes ved første opplesing (~65 MB).");
-});
+addLog("Offline-modus: stemme og WASM serveres lokalt (ingen internettavhengighet).");

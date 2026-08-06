@@ -1,6 +1,11 @@
 node_modules/
 dist/
 .vite/
+# Store binærressurser hentes/kopieres av scripts/, sjekkes ikke inn
+assets/
+apps/*/public/voices/
+apps/*/public/ort/
+apps/*/public/piper/
 *.local
 .DS_Store
 .env

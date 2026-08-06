@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@mintplex-labs/piper-tts-web@1.0.4': 79d9cbe41adf2ea5872ee8e4c239cab3ad94d39826a64456b5c2d6f18cace2d0
+  '@mintplex-labs/piper-tts-web@1.0.4': 3a00ccdb2bd004f1816bb6f86a64a6102e1b163c4ca79a64d33897cd74a4ade1
 
 importers:
 
@@ -42,9 +42,12 @@ importers:
 
   packages/tts:
     dependencies:
+      '@diffusionstudio/piper-wasm':
+        specifier: 1.0.0
+        version: 1.0.0
       '@mintplex-labs/piper-tts-web':
         specifier: ^1.0.4
-        version: 1.0.4(patch_hash=79d9cbe41adf2ea5872ee8e4c239cab3ad94d39826a64456b5c2d6f18cace2d0)(onnxruntime-web@1.18.0)
+        version: 1.0.4(patch_hash=3a00ccdb2bd004f1816bb6f86a64a6102e1b163c4ca79a64d33897cd74a4ade1)(onnxruntime-web@1.18.0)
       onnxruntime-web:
         specifier: 1.18.0
         version: 1.18.0
@@ -54,6 +57,9 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@diffusionstudio/piper-wasm@1.0.0':
+    resolution: {integrity: sha512-4Hgh7wJ1PuGEVgVi1CpducESnyXwjFRJN4zXjYRpxgquM+Zh6Eqq8ZaiGpCKm4yXvT1Y2SPQXbv0dEckFD9NaQ==}
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -526,6 +532,8 @@ packages:
 
 snapshots:
 
+  '@diffusionstudio/piper-wasm@1.0.0': {}
+
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -604,7 +612,7 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@mintplex-labs/piper-tts-web@1.0.4(patch_hash=79d9cbe41adf2ea5872ee8e4c239cab3ad94d39826a64456b5c2d6f18cace2d0)(onnxruntime-web@1.18.0)':
+  '@mintplex-labs/piper-tts-web@1.0.4(patch_hash=3a00ccdb2bd004f1816bb6f86a64a6102e1b163c4ca79a64d33897cd74a4ade1)(onnxruntime-web@1.18.0)':
     dependencies:
       onnxruntime-web: 1.18.0
 

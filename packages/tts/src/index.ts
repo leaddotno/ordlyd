@@ -23,6 +23,30 @@ export interface DownloadProgress {
   total: number;
 }
 
+/**
+ * Lokale ressurser (offline-drift): når disse er satt, hentes stemme og
+ * WASM fra egne URL-er (f.eks. chrome.runtime.getURL i utvidelsen) i stedet
+ * for HuggingFace/CDN. Da trengs ingen internettilgang i det hele tatt.
+ */
+export interface LocalAssets {
+  /** Base-URL med samme mappestruktur som piper-voices (no/no_NO/talesyntese/…) */
+  voiceBaseUrl: string;
+  /** Mappe med onnxruntime-web sine .wasm-filer (må slutte med /) */
+  onnxWasmBaseUrl: string;
+  piperWasmUrl: string;
+  piperDataUrl: string;
+}
+
+let localAssets: LocalAssets | undefined;
+
+export function configureLocalAssets(assets: LocalAssets): void {
+  localAssets = assets;
+  (globalThis as Record<string, unknown>).__PIPER_VOICE_BASE__ = assets.voiceBaseUrl.replace(
+    /\/$/,
+    "",
+  );
+}
+
 export interface SpeakCallbacks {
   /** Ny setning startet. words har *globale* tegnoffsets i hele teksten. */
   onSentence?: (info: {
@@ -121,6 +145,8 @@ export async function ensureVoice(
   voiceId: string = DEFAULT_VOICE,
   onProgress?: (p: DownloadProgress) => void,
 ): Promise<void> {
+  // Lokalt bundlet stemme: ingen nedlasting eller OPFS-validering nødvendig
+  if (localAssets) return;
   if (await voiceFilesLookValid(voiceId)) return;
   try {
     await piper.remove(voiceId as never);
@@ -141,8 +167,22 @@ export async function downloadVoice(
   await piper.download(voiceId as never, (p: DownloadProgress) => onProgress?.(p));
 }
 
+let session: InstanceType<typeof piper.TtsSession> | null = null;
+
 async function synthesize(text: string, voiceId: string): Promise<Blob> {
-  return piper.predict({ text, voiceId: voiceId as never });
+  if (!session || session.voiceId !== voiceId) {
+    session = new piper.TtsSession({
+      voiceId: voiceId as never,
+      wasmPaths: localAssets
+        ? {
+            onnxWasm: localAssets.onnxWasmBaseUrl,
+            piperWasm: localAssets.piperWasmUrl,
+            piperData: localAssets.piperDataUrl,
+          }
+        : undefined,
+    });
+  }
+  return session.predict(text);
 }
 
 function blobDuration(blob: Blob): Promise<number> {

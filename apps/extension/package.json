@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "node ../../scripts/copy-assets.mjs",
     "build": "vite build && vite build --config vite.content.config.ts",
     "typecheck": "tsc --noEmit"
   },

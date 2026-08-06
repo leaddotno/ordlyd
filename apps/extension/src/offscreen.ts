@@ -3,8 +3,16 @@
  * Sender ord-/setningshendelser tilbake via service workeren,
  * som videresender til riktig fane.
  */
-import { SpeechController } from "@skrivestotte/tts";
+import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
 import type { OffscreenSpeak, OffscreenStop, TtsEvent } from "./messages.js";
+
+// Alt bundles i utvidelsespakken – null internettavhengighet ved bruk.
+configureLocalAssets({
+  voiceBaseUrl: chrome.runtime.getURL("voices"),
+  onnxWasmBaseUrl: chrome.runtime.getURL("ort/"),
+  piperWasmUrl: chrome.runtime.getURL("piper/piper_phonemize.wasm"),
+  piperDataUrl: chrome.runtime.getURL("piper/piper_phonemize.data"),
+});
 
 const controller = new SpeechController();
 
