@@ -52,6 +52,87 @@ export async function voiceIsStored(voiceId: string = DEFAULT_VOICE): Promise<bo
   return stored.includes(voiceId as never);
 }
 
+function readVarint(bytes: Uint8Array, pos: number): { value: number; next: number } | null {
+  let value = 0;
+  let shift = 0;
+  while (pos < bytes.length) {
+    const b = bytes[pos++];
+    value += (b & 0x7f) * 2 ** shift;
+    if ((b & 0x80) === 0) return { value, next: pos };
+    shift += 7;
+    if (shift > 49) return null;
+  }
+  return null;
+}
+
+/**
+ * Er ONNX-filen komplett? Protobuf-headeren deklarerer graf-feltets lengde,
+ * så en avbrutt nedlasting avsløres ved at filen er kortere enn deklarert.
+ * (En halvskrevet fil gir ellers «No graph was found in the protobuf» ved bruk.)
+ */
+async function modelLooksComplete(model: File): Promise<boolean> {
+  const head = new Uint8Array(await model.slice(0, 128).arrayBuffer());
+  let pos = 0;
+  while (pos < head.length - 1) {
+    const tag = readVarint(head, pos);
+    if (!tag) return false;
+    pos = tag.next;
+    const field = tag.value >> 3;
+    const wire = tag.value & 7;
+    if (wire === 0) {
+      const v = readVarint(head, pos);
+      if (!v) return false;
+      pos = v.next;
+    } else if (wire === 2) {
+      const len = readVarint(head, pos);
+      if (!len) return false;
+      pos = len.next;
+      if (field === 7) {
+        // felt 7 = graph — hele filen må romme den deklarerte lengden
+        return pos + len.value <= model.size;
+      }
+      pos += len.value; // hopp over små strengfelt (produsentnavn o.l.)
+    } else {
+      return false;
+    }
+  }
+  return false; // fant ikke graf-feltet i headeren
+}
+
+/** Sjekk at de lagrede stemmefilene er komplette og gyldige. */
+async function voiceFilesLookValid(voiceId: string): Promise<boolean> {
+  try {
+    const root = await navigator.storage.getDirectory();
+    const dir = await root.getDirectoryHandle("piper");
+    const model = await (await dir.getFileHandle(`${voiceId}.onnx`)).getFile();
+    const config = await (await dir.getFileHandle(`${voiceId}.onnx.json`)).getFile();
+    if (config.size < 100) return false;
+    return modelLooksComplete(model);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sørg for at stemmen er lastet ned og gyldig før første syntese.
+ * Reparerer automatisk ødelagte filer fra tidligere avbrutte nedlastinger.
+ */
+export async function ensureVoice(
+  voiceId: string = DEFAULT_VOICE,
+  onProgress?: (p: DownloadProgress) => void,
+): Promise<void> {
+  if (await voiceFilesLookValid(voiceId)) return;
+  try {
+    await piper.remove(voiceId as never);
+  } catch {
+    // fantes ikke – helt fint
+  }
+  await piper.download(voiceId as never, (p: DownloadProgress) => onProgress?.(p));
+  if (!(await voiceFilesLookValid(voiceId))) {
+    throw new Error(`Stemmen ${voiceId} ble lastet ned, men filene er ugyldige.`);
+  }
+}
+
 /** Last ned stemme eksplisitt (predict laster også ved behov). */
 export async function downloadVoice(
   voiceId: string = DEFAULT_VOICE,
@@ -133,9 +214,7 @@ export class SpeechController {
     this.speaking = true;
 
     try {
-      if (!(await voiceIsStored(this.voiceId))) {
-        await downloadVoice(this.voiceId, cb.onDownload);
-      }
+      await ensureVoice(this.voiceId, cb.onDownload);
 
       const sentences = splitSentences(text);
       let globalWordCount = 0;

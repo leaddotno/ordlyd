@@ -1,8 +1,16 @@
 diff --git a/dist/piper-tts-web.js b/dist/piper-tts-web.js
-index 32767f4efba2b4c0c97f847902ebe7ab23406912..cff1aae3d5e46a1eed70820b220cb68d7e529b43 100644
+index 32767f4efba2b4c0c97f847902ebe7ab23406912..fae6ea35f99a493b9dbcab00927f1a25473c912c 100644
 --- a/dist/piper-tts-web.js
 +++ b/dist/piper-tts-web.js
-@@ -282,7 +282,7 @@ const _TtsSession = class _TtsSession {
+@@ -183,6 +183,7 @@ async function readBlob(url) {
+ async function fetchBlob(url, callback) {
+   var _a;
+   const res = await fetch(url);
++  if (!res.ok) throw new Error(`Fetch failed for ${url}: HTTP ${res.status}`);
+   const reader = (_a = res.body) == null ? void 0 : _a.getReader();
+   const contentLength = +(res.headers.get("Content-Length") ?? 0);
+   let receivedLength = 0;
+@@ -282,7 +283,7 @@ const _TtsSession = class _TtsSession {
      __privateSet(this, _createPiperPhonemize, createPiperPhonemize);
      __privateSet(this, _ort, await import("onnxruntime-web"));
      __privateGet(this, _ort).env.allowLocalModels = false;
@@ -11,3 +19,12 @@ index 32767f4efba2b4c0c97f847902ebe7ab23406912..cff1aae3d5e46a1eed70820b220cb68d
      __privateGet(this, _ort).env.wasm.wasmPaths = __privateGet(this, _wasmPaths).onnxWasm;
      const path = PATH_MAP[this.voiceId];
      const modelConfigBlob = await getBlob(`${HF_BASE}/${path}.json`);
+@@ -378,7 +379,7 @@ async function download(voiceId, callback) {
+   const path = PATH_MAP[voiceId];
+   const urls = [`${HF_BASE}/${path}`, `${HF_BASE}/${path}.json`];
+   await Promise.all(urls.map(async (url) => {
+-    writeBlob(url, await fetchBlob(url, url.endsWith(".onnx") ? callback : void 0));
++    await writeBlob(url, await fetchBlob(url, url.endsWith(".onnx") ? callback : void 0));
+   }));
+ }
+ async function remove(voiceId) {
