@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skrivestøtte – TTS-demo (spike S1/S2)</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Skrivestøtte <span class="badge">spike S1/S2</span></h1>
+      <p class="sub">Norsk Piper-stemme i WebAssembly, med ordmarkering synkront med lyden.</p>
+
+      <section class="panel">
+        <label for="input">Tekst som skal leses opp</label>
+        <textarea id="input" rows="5">Velkommen til Skrivestøtte. Dette er en test av norsk talesyntese som kjører helt lokalt i nettleseren din. Marker tekst, og få den lest opp med naturlig rytme. I 2026 skal vi bygge et komplett system for lese- og skrivestøtte, med ordforslag og stavekontroll.</textarea>
+
+        <div class="controls">
+          <button id="speak" class="primary">🔊 Les opp</button>
+          <button id="pause" disabled>⏸ Pause</button>
+          <button id="resume" disabled>▶ Fortsett</button>
+          <button id="stop" disabled>⏹ Stopp</button>
+          <label class="rate">Hastighet
+            <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1" />
+            <span id="rateVal">1.0×</span>
+          </label>
+        </div>
+
+        <div id="download" class="download" hidden>
+          <div>Laster ned norsk stemme (første gang) …</div>
+          <progress id="dlProgress" max="100" value="0"></progress>
+          <span id="dlText"></span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Opplesing</h2>
+        <div id="reader" class="reader">Trykk «Les opp» for å starte.</div>
+      </section>
+
+      <section class="panel">
+        <h2>Måling (for spike-godkjenning)</h2>
+        <ul id="log" class="log"></ul>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

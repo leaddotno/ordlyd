@@ -1,0 +1,40 @@
+* { box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  margin: 0;
+  background: #f4f6f8;
+  color: #1a2330;
+}
+main { max-width: 780px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 1.6rem; margin-bottom: 4px; }
+.badge {
+  font-size: 0.7rem; vertical-align: middle; background: #2563eb; color: white;
+  border-radius: 999px; padding: 3px 10px; margin-left: 8px;
+}
+.sub { color: #556; margin-top: 0; }
+.panel {
+  background: white; border-radius: 12px; padding: 16px 20px; margin-top: 16px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+.panel h2 { font-size: 1rem; margin: 0 0 10px; color: #445; }
+label { font-weight: 600; font-size: 0.9rem; }
+textarea {
+  width: 100%; margin-top: 6px; padding: 10px; font: inherit;
+  border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical;
+}
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+button {
+  font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid #cbd5e1;
+  background: white; cursor: pointer;
+}
+button.primary { background: #2563eb; border-color: #2563eb; color: white; }
+button:disabled { opacity: 0.45; cursor: default; }
+.rate { display: flex; align-items: center; gap: 6px; margin-left: auto; font-weight: 400; }
+.download { margin-top: 12px; font-size: 0.9rem; color: #445; }
+progress { width: 100%; }
+.reader { font-size: 1.25rem; line-height: 1.9; }
+.reader .w { border-radius: 4px; padding: 1px 2px; }
+.reader .w.active { background: #fbbf24; color: #111; }
+.reader .s.active-s { background: #fef3c7; border-radius: 4px; }
+.log { font-family: Consolas, monospace; font-size: 0.82rem; margin: 0; padding-left: 18px; color: #334; }
+.log li { margin: 2px 0; }

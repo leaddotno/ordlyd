@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Skrivestøtte (spike)",
+  "version": "0.0.1",
+  "description": "Marker tekst og få den opplest med norsk stemme. All talesyntese kjører lokalt i nettleseren.",
+  "minimum_chrome_version": "110",
+  "permissions": ["offscreen"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}

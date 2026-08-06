@@ -1,0 +1,13 @@
+diff --git a/dist/piper-tts-web.js b/dist/piper-tts-web.js
+index 32767f4efba2b4c0c97f847902ebe7ab23406912..cff1aae3d5e46a1eed70820b220cb68d7e529b43 100644
+--- a/dist/piper-tts-web.js
++++ b/dist/piper-tts-web.js
+@@ -282,7 +282,7 @@ const _TtsSession = class _TtsSession {
+     __privateSet(this, _createPiperPhonemize, createPiperPhonemize);
+     __privateSet(this, _ort, await import("onnxruntime-web"));
+     __privateGet(this, _ort).env.allowLocalModels = false;
+-    __privateGet(this, _ort).env.wasm.numThreads = navigator.hardwareConcurrency;
++    __privateGet(this, _ort).env.wasm.numThreads = globalThis.crossOriginIsolated ? navigator.hardwareConcurrency : 1;
+     __privateGet(this, _ort).env.wasm.wasmPaths = __privateGet(this, _wasmPaths).onnxWasm;
+     const path = PATH_MAP[this.voiceId];
+     const modelConfigBlob = await getBlob(`${HF_BASE}/${path}.json`);

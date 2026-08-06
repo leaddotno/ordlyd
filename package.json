@@ -1,0 +1,11 @@
+{
+  "name": "skrivestotte",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Lese- og skrivestøtte for nettleseren – lokal TTS (Piper) og skrivestøtte for dyslektikere",
+  "scripts": {
+    "demo": "pnpm --filter @skrivestotte/demo dev",
+    "build": "pnpm -r build"
+  },
+  "packageManager": "pnpm@11.20.0"
+}

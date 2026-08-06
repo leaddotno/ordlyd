@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  esbuild: true
+  protobufjs: true
+patchedDependencies:
+  '@mintplex-labs/piper-tts-web@1.0.4': patches/@mintplex-labs__piper-tts-web@1.0.4.patch

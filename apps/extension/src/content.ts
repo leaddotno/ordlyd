@@ -1,0 +1,202 @@
+/**
+ * Content script: marker tekst → flytende «Les opp»-knapp → ordmarkering
+ * synkront med opplesingen. Bruker CSS Custom Highlight API, så sidens DOM
+ * endres aldri (viktig for å ikke ødelegge weben rundt oss).
+ */
+import { tokenizeWords } from "@skrivestotte/tts/text";
+import type { TtsEvent } from "./messages.js";
+
+/* ---------- Stil for markering (Custom Highlight API) ---------- */
+const style = document.createElement("style");
+style.textContent = `
+  ::highlight(ss-word) { background-color: #fbbf24; color: #111; }
+  ::highlight(ss-sentence) { background-color: rgba(251, 191, 36, 0.25); }
+`;
+document.documentElement.appendChild(style);
+
+/* ---------- Kartlegging: markert tekst → ord-Ranges i sidens DOM ---------- */
+
+interface Segment {
+  node: Text;
+  /** Offset i node der segmentet starter */
+  nodeStart: number;
+  /** Global startposisjon i den sammensatte teksten */
+  globalStart: number;
+  length: number;
+}
+
+interface ExtractedSelection {
+  text: string;
+  segments: Segment[];
+}
+
+/** Trekk ut tekst + segmentkart fra gjeldende selection (kan spenne flere noder). */
+function extractSelection(range: Range): ExtractedSelection | null {
+  const root = range.commonAncestorContainer;
+  const walker = document.createTreeWalker(
+    root.nodeType === Node.TEXT_NODE ? root.parentNode ?? root : root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) =>
+        range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+    },
+  );
+
+  const segments: Segment[] = [];
+  let text = "";
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const t = node as Text;
+    let start = 0;
+    let end = t.data.length;
+    if (t === range.startContainer) start = range.startOffset;
+    if (t === range.endContainer) end = range.endOffset;
+    if (end <= start) continue;
+    // Hopp over tekst i skjulte elementer og script/style
+    const parent = t.parentElement;
+    if (parent) {
+      const tag = parent.tagName;
+      if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT") continue;
+    }
+    segments.push({ node: t, nodeStart: start, globalStart: text.length, length: end - start });
+    text += t.data.slice(start, end);
+    text += " "; // nodegrense = ordgrense (blokk-elementer har ikke mellomrom i DOM)
+  }
+  if (!text.trim()) return null;
+  return { text, segments };
+}
+
+/** Global tegnposisjon → (tekstnode, lokal offset). */
+function locate(segments: Segment[], globalPos: number): { node: Text; offset: number } | null {
+  for (const s of segments) {
+    if (globalPos >= s.globalStart && globalPos <= s.globalStart + s.length) {
+      return { node: s.node, offset: s.nodeStart + (globalPos - s.globalStart) };
+    }
+  }
+  return null;
+}
+
+function buildWordRanges(extracted: ExtractedSelection): { ranges: Range[]; text: string } {
+  const words = tokenizeWords(extracted.text);
+  const ranges: Range[] = [];
+  for (const w of words) {
+    const from = locate(extracted.segments, w.start);
+    const to = locate(extracted.segments, w.end);
+    if (!from || !to) {
+      ranges.push(new Range()); // plassholder så indeksene stemmer
+      continue;
+    }
+    const r = new Range();
+    r.setStart(from.node, from.offset);
+    r.setEnd(to.node, to.offset);
+    ranges.push(r);
+  }
+  return { ranges, text: extracted.text };
+}
+
+/* ---------- Flytende knapp ---------- */
+
+const host = document.createElement("div");
+host.style.cssText = "position: fixed; z-index: 2147483647; display: none;";
+const shadow = host.attachShadow({ mode: "closed" });
+const button = document.createElement("button");
+button.textContent = "🔊 Les opp";
+button.style.cssText = `
+  font: 14px/1 system-ui, sans-serif; padding: 8px 14px; border-radius: 999px;
+  border: none; background: #2563eb; color: white; cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+`;
+shadow.appendChild(button);
+document.documentElement.appendChild(host);
+
+let speaking = false;
+let wordRanges: Range[] = [];
+let pendingRange: Range | null = null;
+
+function setButton(state: "idle" | "speaking") {
+  speaking = state === "speaking";
+  button.textContent = speaking ? "⏹ Stopp" : "🔊 Les opp";
+  button.style.background = speaking ? "#dc2626" : "#2563eb";
+}
+
+function hideButton() {
+  if (!speaking) host.style.display = "none";
+}
+
+function clearHighlights() {
+  CSS.highlights?.delete("ss-word");
+  CSS.highlights?.delete("ss-sentence");
+}
+
+document.addEventListener("selectionchange", () => {
+  if (speaking) return;
+  const sel = document.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+    hideButton();
+    return;
+  }
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    hideButton();
+    return;
+  }
+  pendingRange = range.cloneRange();
+  host.style.display = "block";
+  host.style.left = `${Math.min(window.innerWidth - 130, Math.max(8, rect.right - 40))}px`;
+  host.style.top = `${Math.min(window.innerHeight - 48, rect.bottom + 8)}px`;
+});
+
+button.addEventListener("click", () => {
+  if (speaking) {
+    void chrome.runtime.sendMessage({ type: "ss-stop" });
+    return;
+  }
+  if (!pendingRange) return;
+  const extracted = extractSelection(pendingRange);
+  if (!extracted) return;
+  const built = buildWordRanges(extracted);
+  wordRanges = built.ranges;
+  setButton("speaking");
+  document.getSelection()?.removeAllRanges(); // markeringen vår skal synes i stedet
+  void chrome.runtime.sendMessage({ type: "ss-speak", text: built.text });
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && speaking) {
+    void chrome.runtime.sendMessage({ type: "ss-stop" });
+  }
+});
+
+/* ---------- Hendelser fra opplesingen ---------- */
+
+chrome.runtime.onMessage.addListener((event: TtsEvent) => {
+  switch (event.kind) {
+    case "word": {
+      const range = wordRanges[event.globalWordIndex];
+      if (range && CSS.highlights) {
+        CSS.highlights.set("ss-word", new Highlight(range));
+        // Rull ordet inn i synsfeltet ved behov
+        const rect = range.getBoundingClientRect();
+        if (rect.bottom > window.innerHeight || rect.top < 0) {
+          range.startContainer.parentElement?.scrollIntoView({
+            block: "center",
+            behavior: "smooth",
+          });
+        }
+      }
+      break;
+    }
+    case "download":
+      button.textContent = `⬇ ${Math.round((event.loaded / Math.max(1, event.total)) * 100)} %`;
+      break;
+    case "error":
+      console.warn("[Skrivestøtte] TTS-feil:", event.message);
+    // fallthrough
+    case "end":
+      clearHighlights();
+      setButton("idle");
+      hideButton();
+      break;
+  }
+});
