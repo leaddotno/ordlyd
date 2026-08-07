@@ -16,6 +16,9 @@ importers:
       '@skrivestotte/tts':
         specifier: workspace:*
         version: link:../../packages/tts
+      '@skrivestotte/writing':
+        specifier: workspace:*
+        version: link:../../packages/writing-engine
     devDependencies:
       typescript:
         specifier: ^5.6.0
@@ -29,6 +32,9 @@ importers:
       '@skrivestotte/tts':
         specifier: workspace:*
         version: link:../../packages/tts
+      '@skrivestotte/writing':
+        specifier: workspace:*
+        version: link:../../packages/writing-engine
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.280
@@ -51,6 +57,12 @@ importers:
       onnxruntime-web:
         specifier: 1.18.0
         version: 1.18.0
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
+  packages/writing-engine:
     devDependencies:
       typescript:
         specifier: ^5.6.0

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Skrivestøtte</title>
+    <style>
+      body {
+        font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 14px 16px;
+        width: 260px; background: #f8fafc; color: #1a2330;
+      }
+      h1 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+      .row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 0; border-top: 1px solid #e2e8f0;
+      }
+      label { user-select: none; }
+      .muted { color: #64748b; font-size: 12px; }
+      input[type="range"] { width: 120px; }
+      /* enkel toggle */
+      .switch { position: relative; width: 40px; height: 22px; flex: none; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute; inset: 0; background: #cbd5e1; border-radius: 999px;
+        transition: background 0.15s; cursor: pointer;
+      }
+      .slider::before {
+        content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px;
+        background: white; border-radius: 50%; transition: transform 0.15s;
+      }
+      .switch input:checked + .slider { background: #2563eb; }
+      .switch input:checked + .slider::before { transform: translateX(18px); }
+      .off body, body.off { opacity: 0.9; }
+      #status { margin-top: 8px; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f172a; color: #e2e8f0; }
+        .row { border-color: #334155; }
+        .muted { color: #94a3b8; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔊 Skrivestøtte</h1>
+
+    <div class="row">
+      <label for="enabled"><strong>Aktivert</strong><br /><span class="muted">Hovedbryter for alt</span></label>
+      <span class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></span>
+    </div>
+
+    <div class="row">
+      <label for="rate">Hastighet<br /><span class="muted" id="rateVal">1.0×</span></label>
+      <input type="range" id="rate" min="0.5" max="2" step="0.1" />
+    </div>
+
+    <div class="row">
+      <label for="prediction">Ordforslag<br /><span class="muted">Forslag mens du skriver</span></label>
+      <span class="switch"><input type="checkbox" id="prediction" /><span class="slider"></span></span>
+    </div>
+
+    <div class="muted" id="status">Marker tekst på en nettside og trykk «Les opp».</div>
+
+    <script type="module" src="/src/popup.ts"></script>
+  </body>
+</html>

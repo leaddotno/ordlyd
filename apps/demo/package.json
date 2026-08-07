@@ -8,7 +8,8 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@skrivestotte/tts": "workspace:*"
+    "@skrivestotte/tts": "workspace:*",
+    "@skrivestotte/writing": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

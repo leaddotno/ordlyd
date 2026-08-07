@@ -16,6 +16,12 @@ configureLocalAssets({
 
 const controller = new SpeechController();
 
+// Hastighet fra innstillingene – hentes ved oppstart og følges live
+void chrome.storage.sync.get({ rate: 1 }).then(({ rate }) => controller.setRate(rate));
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "sync" && changes.rate) controller.setRate(changes.rate.newValue as number);
+});
+
 function emit(tabId: number, event: TtsEvent): void {
   void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch(() => {});
 }

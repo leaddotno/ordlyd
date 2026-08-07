@@ -4,7 +4,25 @@
  * endres aldri (viktig for å ikke ødelegge weben rundt oss).
  */
 import { tokenizeWords } from "@skrivestotte/tts/text";
+import { Predictor, enableWritingSupport } from "@skrivestotte/writing";
+import { DEFAULT_SETTINGS, getSettings, onSettingsChanged, type Settings } from "./settings.js";
 import type { TtsEvent } from "./messages.js";
+
+/* ---------- Innstillinger ---------- */
+
+let settings: Settings = DEFAULT_SETTINGS;
+void getSettings().then((s) => {
+  settings = s;
+  maybeInitPrediction();
+});
+onSettingsChanged((s) => {
+  settings = s;
+  if (!s.enabled) {
+    hideButton();
+    void chrome.runtime.sendMessage({ type: "ss-stop" });
+  }
+  maybeInitPrediction();
+});
 
 /* ---------- Stil for markering (Custom Highlight API) ---------- */
 const style = document.createElement("style");
@@ -128,8 +146,34 @@ function clearHighlights() {
   CSS.highlights?.delete("ss-sentence");
 }
 
+/* ---------- Ordforslag (lazy: lastes først når et tekstfelt får fokus) ---------- */
+
+let predictionInited = false;
+
+function maybeInitPrediction(): void {
+  if (predictionInited || !settings.enabled || !settings.prediction) return;
+  predictionInited = true;
+  // Ordbanken (~1 MB) lastes først når brukeren fokuserer noe redigerbart
+  const lazyLoad = (e: FocusEvent): void => {
+    const t = e.target;
+    const editable =
+      t instanceof HTMLTextAreaElement ||
+      t instanceof HTMLInputElement ||
+      (t instanceof HTMLElement && t.isContentEditable);
+    if (!editable) return;
+    document.removeEventListener("focusin", lazyLoad);
+    void Predictor.fromUrl(chrome.runtime.getURL("dict/nb.txt")).then((predictor) => {
+      enableWritingSupport(document, predictor, {
+        isEnabled: () => settings.enabled && settings.prediction,
+      });
+    });
+  };
+  document.addEventListener("focusin", lazyLoad);
+}
+
 document.addEventListener("selectionchange", () => {
   if (speaking) return;
+  if (!settings.enabled) return hideButton();
   const sel = document.getSelection();
   if (!sel || sel.isCollapsed || !sel.toString().trim()) {
     hideButton();

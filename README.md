@@ -9,8 +9,9 @@ senere ordprediksjon og dysleksitilpasset stavekontroll.
 | Mappe | Innhold |
 |---|---|
 | `packages/tts` | TTS-motor: Piper i nettleseren, setningsdeling, ord-tidsestimat, avspillingskontroller |
-| `apps/demo` | Testside for spike S1/S2: syntese + ordmarkering synkront med lyd |
-| `apps/extension` | Edge-utvidelse (MV3): marker tekst → opplesing med ordmarkering |
+| `packages/writing-engine` | Skrivestøtte: ordprediksjon (frekvensrangert prefiks-fullføring) + forslags-panel ved skrivemarkøren |
+| `apps/demo` | Testside: syntese + ordmarkering + skrivestøtte |
+| `apps/extension` | Edge-utvidelse (MV3): opplesing av markert tekst, ordforslag i tekstfelt, innstillinger (popup) |
 
 ## Kom i gang
 
@@ -39,4 +40,8 @@ verifisert ved at nettverksloggen kun viser lokale forespørsler under opplesing
 - Spike S1 (Piper norsk stemme i WASM): godkjent — 410 ms varm latens til lydstart.
 - Spike S2 (ordmarkering synkront med lyd): godkjent.
 - Edge-utvidelse: marker tekst → flytende knapp → opplesing med ordmarkering. Helt offline.
-- Neste: fase 2 (lisens/kundesystem) og spike S3 (Google Docs).
+- Innstillinger (popup): hovedbryter av/på, hastighet, ordforslag av/på. Lagres i chrome.storage.sync.
+- Ordforslag: 120 000 norske ord (frekvensliste fra OpenSubtitles/HermitDave — byttes til
+  Norsk ordbank + Språkbanken i full fase 4). Panel ved markøren i textarea/input/contenteditable;
+  piltaster + Tab/Enter, tallmerking 1–5, klikk. Kjøres 100 % lokalt.
+- Neste: fase 2 (lisens/kundesystem), spike S3 (Google Docs), dysleksitilpasset stavekontroll (NST).

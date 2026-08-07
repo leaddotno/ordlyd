@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         background: "src/background.ts",
         offscreen: "offscreen.html",
+        popup: "popup.html",
       },
       output: {
         entryFileNames: "[name].js",

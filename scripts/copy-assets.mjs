@@ -28,9 +28,17 @@ if (!hasVoices) {
 // med én tråd (se patch av piper-tts-web), så de trådede filene brukes aldri.
 const ORT_FILES = ["ort-wasm.wasm", "ort-wasm-simd.wasm"];
 
+const dictSrc = join(ROOT, "assets", "dict");
+const hasDict = await stat(dictSrc).then(() => true).catch(() => false);
+if (!hasDict) {
+  console.error("Mangler assets/dict – kjør først: node scripts/fetch-wordbank.mjs");
+  process.exit(1);
+}
+
 for (const app of APPS) {
   const pub = join(app, "public");
   await cp(voicesSrc, join(pub, "voices"), { recursive: true });
+  await cp(dictSrc, join(pub, "dict"), { recursive: true });
   await mkdir(join(pub, "ort"), { recursive: true });
   for (const f of ORT_FILES) {
     await copyFile(join(ortDist, f), join(pub, "ort", f));

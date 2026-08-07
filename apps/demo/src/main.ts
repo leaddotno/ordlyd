@@ -125,3 +125,13 @@ speakBtn.addEventListener("click", async () => {
 });
 
 addLog("Offline-modus: stemme og WASM serveres lokalt (ingen internettavhengighet).");
+
+// Skrivestøtte-testen: samme motor som utvidelsen bruker
+import { Predictor, enableWritingSupport, type WritingSupport } from "@skrivestotte/writing";
+void Predictor.fromUrl("/dict/nb.txt").then((predictor) => {
+  // Riv ned forrige instans ved Vite hot-reload, ellers dobles lytterne
+  const w = window as unknown as { __writingSupport?: WritingSupport };
+  w.__writingSupport?.destroy();
+  w.__writingSupport = enableWritingSupport(document, predictor, {});
+  addLog(`Ordbank lastet: ${predictor.size} ord.`);
+});

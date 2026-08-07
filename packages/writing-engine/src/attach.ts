@@ -1,0 +1,360 @@
+/**
+ * Skrivestøtte i tekstfelt: viser forslags-panel ved skrivemarkøren i
+ * <textarea>, <input> og contenteditable-elementer, med tastaturvalg.
+ * Ingen chrome-API-er her — brukes både av utvidelsen og demo-siden.
+ */
+import { Predictor } from "./predictor.js";
+
+export interface AttachOptions {
+  minPrefix?: number;
+  maxSuggestions?: number;
+  /** Kalles når et forslag settes inn (til f.eks. opplesing senere) */
+  onAccept?: (word: string) => void;
+  /** Slå av/på uten å fjerne lyttere */
+  isEnabled?: () => boolean;
+}
+
+const WORD_TAIL_RE = /[\p{L}\p{N}][\p{L}\p{N}'-]*$/u;
+
+type EditableTarget = HTMLTextAreaElement | HTMLInputElement | HTMLElement;
+
+function isTextInput(el: Element): el is HTMLTextAreaElement | HTMLInputElement {
+  if (el instanceof HTMLTextAreaElement) return true;
+  return (
+    el instanceof HTMLInputElement &&
+    ["text", "search", "email", "url"].includes(el.type)
+  );
+}
+
+function isEditable(el: Element): el is EditableTarget {
+  if (isTextInput(el)) return true;
+  return el instanceof HTMLElement && el.isContentEditable;
+}
+
+/* ---------- Markørposisjon ---------- */
+
+const MIRROR_PROPS = [
+  "boxSizing", "width", "height",
+  "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+  "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+  "fontFamily", "fontSize", "fontWeight", "fontStyle", "letterSpacing",
+  "lineHeight", "textTransform", "wordSpacing", "textIndent",
+] as const;
+
+function textInputCaretPoint(el: HTMLTextAreaElement | HTMLInputElement): { x: number; y: number } {
+  const doc = el.ownerDocument;
+  const div = doc.createElement("div");
+  const style = getComputedStyle(el);
+  for (const prop of MIRROR_PROPS) {
+    div.style[prop as never] = style[prop as never];
+  }
+  div.style.position = "fixed";
+  div.style.top = "0";
+  div.style.left = "-9999px";
+  div.style.visibility = "hidden";
+  if (el instanceof HTMLTextAreaElement) {
+    div.style.whiteSpace = "pre-wrap";
+    div.style.overflowWrap = "break-word";
+  } else {
+    div.style.whiteSpace = "pre";
+  }
+  div.textContent = el.value.slice(0, el.selectionStart ?? 0);
+  const marker = doc.createElement("span");
+  marker.textContent = "​";
+  div.appendChild(marker);
+  doc.body.appendChild(div);
+  const rect = el.getBoundingClientRect();
+  const lineHeight =
+    parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4 || 20;
+  const x = rect.left + marker.offsetLeft - el.scrollLeft;
+  const y = rect.top + marker.offsetTop - el.scrollTop + lineHeight;
+  div.remove();
+  return { x: Math.min(x, rect.right), y: Math.min(y, rect.bottom + 24) };
+}
+
+function contentEditableCaretPoint(doc: Document): { x: number; y: number } | null {
+  const sel = doc.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(true);
+  const rects = range.getClientRects();
+  if (rects.length > 0) {
+    return { x: rects[0].left, y: rects[0].bottom };
+  }
+  const el =
+    range.startContainer instanceof Element
+      ? range.startContainer
+      : range.startContainer.parentElement;
+  const rect = el?.getBoundingClientRect();
+  return rect ? { x: rect.left, y: rect.bottom } : null;
+}
+
+/* ---------- Gjeldende ord før markøren ---------- */
+
+function currentPrefix(target: EditableTarget, doc: Document): string | null {
+  if (isTextInput(target)) {
+    const pos = target.selectionStart;
+    if (pos == null || pos !== target.selectionEnd) return null;
+    const m = target.value.slice(0, pos).match(WORD_TAIL_RE);
+    return m ? m[0] : null;
+  }
+  const sel = doc.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
+  const node = sel.anchorNode;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+  const m = (node.textContent ?? "").slice(0, sel.anchorOffset).match(WORD_TAIL_RE);
+  return m ? m[0] : null;
+}
+
+/* ---------- Innsetting ---------- */
+
+function insertCompletion(target: EditableTarget, doc: Document, prefix: string, word: string): void {
+  const completion = `${word} `;
+  if (isTextInput(target)) {
+    const pos = target.selectionStart ?? 0;
+    target.setRangeText(completion, pos - prefix.length, pos, "end");
+    target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: completion }));
+    return;
+  }
+  const sel = doc.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const range = sel.getRangeAt(0);
+  if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
+  range.setStart(range.startContainer, range.startOffset - prefix.length);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  // execCommand er formelt utdatert, men er fortsatt det som fungerer bredest
+  // i contenteditable-editorer (bevarer undo-historikk og utløser input-events)
+  doc.execCommand("insertText", false, completion);
+}
+
+/* ---------- Panel ---------- */
+
+class SuggestionPanel {
+  private host: HTMLDivElement;
+  private list: HTMLDivElement;
+  private items: string[] = [];
+  selectedIndex = -1;
+
+  constructor(private doc: Document, private onPick: (word: string) => void) {
+    this.host = doc.createElement("div");
+    this.host.style.cssText =
+      "position: fixed; z-index: 2147483647; display: none;";
+    const shadow = this.host.attachShadow({ mode: "closed" });
+    const style = doc.createElement("style");
+    style.textContent = `
+      .panel {
+        font: 14px/1.5 system-ui, sans-serif; background: white; color: #1a2330;
+        border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden;
+        box-shadow: 0 4px 16px rgb(0 0 0 / 18%); min-width: 160px;
+      }
+      .item { padding: 6px 12px; cursor: pointer; display: flex; gap: 8px; }
+      .item:hover { background: #eff6ff; }
+      .item.selected { background: #dbeafe; }
+      .n { color: #94a3b8; min-width: 1em; }
+      @media (prefers-color-scheme: dark) {
+        .panel { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        .item:hover { background: #334155; }
+        .item.selected { background: #1e40af; }
+      }
+    `;
+    this.list = doc.createElement("div");
+    this.list.className = "panel";
+    shadow.append(style, this.list);
+    doc.documentElement.appendChild(this.host);
+  }
+
+  get visible(): boolean {
+    return this.host.style.display !== "none";
+  }
+
+  get selected(): string | null {
+    return this.items[this.selectedIndex] ?? null;
+  }
+
+  get first(): string | null {
+    return this.items[0] ?? null;
+  }
+
+  show(items: string[], x: number, y: number): void {
+    this.items = items;
+    this.selectedIndex = -1;
+    this.list.textContent = "";
+    items.forEach((word, i) => {
+      const row = this.doc.createElement("div");
+      row.className = "item";
+      const n = this.doc.createElement("span");
+      n.className = "n";
+      n.textContent = String(i + 1);
+      row.append(n, this.doc.createTextNode(word));
+      // mousedown, ikke click: unngå at feltet mister fokus før innsetting
+      row.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        this.onPick(word);
+      });
+      this.list.appendChild(row);
+    });
+    const vw = this.doc.defaultView ?? window;
+    this.host.style.left = `${Math.max(4, Math.min(x, vw.innerWidth - 200))}px`;
+    this.host.style.top = `${Math.min(y + 4, vw.innerHeight - 40 - items.length * 30)}px`;
+    this.host.style.display = "block";
+  }
+
+  move(delta: number): void {
+    if (this.items.length === 0) return;
+    // Sykler gjennom tilstandene -1 (ingen valgt), 0, 1, …, n-1
+    const states = this.items.length + 1;
+    this.selectedIndex = ((this.selectedIndex + 1 + delta + states) % states) - 1;
+    this.list.querySelectorAll(".item").forEach((el, i) => {
+      el.classList.toggle("selected", i === this.selectedIndex);
+    });
+  }
+
+  hide(): void {
+    this.host.style.display = "none";
+    this.items = [];
+    this.selectedIndex = -1;
+  }
+
+  destroy(): void {
+    this.host.remove();
+  }
+}
+
+/* ---------- Hovedinngang ---------- */
+
+export interface WritingSupport {
+  destroy(): void;
+}
+
+/**
+ * Aktiver skrivestøtte for hele dokumentet: lytter på fokus i redigerbare
+ * felt og viser ordforslag mens man skriver.
+ */
+export function enableWritingSupport(
+  doc: Document,
+  predictor: Predictor,
+  opts: AttachOptions = {},
+): WritingSupport {
+  const minPrefix = opts.minPrefix ?? 2;
+  const maxSuggestions = opts.maxSuggestions ?? 5;
+  const enabled = opts.isEnabled ?? (() => true);
+
+  let active: EditableTarget | null = null;
+  let activePrefix = "";
+  const panel = new SuggestionPanel(doc, (word) => accept(word));
+
+  // Feltet kan allerede ha fokus når støtten aktiveres (lat lasting)
+  const initial = doc.activeElement;
+  if (initial && isEditable(initial)) active = initial;
+
+  function accept(word: string): void {
+    if (!active) return;
+    insertCompletion(active, doc, activePrefix, word);
+    panel.hide();
+    opts.onAccept?.(word);
+  }
+
+  function refresh(): void {
+    if (!active || !enabled()) {
+      panel.hide();
+      return;
+    }
+    const prefix = currentPrefix(active, doc);
+    if (!prefix || prefix.length < minPrefix) {
+      panel.hide();
+      return;
+    }
+    const suggestions = predictor.suggest(prefix, maxSuggestions);
+    if (suggestions.length === 0) {
+      panel.hide();
+      return;
+    }
+    activePrefix = prefix;
+    const point = isTextInput(active)
+      ? textInputCaretPoint(active)
+      : contentEditableCaretPoint(doc);
+    if (!point) {
+      panel.hide();
+      return;
+    }
+    panel.show(suggestions, point.x, point.y);
+  }
+
+  const onFocusIn = (e: FocusEvent): void => {
+    const t = e.target;
+    if (t instanceof Element && isEditable(t)) {
+      active = t;
+    } else {
+      active = null;
+      panel.hide();
+    }
+  };
+
+  const onInput = (e: Event): void => {
+    if (e.target === active) refresh();
+  };
+
+  // Enkelte hjelpemidler/virtuelle tastaturer sender tom e.key — fall
+  // tilbake på keyCode for tastene vi bryr oss om
+  const KEYCODE_MAP: Record<number, string> = {
+    9: "Tab", 13: "Enter", 27: "Escape", 38: "ArrowUp", 40: "ArrowDown",
+  };
+
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (!panel.visible || e.target !== active) return;
+    // stopImmediatePropagation: hindrer at andre lyttere (inkl. en duplisert
+    // instans av oss selv) håndterer samme tastetrykk én gang til
+    switch (e.key || KEYCODE_MAP[e.keyCode]) {
+      case "ArrowDown":
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        panel.move(1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        panel.move(-1);
+        break;
+      case "Tab":
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        accept(panel.selected ?? panel.first!);
+        break;
+      case "Enter":
+        if (panel.selected) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          accept(panel.selected);
+        } else {
+          panel.hide();
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        panel.hide();
+        break;
+    }
+  };
+
+  const onFocusOut = (): void => panel.hide();
+  const onScroll = (): void => panel.hide();
+
+  doc.addEventListener("focusin", onFocusIn);
+  doc.addEventListener("input", onInput);
+  doc.addEventListener("keydown", onKeyDown, true);
+  doc.addEventListener("focusout", onFocusOut);
+  doc.addEventListener("scroll", onScroll, true);
+
+  return {
+    destroy() {
+      doc.removeEventListener("focusin", onFocusIn);
+      doc.removeEventListener("input", onInput);
+      doc.removeEventListener("keydown", onKeyDown, true);
+      doc.removeEventListener("focusout", onFocusOut);
+      doc.removeEventListener("scroll", onScroll, true);
+      panel.destroy();
+    },
+  };
+}

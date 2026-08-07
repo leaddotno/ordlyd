@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@skrivestotte/tts": "workspace:*"
+    "@skrivestotte/tts": "workspace:*",
+    "@skrivestotte/writing": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.280",

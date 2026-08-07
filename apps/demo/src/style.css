@@ -38,3 +38,8 @@ progress { width: 100%; }
 .reader .s.active-s { background: #fef3c7; border-radius: 4px; }
 .log { font-family: Consolas, monospace; font-size: 0.82rem; margin: 0; padding-left: 18px; color: #334; }
 .log li { margin: 2px 0; }
+.muted { color: #64748b; font-size: 0.85rem; margin-top: 0; }
+.editable {
+  margin-top: 10px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;
+  min-height: 48px; background: #fffdf5;
+}
