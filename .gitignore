@@ -6,6 +6,7 @@ assets/
 apps/*/public/voices/
 apps/*/public/ort/
 apps/*/public/piper/
+apps/*/public/dict/
 *.local
 .DS_Store
 .env
