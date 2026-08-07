@@ -162,11 +162,16 @@ function maybeInitPrediction(): void {
       (t instanceof HTMLElement && t.isContentEditable);
     if (!editable) return;
     document.removeEventListener("focusin", lazyLoad);
-    void Predictor.fromUrl(chrome.runtime.getURL("dict/nb.txt")).then((predictor) => {
-      enableWritingSupport(document, predictor, {
-        isEnabled: () => settings.enabled && settings.prediction,
+    Predictor.fromUrl(chrome.runtime.getURL("dict/nb.txt"))
+      .then((predictor) => {
+        console.log("[Skrivestøtte] ordbank lastet:", predictor.size, "ord");
+        enableWritingSupport(document, predictor, {
+          isEnabled: () => settings.enabled && settings.prediction,
+        });
+      })
+      .catch((err) => {
+        console.error("[Skrivestøtte] kunne ikke laste ordbank:", err);
       });
-    });
   };
   document.addEventListener("focusin", lazyLoad);
 }
@@ -191,9 +196,35 @@ document.addEventListener("selectionchange", () => {
   host.style.top = `${Math.min(window.innerHeight - 48, rect.bottom + 8)}px`;
 });
 
+/**
+ * Vakthund: får vi ingen hendelser tilbake innen rimelig tid etter start,
+ * er noe galt i syntesekjeden — da nullstilles knappen i stedet for å henge.
+ */
+let watchdog: ReturnType<typeof setTimeout> | undefined;
+
+function armWatchdog(): void {
+  clearTimeout(watchdog);
+  watchdog = setTimeout(() => {
+    console.warn("[Skrivestøtte] ingen respons fra talesyntesen på 20 s — nullstiller.");
+    clearHighlights();
+    setButton("idle");
+    hideButton();
+  }, 20_000);
+}
+
+function disarmWatchdog(): void {
+  clearTimeout(watchdog);
+  watchdog = undefined;
+}
+
 button.addEventListener("click", () => {
   if (speaking) {
-    void chrome.runtime.sendMessage({ type: "ss-stop" });
+    void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
+    // Nullstill lokalt uansett – stopp skal alltid virke øyeblikkelig
+    disarmWatchdog();
+    clearHighlights();
+    setButton("idle");
+    hideButton();
     return;
   }
   if (!pendingRange) return;
@@ -202,8 +233,14 @@ button.addEventListener("click", () => {
   const built = buildWordRanges(extracted);
   wordRanges = built.ranges;
   setButton("speaking");
+  armWatchdog();
   document.getSelection()?.removeAllRanges(); // markeringen vår skal synes i stedet
-  void chrome.runtime.sendMessage({ type: "ss-speak", text: built.text });
+  chrome.runtime.sendMessage({ type: "ss-speak", text: built.text }).catch((err) => {
+    console.error("[Skrivestøtte] kunne ikke starte opplesing:", err);
+    disarmWatchdog();
+    setButton("idle");
+    hideButton();
+  });
 });
 
 document.addEventListener("keydown", (e) => {
@@ -215,6 +252,12 @@ document.addEventListener("keydown", (e) => {
 /* ---------- Hendelser fra opplesingen ---------- */
 
 chrome.runtime.onMessage.addListener((event: TtsEvent) => {
+  // Alle hendelser beviser at kjeden lever — mat vakthunden
+  if (event.kind === "end" || event.kind === "error") {
+    disarmWatchdog();
+  } else if (speaking) {
+    armWatchdog();
+  }
   switch (event.kind) {
     case "word": {
       const range = wordRanges[event.globalWordIndex];

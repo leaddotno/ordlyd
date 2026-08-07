@@ -6,6 +6,8 @@
 import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
 import type { OffscreenSpeak, OffscreenStop, TtsEvent } from "./messages.js";
 
+const LOG = "[Skrivestøtte offscreen]";
+
 // Alt bundles i utvidelsespakken – null internettavhengighet ved bruk.
 configureLocalAssets({
   voiceBaseUrl: chrome.runtime.getURL("voices"),
@@ -17,34 +19,51 @@ configureLocalAssets({
 const controller = new SpeechController();
 
 // Hastighet fra innstillingene – hentes ved oppstart og følges live
-void chrome.storage.sync.get({ rate: 1 }).then(({ rate }) => controller.setRate(rate));
+chrome.storage.sync
+  .get({ rate: 1 })
+  .then(({ rate }) => controller.setRate(rate as number))
+  .catch((err) => console.warn(LOG, "kunne ikke lese innstillinger:", err));
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "sync" && changes.rate) controller.setRate(changes.rate.newValue as number);
 });
 
 function emit(tabId: number, event: TtsEvent): void {
-  void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch(() => {});
+  void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch((err) => {
+    console.warn(LOG, "kunne ikke sende hendelse:", err);
+  });
 }
 
-chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop) => {
+chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _sender, sendResponse) => {
   if (!("target" in msg) || msg.target !== "offscreen") return;
 
   if (msg.type === "ss-offscreen-stop") {
     controller.stop();
+    sendResponse();
     return;
   }
 
   if (msg.type === "ss-offscreen-speak") {
     const { text, tabId } = msg;
+    console.log(LOG, `starter opplesing (${text.length} tegn)`);
     controller.stop();
-    void controller.speak(text, {
-      onDownload: (p) => emit(tabId, { kind: "download", loaded: p.loaded, total: p.total }),
-      onSentence: ({ sentence }) =>
-        emit(tabId, { kind: "sentence", sentenceIndex: 0, start: sentence.start, end: sentence.end }),
-      onWord: (globalWordIndex) => emit(tabId, { kind: "word", globalWordIndex }),
-      onEnd: ({ stopped }) => emit(tabId, { kind: "end", stopped }),
-      onError: (err) =>
-        emit(tabId, { kind: "error", message: err instanceof Error ? err.message : String(err) }),
-    });
+    void controller
+      .speak(text, {
+        onDownload: (p) => emit(tabId, { kind: "download", loaded: p.loaded, total: p.total }),
+        onSentence: ({ sentence }) =>
+          emit(tabId, { kind: "sentence", sentenceIndex: 0, start: sentence.start, end: sentence.end }),
+        onWord: (globalWordIndex) => emit(tabId, { kind: "word", globalWordIndex }),
+        onEnd: ({ stopped }) => emit(tabId, { kind: "end", stopped }),
+        onError: (err) => {
+          console.error(LOG, "syntese feilet:", err);
+          emit(tabId, { kind: "error", message: err instanceof Error ? err.message : String(err) });
+        },
+      })
+      .catch((err) => {
+        console.error(LOG, "uventet feil:", err);
+        emit(tabId, { kind: "error", message: String(err) });
+      });
+    sendResponse();
   }
 });
+
+console.log(LOG, "klar. Stemme-base:", chrome.runtime.getURL("voices"));
