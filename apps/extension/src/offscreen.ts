@@ -18,21 +18,14 @@ configureLocalAssets({
 
 const controller = new SpeechController();
 
-// Hastighet fra innstillingene – hentes ved oppstart og følges live
-chrome.storage.sync
-  .get({ rate: 1 })
-  .then(({ rate }) => controller.setRate(rate as number))
-  .catch((err) => console.warn(LOG, "kunne ikke lese innstillinger:", err));
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "sync" && changes.rate) controller.setRate(changes.rate.newValue as number);
-});
-
 function emit(tabId: number, event: TtsEvent): void {
   void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch((err) => {
     console.warn(LOG, "kunne ikke sende hendelse:", err);
   });
 }
 
+// VIKTIG: meldingslytteren registreres FØR alt som kan feile — dør noe
+// annet under oppstart, skal opplesing likevel fungere.
 chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _sender, sendResponse) => {
   if (!("target" in msg) || msg.target !== "offscreen") return;
 
@@ -65,5 +58,20 @@ chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _send
     sendResponse();
   }
 });
+
+// Hastighet fra innstillingene – hentes ved oppstart og følges live.
+// chrome.storage kan mangle (f.eks. gammel manifest uten storage-tillatelse) —
+// da kjører vi videre med standardhastighet i stedet for å dø.
+try {
+  chrome.storage?.sync
+    ?.get({ rate: 1 })
+    .then(({ rate }) => controller.setRate(rate as number))
+    .catch((err: unknown) => console.warn(LOG, "kunne ikke lese innstillinger:", err));
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area === "sync" && changes.rate) controller.setRate(changes.rate.newValue as number);
+  });
+} catch (err) {
+  console.warn(LOG, "innstillinger utilgjengelige:", err);
+}
 
 console.log(LOG, "klar. Stemme-base:", chrome.runtime.getURL("voices"));

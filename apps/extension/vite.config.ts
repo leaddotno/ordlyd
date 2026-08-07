@@ -8,6 +8,9 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     target: "chrome110",
+    // Ingen modulepreload-polyfill: unødvendig i moderne Chromium, og gir
+    // «cross-world resource mismatch»-støy i utvidelseskontekster
+    modulePreload: { polyfill: false },
     rollupOptions: {
       input: {
         background: "src/background.ts",

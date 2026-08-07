@@ -19,7 +19,7 @@ onSettingsChanged((s) => {
   settings = s;
   if (!s.enabled) {
     hideButton();
-    void chrome.runtime.sendMessage({ type: "ss-stop" });
+    void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
   }
   maybeInitPrediction();
 });
@@ -245,7 +245,7 @@ button.addEventListener("click", () => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && speaking) {
-    void chrome.runtime.sendMessage({ type: "ss-stop" });
+    void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
   }
 });
 
