@@ -109,23 +109,21 @@ function currentPrefix(target: EditableTarget, doc: Document): string | null {
 /* ---------- Innsetting ---------- */
 
 function insertCompletion(target: EditableTarget, doc: Document, prefix: string, word: string): void {
-  const completion = `${word} `;
   if (isTextInput(target)) {
+    const completion = `${word} `;
     const pos = target.selectionStart ?? 0;
     target.setRangeText(completion, pos - prefix.length, pos, "end");
     target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: completion }));
     return;
   }
-  const sel = doc.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
-  const range = sel.getRangeAt(0);
-  if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
-  range.setStart(range.startContainer, range.startOffset - prefix.length);
-  sel.removeAllRanges();
-  sel.addRange(range);
+  // Riktekst-editorer (Word online m.fl.) overstyrer markeringsendringer,
+  // så å markere prefikset og erstatte det gir dobbel tekst («mysmystisk»).
+  // I stedet settes kun RESTEN av ordet inn ved markøren — prefikset
+  // brukeren alt har skrevet får stå.
+  const remainder = `${word.slice(prefix.length)} `;
   // execCommand er formelt utdatert, men er fortsatt det som fungerer bredest
   // i contenteditable-editorer (bevarer undo-historikk og utløser input-events)
-  doc.execCommand("insertText", false, completion);
+  doc.execCommand("insertText", false, remainder);
 }
 
 /* ---------- Panel ---------- */

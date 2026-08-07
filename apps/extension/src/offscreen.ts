@@ -63,12 +63,18 @@ chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _send
 // chrome.storage kan mangle (f.eks. gammel manifest uten storage-tillatelse) —
 // da kjører vi videre med standardhastighet i stedet for å dø.
 try {
-  chrome.storage?.sync
+  chrome.storage?.local
     ?.get({ rate: 1 })
-    .then(({ rate }) => controller.setRate(rate as number))
+    .then(({ rate }) => {
+      console.log(LOG, "hastighet fra innstillinger:", rate);
+      controller.setRate(rate as number);
+    })
     .catch((err: unknown) => console.warn(LOG, "kunne ikke lese innstillinger:", err));
   chrome.storage?.onChanged?.addListener((changes, area) => {
-    if (area === "sync" && changes.rate) controller.setRate(changes.rate.newValue as number);
+    if (area === "local" && changes.rate) {
+      console.log(LOG, "ny hastighet:", changes.rate.newValue);
+      controller.setRate(changes.rate.newValue as number);
+    }
   });
 } catch (err) {
   console.warn(LOG, "innstillinger utilgjengelige:", err);
