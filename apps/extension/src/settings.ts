@@ -7,12 +7,21 @@ export interface Settings {
   rate: number;
   /** Ordforslag mens man skriver */
   prediction: boolean;
+  /** Skriveekko: les bokstavnavnet ved hvert tastetrykk */
+  echoLetters: boolean;
+  /** Skriveekko: les ordet når det fullføres (mellomrom/skilletegn) */
+  echoWords: boolean;
+  /** Skriveekko: les setningen ved punktum/utropstegn/spørsmålstegn */
+  echoSentences: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   rate: 1.0,
   prediction: true,
+  echoLetters: false,
+  echoWords: false,
+  echoSentences: false,
 };
 
 /**

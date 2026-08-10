@@ -12,6 +12,24 @@ export interface StopRequest {
   type: "ss-stop";
 }
 
+/** Skriveekko: bokstav ved tastetrykk, ord ved ordgrense, setning ved .!? */
+export type EchoKind = "letter" | "word" | "sentence";
+
+export interface EchoRequest {
+  type: "ss-echo";
+  kind: EchoKind;
+  text: string;
+  rate?: number;
+}
+
+export interface OffscreenEcho {
+  type: "ss-offscreen-echo";
+  target: "offscreen";
+  kind: EchoKind;
+  text: string;
+  rate?: number;
+}
+
 /** SW → offscreen */
 export interface OffscreenSpeak {
   type: "ss-offscreen-speak";
@@ -43,6 +61,8 @@ export interface EventEnvelope {
 export type AnyMessage =
   | SpeakRequest
   | StopRequest
+  | EchoRequest
   | OffscreenSpeak
   | OffscreenStop
+  | OffscreenEcho
   | EventEnvelope;

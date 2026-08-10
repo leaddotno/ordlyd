@@ -167,6 +167,13 @@ function maybeInitPrediction(): void {
         console.log("[Skrivestøtte] ordbank lastet:", predictor.size, "ord");
         enableWritingSupport(document, predictor, {
           isEnabled: () => settings.enabled && settings.prediction,
+          // Forslag leses opp ved pilnavigering og innsetting når ordekko er på
+          onHighlight: (word) => {
+            if (settings.echoWords) sendEcho("word", word);
+          },
+          onAccept: (word) => {
+            if (settings.echoWords) sendEcho("word", word);
+          },
         });
       })
       .catch((err) => {
@@ -246,6 +253,71 @@ button.addEventListener("click", () => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && speaking) {
     void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
+  }
+});
+
+/* ---------- Skriveekko: hør det du skriver ---------- */
+
+function isEchoTarget(t: EventTarget | null): t is HTMLElement {
+  if (t instanceof HTMLTextAreaElement) return true;
+  if (t instanceof HTMLInputElement) {
+    return ["text", "search", "email", "url"].includes(t.type); // aldri passord
+  }
+  return t instanceof HTMLElement && t.isContentEditable;
+}
+
+function textBeforeCaret(t: HTMLElement): string {
+  if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement) {
+    return t.value.slice(0, t.selectionStart ?? t.value.length);
+  }
+  const sel = document.getSelection();
+  if (!sel?.anchorNode || sel.anchorNode.nodeType !== Node.TEXT_NODE) return "";
+  return (sel.anchorNode.textContent ?? "").slice(0, sel.anchorOffset);
+}
+
+function lastWordIn(text: string): string | null {
+  const m = text.match(/([\p{L}\p{N}][\p{L}\p{N}'’-]*)[^\p{L}\p{N}]*$/u);
+  return m ? m[1] : null;
+}
+
+function lastSentenceIn(text: string): string | null {
+  const trimmed = text.replace(/\s+$/u, "");
+  const m = trimmed.match(/[^.!?]+[.!?]$/u);
+  return (m ? m[0] : trimmed.slice(-200)).trim() || null;
+}
+
+function sendEcho(kind: "letter" | "word" | "sentence", text: string): void {
+  void chrome.runtime
+    .sendMessage({ type: "ss-echo", kind, text, rate: settings.rate })
+    .catch(() => {});
+}
+
+document.addEventListener("input", (e) => {
+  if (!(e instanceof InputEvent) || e.isComposing || !settings.enabled) return;
+  const t = e.target;
+  if (!isEchoTarget(t)) return;
+
+  const isBreak = e.inputType === "insertParagraph" || e.inputType === "insertLineBreak";
+  const ch = e.inputType === "insertText" && e.data?.length === 1 ? e.data : "";
+
+  // Bokstav/tall skrevet → bokstavekko
+  if (ch && /[\p{L}\p{N}]/u.test(ch)) {
+    if (settings.echoLetters) sendEcho("letter", ch.toLowerCase());
+    return;
+  }
+
+  // Ordgrense (mellomrom, skilletegn, linjeskift) → ord- eller setningsekko
+  const isSentenceEnd = /[.!?]/.test(ch);
+  const isWordBoundary = isBreak || (ch !== "" && /[\s,;:.!?]/.test(ch));
+  if (!isWordBoundary) return;
+
+  const before = textBeforeCaret(t);
+  if (isSentenceEnd && settings.echoSentences) {
+    const sentence = lastSentenceIn(before);
+    if (sentence) sendEcho("sentence", sentence);
+  } else if (settings.echoWords) {
+    const word = lastWordIn(before);
+    if (word) sendEcho("word", word);
   }
 });
 

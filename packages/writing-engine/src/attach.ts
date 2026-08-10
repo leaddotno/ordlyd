@@ -8,8 +8,10 @@ import { Predictor } from "./predictor.js";
 export interface AttachOptions {
   minPrefix?: number;
   maxSuggestions?: number;
-  /** Kalles når et forslag settes inn (til f.eks. opplesing senere) */
+  /** Kalles når et forslag settes inn (til f.eks. opplesing) */
   onAccept?: (word: string) => void;
+  /** Kalles når et forslag markeres med piltastene (til opplesing før valg) */
+  onHighlight?: (word: string) => void;
   /** Slå av/på uten å fjerne lyttere */
   isEnabled?: () => boolean;
 }
@@ -308,11 +310,13 @@ export function enableWritingSupport(
         e.preventDefault();
         e.stopImmediatePropagation();
         panel.move(1);
+        if (panel.selected) opts.onHighlight?.(panel.selected);
         break;
       case "ArrowUp":
         e.preventDefault();
         e.stopImmediatePropagation();
         panel.move(-1);
+        if (panel.selected) opts.onHighlight?.(panel.selected);
         break;
       case "Tab":
         e.preventDefault();

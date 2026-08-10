@@ -72,6 +72,22 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
         }
         break;
       }
+      case "ss-echo": {
+        try {
+          await ensureOffscreen();
+          await sendToOffscreen({
+            type: "ss-offscreen-echo",
+            target: "offscreen",
+            kind: msg.kind,
+            text: msg.text,
+            rate: msg.rate,
+          });
+        } catch (err) {
+          // Ekko er ikke kritisk — logg og gå videre
+          console.warn("[Skrivestøtte SW] ekko feilet:", err);
+        }
+        break;
+      }
       case "ss-stop": {
         try {
           await ensureOffscreen();

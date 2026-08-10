@@ -169,6 +169,11 @@ export async function downloadVoice(
 
 let session: InstanceType<typeof piper.TtsSession> | null = null;
 
+/** Engangs-syntese til lydblob (brukes bl.a. av skriveekko). */
+export function synthesizeText(text: string, voiceId: string = DEFAULT_VOICE): Promise<Blob> {
+  return synthesize(text, voiceId);
+}
+
 async function synthesize(text: string, voiceId: string): Promise<Blob> {
   if (!session || session.voiceId !== voiceId) {
     session = new piper.TtsSession({

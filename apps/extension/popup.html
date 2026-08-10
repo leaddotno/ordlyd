@@ -31,6 +31,10 @@
       .switch input:checked + .slider::before { transform: translateX(18px); }
       .off body, body.off { opacity: 0.9; }
       #status { margin-top: 8px; }
+      .section {
+        font-size: 12px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.04em; color: #64748b; margin-top: 12px; padding-bottom: 4px;
+      }
       @media (prefers-color-scheme: dark) {
         body { background: #0f172a; color: #e2e8f0; }
         .row { border-color: #334155; }
@@ -54,6 +58,23 @@
     <div class="row">
       <label for="prediction">Ordforslag<br /><span class="muted">Forslag mens du skriver</span></label>
       <label class="switch"><input type="checkbox" id="prediction" /><span class="slider"></span></label>
+    </div>
+
+    <div class="section">Skriveekko – hør det du skriver</div>
+
+    <div class="row">
+      <label for="echoLetters">Bokstaver<br /><span class="muted">Hør «hå» når du taster H</span></label>
+      <label class="switch"><input type="checkbox" id="echoLetters" /><span class="slider"></span></label>
+    </div>
+
+    <div class="row">
+      <label for="echoWords">Ord<br /><span class="muted">Ordet leses ved mellomrom</span></label>
+      <label class="switch"><input type="checkbox" id="echoWords" /><span class="slider"></span></label>
+    </div>
+
+    <div class="row">
+      <label for="echoSentences">Setninger<br /><span class="muted">Setningen leses ved punktum</span></label>
+      <label class="switch"><input type="checkbox" id="echoSentences" /><span class="slider"></span></label>
     </div>
 
     <div class="muted" id="status">Marker tekst på en nettside og trykk «Les opp».</div>

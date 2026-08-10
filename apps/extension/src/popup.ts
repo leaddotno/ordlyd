@@ -4,6 +4,9 @@ const enabled = document.getElementById("enabled") as HTMLInputElement;
 const rate = document.getElementById("rate") as HTMLInputElement;
 const rateVal = document.getElementById("rateVal") as HTMLSpanElement;
 const prediction = document.getElementById("prediction") as HTMLInputElement;
+const echoLetters = document.getElementById("echoLetters") as HTMLInputElement;
+const echoWords = document.getElementById("echoWords") as HTMLInputElement;
+const echoSentences = document.getElementById("echoSentences") as HTMLInputElement;
 const status = document.getElementById("status") as HTMLDivElement;
 
 function showRate(value: number): void {
@@ -33,6 +36,9 @@ getSettings()
     enabled.checked = s.enabled;
     rate.value = String(s.rate);
     prediction.checked = s.prediction;
+    echoLetters.checked = s.echoLetters;
+    echoWords.checked = s.echoWords;
+    echoSentences.checked = s.echoSentences;
     showRate(s.rate);
   })
   .catch((err) => {
@@ -41,6 +47,9 @@ getSettings()
 
 enabled.addEventListener("change", () => save({ enabled: enabled.checked }));
 prediction.addEventListener("change", () => save({ prediction: prediction.checked }));
+echoLetters.addEventListener("change", () => save({ echoLetters: echoLetters.checked }));
+echoWords.addEventListener("change", () => save({ echoWords: echoWords.checked }));
+echoSentences.addEventListener("change", () => save({ echoSentences: echoSentences.checked }));
 rate.addEventListener("input", () => {
   const value = Number(rate.value);
   showRate(value);

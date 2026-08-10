@@ -4,7 +4,8 @@
  * som videresender til riktig fane.
  */
 import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
-import type { OffscreenSpeak, OffscreenStop, TtsEvent } from "./messages.js";
+import { EchoPlayer } from "./echo-player.js";
+import type { OffscreenEcho, OffscreenSpeak, OffscreenStop, TtsEvent } from "./messages.js";
 
 const LOG = "[Skrivestøtte offscreen]";
 
@@ -17,6 +18,10 @@ configureLocalAssets({
 });
 
 const controller = new SpeechController();
+const echoPlayer = new EchoPlayer(
+  () => controller.isSpeaking,
+  (...args) => console.log(LOG, ...args),
+);
 
 function emit(tabId: number, event: TtsEvent): void {
   void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch((err) => {
@@ -26,11 +31,19 @@ function emit(tabId: number, event: TtsEvent): void {
 
 // VIKTIG: meldingslytteren registreres FØR alt som kan feile — dør noe
 // annet under oppstart, skal opplesing likevel fungere.
-chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(
+  (msg: OffscreenSpeak | OffscreenStop | OffscreenEcho, _sender, sendResponse) => {
   if (!("target" in msg) || msg.target !== "offscreen") return;
 
   if (msg.type === "ss-offscreen-stop") {
     controller.stop();
+    echoPlayer.stop();
+    sendResponse();
+    return;
+  }
+
+  if (msg.type === "ss-offscreen-echo") {
+    void echoPlayer.echo(msg.kind, msg.text, msg.rate ?? 1);
     sendResponse();
     return;
   }
@@ -65,17 +78,21 @@ chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _send
 // da kjører vi videre med standardhastighet i stedet for å dø.
 try {
   chrome.storage?.local
-    ?.get({ rate: 1 })
-    .then(({ rate }) => {
+    ?.get({ rate: 1, echoLetters: false })
+    .then(({ rate, echoLetters }) => {
       console.log(LOG, "hastighet fra innstillinger:", rate);
       controller.setRate(rate as number);
+      // Generer bokstavklippene i bakgrunnen så første ekte tastetrykk er raskt
+      if (echoLetters) void echoPlayer.prewarm();
     })
     .catch((err: unknown) => console.warn(LOG, "kunne ikke lese innstillinger:", err));
   chrome.storage?.onChanged?.addListener((changes, area) => {
-    if (area === "local" && changes.rate) {
+    if (area !== "local") return;
+    if (changes.rate) {
       console.log(LOG, "ny hastighet:", changes.rate.newValue);
       controller.setRate(changes.rate.newValue as number);
     }
+    if (changes.echoLetters?.newValue === true) void echoPlayer.prewarm();
   });
 } catch (err) {
   console.warn(LOG, "innstillinger utilgjengelige:", err);
