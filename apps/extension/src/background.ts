@@ -60,6 +60,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
             type: "ss-offscreen-speak",
             target: "offscreen",
             text: msg.text,
+            rate: msg.rate,
             tabId,
           });
         } catch (err) {

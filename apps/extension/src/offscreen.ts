@@ -36,9 +36,10 @@ chrome.runtime.onMessage.addListener((msg: OffscreenSpeak | OffscreenStop, _send
   }
 
   if (msg.type === "ss-offscreen-speak") {
-    const { text, tabId } = msg;
-    console.log(LOG, `starter opplesing (${text.length} tegn)`);
+    const { text, tabId, rate } = msg;
+    console.log(LOG, `starter opplesing (${text.length} tegn, hastighet ${rate ?? "uendret"})`);
     controller.stop();
+    if (typeof rate === "number") controller.setRate(rate);
     void controller
       .speak(text, {
         onDownload: (p) => emit(tabId, { kind: "download", loaded: p.loaded, total: p.total }),

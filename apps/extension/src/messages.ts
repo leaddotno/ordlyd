@@ -3,6 +3,9 @@
 export interface SpeakRequest {
   type: "ss-speak";
   text: string;
+  /** Avspillingshastighet fra innstillingene — sendes med hver forespørsel
+   *  så den virker uavhengig av offscreen-dokumentets livssyklus */
+  rate?: number;
 }
 
 export interface StopRequest {
@@ -15,6 +18,7 @@ export interface OffscreenSpeak {
   target: "offscreen";
   text: string;
   tabId: number;
+  rate?: number;
 }
 
 export interface OffscreenStop {

@@ -235,7 +235,7 @@ button.addEventListener("click", () => {
   setButton("speaking");
   armWatchdog();
   document.getSelection()?.removeAllRanges(); // markeringen vår skal synes i stedet
-  chrome.runtime.sendMessage({ type: "ss-speak", text: built.text }).catch((err) => {
+  chrome.runtime.sendMessage({ type: "ss-speak", text: built.text, rate: settings.rate }).catch((err) => {
     console.error("[Skrivestøtte] kunne ikke starte opplesing:", err);
     disarmWatchdog();
     setButton("idle");
