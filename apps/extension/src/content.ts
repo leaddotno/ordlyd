@@ -4,7 +4,7 @@
  * endres aldri (viktig for å ikke ødelegge weben rundt oss).
  */
 import { tokenizeWords } from "@skrivestotte/tts/text";
-import { Predictor, enableWritingSupport } from "@skrivestotte/writing";
+import { enableWritingSupport, type SuggestSource } from "@skrivestotte/writing";
 import { DEFAULT_SETTINGS, getSettings, onSettingsChanged, type Settings } from "./settings.js";
 import type { TtsEvent } from "./messages.js";
 
@@ -150,37 +150,41 @@ function clearHighlights() {
 
 let predictionInited = false;
 
+/** Ordbanken bor i offscreen-dokumentet — fanen spør via meldinger. */
+const remotePredictor: SuggestSource = {
+  suggest: (prefix, max = 5) =>
+    chrome.runtime
+      .sendMessage({ type: "ss-suggest", prefix, max })
+      .then((res: unknown) => (Array.isArray(res) ? (res as string[]) : []))
+      .catch(() => []),
+};
+
 function maybeInitPrediction(): void {
   if (predictionInited || !settings.enabled || !settings.prediction) return;
   predictionInited = true;
-  // Ordbanken (~1 MB) lastes først når brukeren fokuserer noe redigerbart
-  const lazyLoad = (e: FocusEvent): void => {
+  enableWritingSupport(document, remotePredictor, {
+    isEnabled: () => settings.enabled && settings.prediction,
+    // Forslag leses opp ved pilnavigering og innsetting når ordekko er på
+    onHighlight: (word) => {
+      if (settings.echoWords) sendEcho("word", word);
+    },
+    onAccept: (word) => {
+      if (settings.echoWords) sendEcho("word", word);
+    },
+  });
+  // Varm opp: første fokus i noe redigerbart trigger lasting av ordbanken
+  // i offscreen, så forslagene er raske når brukeren faktisk skriver
+  const warmup = (e: FocusEvent): void => {
     const t = e.target;
     const editable =
       t instanceof HTMLTextAreaElement ||
       t instanceof HTMLInputElement ||
       (t instanceof HTMLElement && t.isContentEditable);
     if (!editable) return;
-    document.removeEventListener("focusin", lazyLoad);
-    Predictor.fromUrl(chrome.runtime.getURL("dict/nb.txt"))
-      .then((predictor) => {
-        console.log("[Skrivestøtte] ordbank lastet:", predictor.size, "ord");
-        enableWritingSupport(document, predictor, {
-          isEnabled: () => settings.enabled && settings.prediction,
-          // Forslag leses opp ved pilnavigering og innsetting når ordekko er på
-          onHighlight: (word) => {
-            if (settings.echoWords) sendEcho("word", word);
-          },
-          onAccept: (word) => {
-            if (settings.echoWords) sendEcho("word", word);
-          },
-        });
-      })
-      .catch((err) => {
-        console.error("[Skrivestøtte] kunne ikke laste ordbank:", err);
-      });
+    document.removeEventListener("focusin", warmup);
+    void remotePredictor.suggest("", 0);
   };
-  document.addEventListener("focusin", lazyLoad);
+  document.addEventListener("focusin", warmup);
 }
 
 document.addEventListener("selectionchange", () => {

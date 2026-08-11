@@ -28,12 +28,11 @@ async function ensureOffscreen(): Promise<void> {
 }
 
 /** Send til offscreen med retry — lytteren kan være et øyeblikk unna rett etter opprettelse. */
-async function sendToOffscreen(msg: unknown): Promise<void> {
+async function sendToOffscreen<T = unknown>(msg: unknown): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      await chrome.runtime.sendMessage(msg);
-      return;
+      return (await chrome.runtime.sendMessage(msg)) as T;
     } catch (err) {
       lastErr = err;
       await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
@@ -50,7 +49,23 @@ function sendEventToTab(tabId: number, event: TtsEvent): void {
 
 chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => {
   (async () => {
+    let response: unknown;
     switch (msg.type) {
+      case "ss-suggest": {
+        try {
+          await ensureOffscreen();
+          response = await sendToOffscreen<string[]>({
+            type: "ss-offscreen-suggest",
+            target: "offscreen",
+            prefix: msg.prefix,
+            max: msg.max,
+          });
+        } catch (err) {
+          console.warn("[Skrivestøtte SW] forslag feilet:", err);
+          response = [];
+        }
+        break;
+      }
       case "ss-speak": {
         const tabId = sender.tab?.id;
         if (tabId == null) return;
@@ -106,7 +121,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
         break;
       }
     }
-    sendResponse();
+    sendResponse(response);
   })();
   return true; // hold meldingskanalen åpen for async svar
 });

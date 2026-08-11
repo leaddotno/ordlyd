@@ -12,6 +12,20 @@ export interface StopRequest {
   type: "ss-stop";
 }
 
+/** Ordforslag: content script spør, offscreen-dokumentet svarer (ordbanken bor der) */
+export interface SuggestRequest {
+  type: "ss-suggest";
+  prefix: string;
+  max: number;
+}
+
+export interface OffscreenSuggest {
+  type: "ss-offscreen-suggest";
+  target: "offscreen";
+  prefix: string;
+  max: number;
+}
+
 /** Skriveekko: bokstav ved tastetrykk, ord ved ordgrense, setning ved .!? */
 export type EchoKind = "letter" | "word" | "sentence";
 
@@ -62,7 +76,9 @@ export type AnyMessage =
   | SpeakRequest
   | StopRequest
   | EchoRequest
+  | SuggestRequest
   | OffscreenSpeak
   | OffscreenStop
   | OffscreenEcho
+  | OffscreenSuggest
   | EventEnvelope;

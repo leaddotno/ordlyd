@@ -4,8 +4,15 @@
  * som videresender til riktig fane.
  */
 import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
+import { Predictor } from "@skrivestotte/writing";
 import { EchoPlayer } from "./echo-player.js";
-import type { OffscreenEcho, OffscreenSpeak, OffscreenStop, TtsEvent } from "./messages.js";
+import type {
+  OffscreenEcho,
+  OffscreenSpeak,
+  OffscreenStop,
+  OffscreenSuggest,
+  TtsEvent,
+} from "./messages.js";
 
 const LOG = "[Skrivestøtte offscreen]";
 
@@ -23,6 +30,23 @@ const echoPlayer = new EchoPlayer(
   (...args) => console.log(LOG, ...args),
 );
 
+/** Ordbanken bor her — lastes én gang for hele nettleseren, ikke per fane. */
+let predictorPromise: Promise<Predictor> | null = null;
+
+function getPredictor(): Promise<Predictor> {
+  if (!predictorPromise) {
+    predictorPromise = Predictor.fromUrl(chrome.runtime.getURL("dict/nb.txt")).then((p) => {
+      console.log(LOG, `ordbank lastet: ${p.size} former`);
+      return p;
+    });
+    predictorPromise.catch((err) => {
+      console.error(LOG, "kunne ikke laste ordbank:", err);
+      predictorPromise = null; // prøv igjen neste gang
+    });
+  }
+  return predictorPromise;
+}
+
 function emit(tabId: number, event: TtsEvent): void {
   void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch((err) => {
     console.warn(LOG, "kunne ikke sende hendelse:", err);
@@ -32,7 +56,7 @@ function emit(tabId: number, event: TtsEvent): void {
 // VIKTIG: meldingslytteren registreres FØR alt som kan feile — dør noe
 // annet under oppstart, skal opplesing likevel fungere.
 chrome.runtime.onMessage.addListener(
-  (msg: OffscreenSpeak | OffscreenStop | OffscreenEcho, _sender, sendResponse) => {
+  (msg: OffscreenSpeak | OffscreenStop | OffscreenEcho | OffscreenSuggest, _sender, sendResponse) => {
   if (!("target" in msg) || msg.target !== "offscreen") return;
 
   if (msg.type === "ss-offscreen-stop") {
@@ -46,6 +70,18 @@ chrome.runtime.onMessage.addListener(
     void echoPlayer.echo(msg.kind, msg.text, msg.rate ?? 1);
     sendResponse();
     return;
+  }
+
+  if (msg.type === "ss-offscreen-suggest") {
+    void (async () => {
+      try {
+        const predictor = await getPredictor();
+        sendResponse(msg.prefix ? predictor.suggest(msg.prefix, msg.max) : []);
+      } catch {
+        sendResponse([]);
+      }
+    })();
+    return true; // async svar
   }
 
   if (msg.type === "ss-offscreen-speak") {

@@ -3,7 +3,13 @@
  * <textarea>, <input> og contenteditable-elementer, med tastaturvalg.
  * Ingen chrome-API-er her — brukes både av utvidelsen og demo-siden.
  */
-import { Predictor } from "./predictor.js";
+/**
+ * Forslagskilde: lokal Predictor (synkron) eller en fjernkilde som spør
+ * en annen kontekst via meldinger (asynkron) — begge deler støttes.
+ */
+export interface SuggestSource {
+  suggest(prefix: string, max?: number): string[] | Promise<string[]>;
+}
 
 export interface AttachOptions {
   minPrefix?: number;
@@ -233,7 +239,7 @@ export interface WritingSupport {
  */
 export function enableWritingSupport(
   doc: Document,
-  predictor: Predictor,
+  predictor: SuggestSource,
   opts: AttachOptions = {},
 ): WritingSupport {
   const minPrefix = opts.minPrefix ?? 2;
@@ -255,7 +261,9 @@ export function enableWritingSupport(
     opts.onAccept?.(word);
   }
 
-  function refresh(): void {
+  let refreshSeq = 0;
+
+  async function refresh(): Promise<void> {
     if (!active || !enabled()) {
       panel.hide();
       return;
@@ -265,8 +273,17 @@ export function enableWritingSupport(
       panel.hide();
       return;
     }
-    const suggestions = predictor.suggest(prefix, maxSuggestions);
-    if (suggestions.length === 0) {
+    const seq = ++refreshSeq;
+    let suggestions: string[];
+    try {
+      suggestions = await predictor.suggest(prefix, maxSuggestions);
+    } catch {
+      panel.hide();
+      return;
+    }
+    // Har brukeren rukket å skrive mer, er dette svaret utdatert
+    if (seq !== refreshSeq) return;
+    if (!active || suggestions.length === 0) {
       panel.hide();
       return;
     }
@@ -292,7 +309,7 @@ export function enableWritingSupport(
   };
 
   const onInput = (e: Event): void => {
-    if (e.target === active) refresh();
+    if (e.target === active) void refresh();
   };
 
   // Enkelte hjelpemidler/virtuelle tastaturer sender tom e.key — fall
