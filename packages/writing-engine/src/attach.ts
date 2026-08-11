@@ -141,14 +141,18 @@ function insertCompletion(target: EditableTarget, doc: Document, prefix: string,
 
 /* ---------- Panel ---------- */
 
+type PanelMode = "predict" | "spell";
+
 class SuggestionPanel {
   private host: HTMLDivElement;
   private list: HTMLDivElement;
   private header: HTMLDivElement;
   private items: string[] = [];
+  /** Hva panelet viser NÅ — kilden til sannhet når brukeren velger */
+  private mode: PanelMode = "predict";
   selectedIndex = -1;
 
-  constructor(private doc: Document, private onPick: (word: string) => void) {
+  constructor(private doc: Document, private onPick: (word: string, mode: PanelMode) => void) {
     this.host = doc.createElement("div");
     this.host.style.cssText =
       "position: fixed; z-index: 2147483647; display: none;";
@@ -196,13 +200,14 @@ class SuggestionPanel {
     return this.items[0] ?? null;
   }
 
-  show(items: string[], x: number, y: number, headerText?: string): void {
+  show(items: string[], x: number, y: number, opts: { header?: string; mode: PanelMode }): void {
     this.items = items;
+    this.mode = opts.mode;
     this.selectedIndex = -1;
     this.list.textContent = "";
     this.list.appendChild(this.header);
-    this.header.textContent = headerText ?? "";
-    this.header.style.display = headerText ? "block" : "none";
+    this.header.textContent = opts.header ?? "";
+    this.header.style.display = opts.header ? "block" : "none";
     items.forEach((word, i) => {
       const row = this.doc.createElement("div");
       row.className = "item";
@@ -210,10 +215,13 @@ class SuggestionPanel {
       n.className = "n";
       n.textContent = String(i + 1);
       row.append(n, this.doc.createTextNode(word));
-      // mousedown, ikke click: unngå at feltet mister fokus før innsetting
+      // mousedown, ikke click: unngå at feltet mister fokus før innsetting.
+      // Moduset leses fra panelet selv, så et valg alltid tolkes som det
+      // brukeren faktisk ser — ikke som en tilstand som kan ha endret seg
+      // mens et asynkront svar var underveis.
       row.addEventListener("mousedown", (e) => {
         e.preventDefault();
-        this.onPick(word);
+        this.onPick(word, this.mode);
       });
       this.list.appendChild(row);
     });
@@ -265,10 +273,9 @@ export function enableWritingSupport(
 
   let active: EditableTarget | null = null;
   let activePrefix = "";
-  let panelMode: "predict" | "spell" = "predict";
-  let spellContext: { word: string; wordStart: number } | null = null;
-  const panel = new SuggestionPanel(doc, (word) =>
-    panelMode === "spell" ? replaceLastWord(word) : accept(word),
+  let spellContext: { word: string; wordStart: number; node?: Text } | null = null;
+  const panel = new SuggestionPanel(doc, (word, mode) =>
+    mode === "spell" ? replaceLastWord(word) : accept(word),
   );
 
   // Feltet kan allerede ha fokus når støtten aktiveres (lat lasting)
@@ -282,33 +289,56 @@ export function enableWritingSupport(
     opts.onAccept?.(word);
   }
 
-  /** Tekst før markøren (for stavekontroll av nettopp fullført ord) */
-  function textBefore(t: EditableTarget): string {
-    if (isTextInput(t)) return t.value.slice(0, t.selectionStart ?? t.value.length);
+  /**
+   * Tekst før markøren, med tekstnoden den kom fra.
+   *
+   * Noden MÅ lagres: i riktekst-editorer peker markeringen ofte til en helt
+   * annen node i det brukeren klikker på forslaget, og offsets beregnet her
+   * gjelder da ikke lenger (ga IndexSizeError på setStart/setEnd).
+   */
+  function caretContext(t: EditableTarget): { text: string; node?: Text } {
+    if (isTextInput(t)) {
+      return { text: t.value.slice(0, t.selectionStart ?? t.value.length) };
+    }
     const sel = doc.getSelection();
-    if (!sel?.anchorNode || sel.anchorNode.nodeType !== Node.TEXT_NODE) return "";
-    return (sel.anchorNode.textContent ?? "").slice(0, sel.anchorOffset);
+    const node = sel?.anchorNode;
+    if (!node || node.nodeType !== Node.TEXT_NODE) return { text: "" };
+    const textNode = node as Text;
+    return { text: textNode.data.slice(0, sel!.anchorOffset), node: textNode };
   }
 
-  /** Bytt ut det nettopp fullførte ordet med et stavekontroll-forslag. */
+  /** Bytt ut ordet stavekontrollen fant med det valgte forslaget. */
   function replaceLastWord(replacement: string): void {
     if (!active || !spellContext) return;
-    const { word, wordStart } = spellContext;
+    const { word, wordStart, node } = spellContext;
+
     if (isTextInput(active)) {
       active.setRangeText(replacement, wordStart, wordStart + word.length, "preserve");
       active.dispatchEvent(
         new InputEvent("input", { bubbles: true, inputType: "insertText", data: replacement }),
       );
-    } else {
-      const sel = doc.getSelection();
-      if (sel?.anchorNode && sel.anchorNode.nodeType === Node.TEXT_NODE) {
-        const node = sel.anchorNode;
+    } else if (node?.isConnected) {
+      // Finn ordet på nytt i noden — editoren kan ha flyttet innholdet siden
+      // kontrollen kjørte. Vi skriver aldri med offsets vi ikke har bekreftet.
+      let start = wordStart;
+      if (node.data.slice(start, start + word.length) !== word) {
+        start = node.data.lastIndexOf(word);
+      }
+      if (start < 0 || start + word.length > node.data.length) {
+        panel.hide();
+        return;
+      }
+      try {
+        const sel = doc.getSelection();
         const range = doc.createRange();
-        range.setStart(node, wordStart);
-        range.setEnd(node, wordStart + word.length);
-        sel.removeAllRanges();
-        sel.addRange(range);
+        range.setStart(node, start);
+        range.setEnd(node, start + word.length);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
         doc.execCommand("insertText", false, replacement);
+      } catch {
+        panel.hide();
+        return;
       }
     }
     spellContext = null;
@@ -316,35 +346,44 @@ export function enableWritingSupport(
     opts.onAccept?.(replacement);
   }
 
-  /** Sjekk ordet som nettopp ble fullført; vis «Mente du …?» ved feil. */
-  async function spellCheckLastWord(): Promise<void> {
-    if (!active || !opts.checkWord || !enabled()) return;
-    const before = textBefore(active);
-    const m = before.match(/([\p{L}][\p{L}'’-]*)([^\p{L}\p{N}]*)$/u);
-    if (!m || m[1].length < 2) return;
-    const word = m[1];
-    const wordStart = before.length - m[0].length;
-    const seq = ++refreshSeq;
+  /** Kjør stavekontroll på et ord og vis «Mente du …?» hvis noe foreslås. */
+  async function checkAndShow(
+    word: string,
+    wordStart: number,
+    node: Text | undefined,
+    seq: number,
+  ): Promise<void> {
+    if (!opts.checkWord) return;
     let suggestions: string[];
     try {
       suggestions = await opts.checkWord(word);
     } catch {
       return;
     }
-    if (seq !== refreshSeq || !active || !suggestions || suggestions.length === 0) return;
-    spellContext = { word, wordStart };
-    panelMode = "spell";
+    if (seq !== refreshSeq || !active || !suggestions?.length) return;
+    spellContext = { word, wordStart, node };
     const point = isTextInput(active)
       ? textInputCaretPoint(active)
       : contentEditableCaretPoint(doc);
     if (!point) return;
-    panel.show(suggestions, point.x, point.y, `Mente du? («${word}»)`);
+    panel.show(suggestions, point.x, point.y, {
+      header: `Mente du? («${word}»)`,
+      mode: "spell",
+    });
+  }
+
+  /** Sjekk ordet som nettopp ble fullført (mellomrom/skilletegn). */
+  async function spellCheckLastWord(): Promise<void> {
+    if (!active || !opts.checkWord || !enabled()) return;
+    const { text: before, node } = caretContext(active);
+    const m = before.match(/([\p{L}][\p{L}'’-]*)([^\p{L}\p{N}]*)$/u);
+    if (!m || m[1].length < 2) return;
+    await checkAndShow(m[1], before.length - m[0].length, node, ++refreshSeq);
   }
 
   let refreshSeq = 0;
 
   async function refresh(): Promise<void> {
-    panelMode = "predict";
     if (!active || !enabled()) {
       panel.hide();
       return;
@@ -364,8 +403,18 @@ export function enableWritingSupport(
     }
     // Har brukeren rukket å skrive mer, er dette svaret utdatert
     if (seq !== refreshSeq) return;
-    if (!active || suggestions.length === 0) {
+    if (!active) {
       panel.hide();
+      return;
+    }
+    if (suggestions.length === 0) {
+      // Ingen ordbokord starter med dette — da er ordet enten ferdig eller
+      // feilstavet. Tilby retting med en gang, uten å vente på mellomrom.
+      panel.hide();
+      if (opts.checkWord && prefix.length >= 4) {
+        const { text: before, node } = caretContext(active);
+        await checkAndShow(prefix, before.length - prefix.length, node, seq);
+      }
       return;
     }
     activePrefix = prefix;
@@ -376,7 +425,7 @@ export function enableWritingSupport(
       panel.hide();
       return;
     }
-    panel.show(suggestions, point.x, point.y);
+    panel.show(suggestions, point.x, point.y, { mode: "predict" });
   }
 
   const onFocusIn = (e: FocusEvent): void => {
@@ -394,7 +443,7 @@ export function enableWritingSupport(
     // Tilstandsbasert, ikke hendelsesbasert: teksten før markøren avgjør.
     // Da fungerer det likt for enkelttastetrykk, liming, mobiltastatur
     // og editorer som slår sammen input-hendelser.
-    const endsWithSeparator = /[\s,;:.!?][\s,;:.!?»)"']*$/u.test(textBefore(active));
+    const endsWithSeparator = /[\s,;:.!?][\s,;:.!?»)"']*$/u.test(caretContext(active).text);
     if (endsWithSeparator && opts.checkWord) {
       panel.hide();
       void spellCheckLastWord();

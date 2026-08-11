@@ -323,19 +323,22 @@ document.addEventListener("input", (e) => {
     return;
   }
 
-  // Ordgrense (mellomrom, skilletegn, linjeskift) → ord- eller setningsekko
+  // Punktum/utropstegn/spørsmålstegn tilhører setningsekkoet alene: er det
+  // slått av, skal ingenting leses opp der (ellers opplevdes bryteren som
+  // virkningsløs siden ordekkoet overtok).
   const isSentenceEnd = /[.!?]/.test(ch);
-  const isWordBoundary = isBreak || (ch !== "" && /[\s,;:.!?]/.test(ch));
-  if (!isWordBoundary) return;
-
-  const before = textBeforeCaret(t);
-  if (isSentenceEnd && settings.echoSentences) {
-    const sentence = lastSentenceIn(before);
+  if (isSentenceEnd) {
+    if (!settings.echoSentences) return;
+    const sentence = lastSentenceIn(textBeforeCaret(t));
     if (sentence) sendEcho("sentence", sentence);
-  } else if (settings.echoWords) {
-    const word = lastWordIn(before);
-    if (word) sendEcho("word", word);
+    return;
   }
+
+  // Ordgrense (mellomrom, komma, linjeskift) → ordekko
+  const isWordBoundary = isBreak || (ch !== "" && /[\s,;:]/.test(ch));
+  if (!isWordBoundary || !settings.echoWords) return;
+  const word = lastWordIn(textBeforeCaret(t));
+  if (word) sendEcho("word", word);
 });
 
 /* ---------- Hendelser fra opplesingen ---------- */

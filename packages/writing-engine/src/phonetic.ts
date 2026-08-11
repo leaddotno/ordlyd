@@ -16,7 +16,10 @@ const MULTI_RULES: Array<[RegExp, string]> = [
   [/k(?=[iy])/g, "S"],
   [/rs/g, "S"],
   [/ch/g, "S"],
-  // j-lyden: gj/hj/lj/g(i,y,ei) → j
+  // j-lyden: gj/hj/lj/g(i,y,ei) → j. Merk at j og sj-lyden slås sammen
+  // lenger ned (SINGLE_MAP): norsk uttaler mange j-lånord med sj-lyd
+  // («journalist» = sjornalist, «jury» = sjyri), og sj/j-forveksling er
+  // en kjernefeil ved dysleksi.
   [/gj|hj|lj/g, "j"],
   [/g(?=[iy])/g, "j"],
   [/g(?=ei)/g, "j"],
@@ -41,6 +44,8 @@ const SINGLE_MAP: Record<string, string> = {
   ø: "o", // rundede bakre vokaler samles — o/u/å/ø-forveksling er
   u: "o", // gjennomgående i dysleksidata (og i lånord: journalist/sjåfør)
   y: "i",
+  // j → sj-lyden (se MULTI_RULES); rangeringen skiller kandidatene etterpå
+  j: "S",
   // stemt→ustemt: dysleksirelaterte plosivforvekslinger (g/k, b/p, d/t)
   // havner i samme nøkkel — rangeringen skiller etterpå
   g: "k",

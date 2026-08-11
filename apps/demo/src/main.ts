@@ -146,7 +146,12 @@ void (async () => {
   const w = window as unknown as { __writingSupport?: WritingSupport };
   w.__writingSupport?.destroy();
   w.__writingSupport = enableWritingSupport(document, predictor, {
-    checkWord: (word) => spell.suggest(word, 3),
+    // Kunstig forsinkelse: speiler utvidelsens meldingsrunde til
+    // offscreen-dokumentet, så demoen avslører de samme race-feilene
+    checkWord: async (word) => {
+      await new Promise((r) => setTimeout(r, 25));
+      return spell.suggest(word, 3);
+    },
   });
   addLog(
     `Ordbank lastet: ${words.length} former. Stavekontroll-indeks: ${Math.round(performance.now() - t)} ms.`,
