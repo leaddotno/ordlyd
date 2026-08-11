@@ -8,5 +8,8 @@
     "demo": "pnpm --filter @skrivestotte/demo dev",
     "build": "pnpm -r build"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@11.20.0",
+  "devDependencies": {
+    "tsx": "^4.23.12"
+  }
 }

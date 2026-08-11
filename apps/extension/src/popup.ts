@@ -4,6 +4,7 @@ const enabled = document.getElementById("enabled") as HTMLInputElement;
 const rate = document.getElementById("rate") as HTMLInputElement;
 const rateVal = document.getElementById("rateVal") as HTMLSpanElement;
 const prediction = document.getElementById("prediction") as HTMLInputElement;
+const spellcheck = document.getElementById("spellcheck") as HTMLInputElement;
 const echoLetters = document.getElementById("echoLetters") as HTMLInputElement;
 const echoWords = document.getElementById("echoWords") as HTMLInputElement;
 const echoSentences = document.getElementById("echoSentences") as HTMLInputElement;
@@ -36,6 +37,7 @@ getSettings()
     enabled.checked = s.enabled;
     rate.value = String(s.rate);
     prediction.checked = s.prediction;
+    spellcheck.checked = s.spellcheck;
     echoLetters.checked = s.echoLetters;
     echoWords.checked = s.echoWords;
     echoSentences.checked = s.echoSentences;
@@ -47,6 +49,7 @@ getSettings()
 
 enabled.addEventListener("change", () => save({ enabled: enabled.checked }));
 prediction.addEventListener("change", () => save({ prediction: prediction.checked }));
+spellcheck.addEventListener("change", () => save({ spellcheck: spellcheck.checked }));
 echoLetters.addEventListener("change", () => save({ echoLetters: echoLetters.checked }));
 echoWords.addEventListener("change", () => save({ echoWords: echoWords.checked }));
 echoSentences.addEventListener("change", () => save({ echoSentences: echoSentences.checked }));

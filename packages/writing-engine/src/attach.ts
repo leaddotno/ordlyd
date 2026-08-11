@@ -20,6 +20,11 @@ export interface AttachOptions {
   onHighlight?: (word: string) => void;
   /** Slå av/på uten å fjerne lyttere */
   isEnabled?: () => boolean;
+  /**
+   * Stavekontroll: kalles når et ord fullføres (mellomrom/skilletegn).
+   * Returner forslag («Mente du …?») — tomt array betyr at ordet er OK.
+   */
+  checkWord?: (word: string) => Promise<string[]> | string[];
 }
 
 const WORD_TAIL_RE = /[\p{L}\p{N}][\p{L}\p{N}'-]*$/u;
@@ -139,6 +144,7 @@ function insertCompletion(target: EditableTarget, doc: Document, prefix: string,
 class SuggestionPanel {
   private host: HTMLDivElement;
   private list: HTMLDivElement;
+  private header: HTMLDivElement;
   private items: string[] = [];
   selectedIndex = -1;
 
@@ -154,18 +160,26 @@ class SuggestionPanel {
         border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden;
         box-shadow: 0 4px 16px rgb(0 0 0 / 18%); min-width: 160px;
       }
+      .header {
+        padding: 5px 12px 3px; font-size: 12px; font-weight: 700; color: #b45309;
+        background: #fffbeb; border-bottom: 1px solid #fde68a; display: none;
+      }
       .item { padding: 6px 12px; cursor: pointer; display: flex; gap: 8px; }
       .item:hover { background: #eff6ff; }
       .item.selected { background: #dbeafe; }
       .n { color: #94a3b8; min-width: 1em; }
       @media (prefers-color-scheme: dark) {
         .panel { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+        .header { background: #451a03; color: #fbbf24; border-color: #78350f; }
         .item:hover { background: #334155; }
         .item.selected { background: #1e40af; }
       }
     `;
     this.list = doc.createElement("div");
     this.list.className = "panel";
+    this.header = doc.createElement("div");
+    this.header.className = "header";
+    this.list.appendChild(this.header);
     shadow.append(style, this.list);
     doc.documentElement.appendChild(this.host);
   }
@@ -182,10 +196,13 @@ class SuggestionPanel {
     return this.items[0] ?? null;
   }
 
-  show(items: string[], x: number, y: number): void {
+  show(items: string[], x: number, y: number, headerText?: string): void {
     this.items = items;
     this.selectedIndex = -1;
     this.list.textContent = "";
+    this.list.appendChild(this.header);
+    this.header.textContent = headerText ?? "";
+    this.header.style.display = headerText ? "block" : "none";
     items.forEach((word, i) => {
       const row = this.doc.createElement("div");
       row.className = "item";
@@ -248,7 +265,11 @@ export function enableWritingSupport(
 
   let active: EditableTarget | null = null;
   let activePrefix = "";
-  const panel = new SuggestionPanel(doc, (word) => accept(word));
+  let panelMode: "predict" | "spell" = "predict";
+  let spellContext: { word: string; wordStart: number } | null = null;
+  const panel = new SuggestionPanel(doc, (word) =>
+    panelMode === "spell" ? replaceLastWord(word) : accept(word),
+  );
 
   // Feltet kan allerede ha fokus når støtten aktiveres (lat lasting)
   const initial = doc.activeElement;
@@ -261,9 +282,69 @@ export function enableWritingSupport(
     opts.onAccept?.(word);
   }
 
+  /** Tekst før markøren (for stavekontroll av nettopp fullført ord) */
+  function textBefore(t: EditableTarget): string {
+    if (isTextInput(t)) return t.value.slice(0, t.selectionStart ?? t.value.length);
+    const sel = doc.getSelection();
+    if (!sel?.anchorNode || sel.anchorNode.nodeType !== Node.TEXT_NODE) return "";
+    return (sel.anchorNode.textContent ?? "").slice(0, sel.anchorOffset);
+  }
+
+  /** Bytt ut det nettopp fullførte ordet med et stavekontroll-forslag. */
+  function replaceLastWord(replacement: string): void {
+    if (!active || !spellContext) return;
+    const { word, wordStart } = spellContext;
+    if (isTextInput(active)) {
+      active.setRangeText(replacement, wordStart, wordStart + word.length, "preserve");
+      active.dispatchEvent(
+        new InputEvent("input", { bubbles: true, inputType: "insertText", data: replacement }),
+      );
+    } else {
+      const sel = doc.getSelection();
+      if (sel?.anchorNode && sel.anchorNode.nodeType === Node.TEXT_NODE) {
+        const node = sel.anchorNode;
+        const range = doc.createRange();
+        range.setStart(node, wordStart);
+        range.setEnd(node, wordStart + word.length);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        doc.execCommand("insertText", false, replacement);
+      }
+    }
+    spellContext = null;
+    panel.hide();
+    opts.onAccept?.(replacement);
+  }
+
+  /** Sjekk ordet som nettopp ble fullført; vis «Mente du …?» ved feil. */
+  async function spellCheckLastWord(): Promise<void> {
+    if (!active || !opts.checkWord || !enabled()) return;
+    const before = textBefore(active);
+    const m = before.match(/([\p{L}][\p{L}'’-]*)([^\p{L}\p{N}]*)$/u);
+    if (!m || m[1].length < 2) return;
+    const word = m[1];
+    const wordStart = before.length - m[0].length;
+    const seq = ++refreshSeq;
+    let suggestions: string[];
+    try {
+      suggestions = await opts.checkWord(word);
+    } catch {
+      return;
+    }
+    if (seq !== refreshSeq || !active || !suggestions || suggestions.length === 0) return;
+    spellContext = { word, wordStart };
+    panelMode = "spell";
+    const point = isTextInput(active)
+      ? textInputCaretPoint(active)
+      : contentEditableCaretPoint(doc);
+    if (!point) return;
+    panel.show(suggestions, point.x, point.y, `Mente du? («${word}»)`);
+  }
+
   let refreshSeq = 0;
 
   async function refresh(): Promise<void> {
+    panelMode = "predict";
     if (!active || !enabled()) {
       panel.hide();
       return;
@@ -309,7 +390,17 @@ export function enableWritingSupport(
   };
 
   const onInput = (e: Event): void => {
-    if (e.target === active) void refresh();
+    if (!active || e.target !== active) return;
+    // Tilstandsbasert, ikke hendelsesbasert: teksten før markøren avgjør.
+    // Da fungerer det likt for enkelttastetrykk, liming, mobiltastatur
+    // og editorer som slår sammen input-hendelser.
+    const endsWithSeparator = /[\s,;:.!?][\s,;:.!?»)"']*$/u.test(textBefore(active));
+    if (endsWithSeparator && opts.checkWord) {
+      panel.hide();
+      void spellCheckLastWord();
+    } else {
+      void refresh();
+    }
   };
 
   // Enkelte hjelpemidler/virtuelle tastaturer sender tom e.key — fall

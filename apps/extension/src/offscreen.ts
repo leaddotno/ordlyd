@@ -4,9 +4,10 @@
  * som videresender til riktig fane.
  */
 import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
-import { Predictor } from "@skrivestotte/writing";
+import { Predictor, SpellChecker } from "@skrivestotte/writing";
 import { EchoPlayer } from "./echo-player.js";
 import type {
+  OffscreenCheck,
   OffscreenEcho,
   OffscreenSpeak,
   OffscreenStop,
@@ -30,21 +31,39 @@ const echoPlayer = new EchoPlayer(
   (...args) => console.log(LOG, ...args),
 );
 
-/** Ordbanken bor her — lastes én gang for hele nettleseren, ikke per fane. */
-let predictorPromise: Promise<Predictor> | null = null;
+/**
+ * Ordbanken bor her — lastes én gang for hele nettleseren, ikke per fane.
+ * Prediksjonen bruker bare de vanligste formene (rask lineær skanning);
+ * stavekontrollen bruker hele ordbanken (indeksert på lydnøkkel).
+ */
+const PREDICTION_LIMIT = 200_000;
+interface Engines {
+  predictor: Predictor;
+  spell: SpellChecker;
+}
+let enginesPromise: Promise<Engines> | null = null;
 
-function getPredictor(): Promise<Predictor> {
-  if (!predictorPromise) {
-    predictorPromise = Predictor.fromUrl(chrome.runtime.getURL("dict/nb.txt")).then((p) => {
-      console.log(LOG, `ordbank lastet: ${p.size} former`);
-      return p;
-    });
-    predictorPromise.catch((err) => {
+function getEngines(): Promise<Engines> {
+  if (!enginesPromise) {
+    enginesPromise = (async () => {
+      const res = await fetch(chrome.runtime.getURL("dict/nb.txt"));
+      if (!res.ok) throw new Error(`ordbank: HTTP ${res.status}`);
+      const words = (await res.text()).split("\n").filter(Boolean);
+      const predictor = Predictor.fromWords(words.slice(0, PREDICTION_LIMIT));
+      const t = Date.now();
+      const spell = new SpellChecker(words);
+      console.log(
+        LOG,
+        `ordbank lastet: ${words.length} former, stavekontroll-indeks bygget på ${Date.now() - t} ms`,
+      );
+      return { predictor, spell };
+    })();
+    enginesPromise.catch((err) => {
       console.error(LOG, "kunne ikke laste ordbank:", err);
-      predictorPromise = null; // prøv igjen neste gang
+      enginesPromise = null; // prøv igjen neste gang
     });
   }
-  return predictorPromise;
+  return enginesPromise;
 }
 
 function emit(tabId: number, event: TtsEvent): void {
@@ -56,7 +75,11 @@ function emit(tabId: number, event: TtsEvent): void {
 // VIKTIG: meldingslytteren registreres FØR alt som kan feile — dør noe
 // annet under oppstart, skal opplesing likevel fungere.
 chrome.runtime.onMessage.addListener(
-  (msg: OffscreenSpeak | OffscreenStop | OffscreenEcho | OffscreenSuggest, _sender, sendResponse) => {
+  (
+    msg: OffscreenSpeak | OffscreenStop | OffscreenEcho | OffscreenSuggest | OffscreenCheck,
+    _sender,
+    sendResponse,
+  ) => {
   if (!("target" in msg) || msg.target !== "offscreen") return;
 
   if (msg.type === "ss-offscreen-stop") {
@@ -75,8 +98,20 @@ chrome.runtime.onMessage.addListener(
   if (msg.type === "ss-offscreen-suggest") {
     void (async () => {
       try {
-        const predictor = await getPredictor();
+        const { predictor } = await getEngines();
         sendResponse(msg.prefix ? predictor.suggest(msg.prefix, msg.max) : []);
+      } catch {
+        sendResponse([]);
+      }
+    })();
+    return true; // async svar
+  }
+
+  if (msg.type === "ss-offscreen-check") {
+    void (async () => {
+      try {
+        const { spell } = await getEngines();
+        sendResponse(spell.suggest(msg.word, 3));
       } catch {
         sendResponse([]);
       }

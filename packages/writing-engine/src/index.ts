@@ -1,4 +1,6 @@
 export { Predictor, type PredictorOptions } from "./predictor.js";
+export { SpellChecker, type SpellSuggestion } from "./spellcheck.js";
+export { phoneticKey, weightedDistance } from "./phonetic.js";
 export {
   enableWritingSupport,
   type AttachOptions,

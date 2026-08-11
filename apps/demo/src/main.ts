@@ -126,12 +126,26 @@ speakBtn.addEventListener("click", async () => {
 
 addLog("Offline-modus: stemme og WASM serveres lokalt (ingen internettavhengighet).");
 
-// Skrivestøtte-testen: samme motor som utvidelsen bruker
-import { Predictor, enableWritingSupport, type WritingSupport } from "@skrivestotte/writing";
-void Predictor.fromUrl("/dict/nb.txt").then((predictor) => {
+// Skrivestøtte-testen: samme motorer som utvidelsen bruker
+import {
+  Predictor,
+  SpellChecker,
+  enableWritingSupport,
+  type WritingSupport,
+} from "@skrivestotte/writing";
+void (async () => {
+  const res = await fetch("/dict/nb.txt");
+  const words = (await res.text()).split("\n").filter(Boolean);
+  const predictor = Predictor.fromWords(words.slice(0, 200_000));
+  const t = performance.now();
+  const spell = new SpellChecker(words);
   // Riv ned forrige instans ved Vite hot-reload, ellers dobles lytterne
   const w = window as unknown as { __writingSupport?: WritingSupport };
   w.__writingSupport?.destroy();
-  w.__writingSupport = enableWritingSupport(document, predictor, {});
-  addLog(`Ordbank lastet: ${predictor.size} ord.`);
-});
+  w.__writingSupport = enableWritingSupport(document, predictor, {
+    checkWord: (word) => spell.suggest(word, 3),
+  });
+  addLog(
+    `Ordbank lastet: ${words.length} former. Stavekontroll-indeks: ${Math.round(performance.now() - t)} ms.`,
+  );
+})();

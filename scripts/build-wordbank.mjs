@@ -30,7 +30,7 @@ const ORDBANK_TAR = join(ORDBANK_DIR, "ordbank.tar.gz");
 const FULLFORM_FILE = join(ORDBANK_DIR, "fullformsliste.txt");
 const DEST = join(ROOT, "assets", "dict", "nb.txt");
 
-const MAX_TOTAL = 250_000;
+const MAX_TOTAL = 700_000;
 const MIN_FREQ = 3;
 const WORD_RE = /^[a-zæøåäöüéèêáàóòô]+(?:-[a-zæøåäöüéèêáàóòô]+)*$/;
 const SHORT_WHITELIST = new Set(["i", "å"]);
@@ -110,9 +110,19 @@ outer: for (const [, forms] of lemmaFreq) {
     if (result.length >= MAX_TOTAL) break outer;
   }
 }
+const tier2 = result.length;
+
+/* ---------- 6. Lag 3: resten av ordbanken (for stavekontroll-dekning) ---------- */
+// Prediksjonen bruker bare de øverste lagene (limit i Predictor), men
+// stavekontrollen må kunne foreslå sjeldne-men-riktige ord («gjøk»).
+const rest = [...validForms].filter((f) => !included.has(f)).sort();
+for (const form of rest) {
+  if (result.length >= MAX_TOTAL) break;
+  result.push(form);
+}
 
 await mkdir(dirname(DEST), { recursive: true });
 await writeFile(DEST, result.join("\n"), "utf8");
 console.log(
-  `✓ ordbank-pakke: ${result.length} former (${tier1} frekvensrangerte + ${result.length - tier1} bøyningsformer) → ${DEST}`,
+  `✓ ordbank-pakke: ${result.length} former (${tier1} frekvensrangerte + ${tier2 - tier1} bøyningsformer + ${result.length - tier2} sjeldne) → ${DEST}`,
 );

@@ -7,6 +7,8 @@ export interface Settings {
   rate: number;
   /** Ordforslag mens man skriver */
   prediction: boolean;
+  /** Dysleksitilpasset stavekontroll («Mente du …?» ved fullført ord) */
+  spellcheck: boolean;
   /** Skriveekko: les bokstavnavnet ved hvert tastetrykk */
   echoLetters: boolean;
   /** Skriveekko: les ordet når det fullføres (mellomrom/skilletegn) */
@@ -19,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   rate: 1.0,
   prediction: true,
+  spellcheck: true,
   echoLetters: false,
   echoWords: false,
   echoSentences: false,

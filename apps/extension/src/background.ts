@@ -91,6 +91,20 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
         }
         break;
       }
+      case "ss-check": {
+        try {
+          await ensureOffscreen();
+          response = await sendToOffscreen<string[]>({
+            type: "ss-offscreen-check",
+            target: "offscreen",
+            word: msg.word,
+          });
+        } catch (err) {
+          console.warn("[Skrivestøtte SW] stavekontroll feilet:", err);
+          response = [];
+        }
+        break;
+      }
       case "ss-echo": {
         try {
           await ensureOffscreen();

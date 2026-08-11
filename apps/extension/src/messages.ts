@@ -26,6 +26,18 @@ export interface OffscreenSuggest {
   max: number;
 }
 
+/** Stavekontroll: sjekk fullført ord; svar er «Mente du»-forslag (tomt = OK) */
+export interface CheckRequest {
+  type: "ss-check";
+  word: string;
+}
+
+export interface OffscreenCheck {
+  type: "ss-offscreen-check";
+  target: "offscreen";
+  word: string;
+}
+
 /** Skriveekko: bokstav ved tastetrykk, ord ved ordgrense, setning ved .!? */
 export type EchoKind = "letter" | "word" | "sentence";
 
@@ -77,8 +89,10 @@ export type AnyMessage =
   | StopRequest
   | EchoRequest
   | SuggestRequest
+  | CheckRequest
   | OffscreenSpeak
   | OffscreenStop
   | OffscreenEcho
   | OffscreenSuggest
+  | OffscreenCheck
   | EventEnvelope;

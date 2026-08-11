@@ -153,17 +153,20 @@ let predictionInited = false;
 /** Ordbanken bor i offscreen-dokumentet — fanen spør via meldinger. */
 const remotePredictor: SuggestSource = {
   suggest: (prefix, max = 5) =>
-    chrome.runtime
-      .sendMessage({ type: "ss-suggest", prefix, max })
-      .then((res: unknown) => (Array.isArray(res) ? (res as string[]) : []))
-      .catch(() => []),
+    settings.enabled && settings.prediction
+      ? chrome.runtime
+          .sendMessage({ type: "ss-suggest", prefix, max })
+          .then((res: unknown) => (Array.isArray(res) ? (res as string[]) : []))
+          .catch(() => [])
+      : [],
 };
 
 function maybeInitPrediction(): void {
-  if (predictionInited || !settings.enabled || !settings.prediction) return;
+  if (predictionInited || !settings.enabled) return;
+  if (!settings.prediction && !settings.spellcheck) return;
   predictionInited = true;
   enableWritingSupport(document, remotePredictor, {
-    isEnabled: () => settings.enabled && settings.prediction,
+    isEnabled: () => settings.enabled && (settings.prediction || settings.spellcheck),
     // Forslag leses opp ved pilnavigering og innsetting når ordekko er på
     onHighlight: (word) => {
       if (settings.echoWords) sendEcho("word", word);
@@ -171,6 +174,13 @@ function maybeInitPrediction(): void {
     onAccept: (word) => {
       if (settings.echoWords) sendEcho("word", word);
     },
+    checkWord: (word) =>
+      settings.enabled && settings.spellcheck
+        ? chrome.runtime
+            .sendMessage({ type: "ss-check", word })
+            .then((res: unknown) => (Array.isArray(res) ? (res as string[]) : []))
+            .catch(() => [])
+        : [],
   });
   // Varm opp: første fokus i noe redigerbart trigger lasting av ordbanken
   // i offscreen, så forslagene er raske når brukeren faktisk skriver
