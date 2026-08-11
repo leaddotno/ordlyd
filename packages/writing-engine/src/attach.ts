@@ -25,6 +25,8 @@ export interface AttachOptions {
    * Returner forslag («Mente du …?») — tomt array betyr at ordet er OK.
    */
   checkWord?: (word: string) => Promise<string[]> | string[];
+  /** Editoren nektet å ta imot erstatningen (brukes til varsling/logging) */
+  onReplaceFailed?: (word: string, replacement: string) => void;
 }
 
 const WORD_TAIL_RE = /[\p{L}\p{N}][\p{L}\p{N}'-]*$/u;
@@ -273,7 +275,13 @@ export function enableWritingSupport(
 
   let active: EditableTarget | null = null;
   let activePrefix = "";
-  let spellContext: { word: string; wordStart: number; node?: Text } | null = null;
+  let spellContext: {
+    word: string;
+    wordStart: number;
+    /** Tegn mellom ordet og markøren (typisk mellomrommet man nettopp tastet) */
+    trailing: string;
+    node?: Text;
+  } | null = null;
   const panel = new SuggestionPanel(doc, (word, mode) =>
     mode === "spell" ? replaceLastWord(word) : accept(word),
   );
@@ -307,49 +315,99 @@ export function enableWritingSupport(
     return { text: textNode.data.slice(0, sel!.anchorOffset), node: textNode };
   }
 
+  /**
+   * Erstatt i riktekst ved å flytte markeringen med nettleserens EGEN motor
+   * (Selection.modify) og deretter skrive med insertText.
+   *
+   * Dette er hovedveien fordi editorer som Word online bytter ut tekstnodene
+   * sine ved hver endring: en node vi lagret da ordet ble skrevet, er død når
+   * brukeren klikker. Vi eier aldri posisjoner — vi ber nettleseren flytte
+   * markøren, kontrollerer at det markerte faktisk er ordet, og skriver først da.
+   */
+  function replaceViaSelection(word: string, trailing: string, replacement: string): boolean {
+    const sel = doc.getSelection();
+    if (!sel || sel.rangeCount === 0) return false;
+    // Word online bruker hardt mellomrom (NBSP) der man tastet mellomrom,
+    // så sammenligningen må se dem som like
+    const norm = (s: string) => s.replace(/\u00A0/g, " ");
+    const target = word + trailing;
+    try {
+      sel.collapseToEnd();
+      for (let i = 0; i < target.length; i++) sel.modify("extend", "backward", "character");
+      const selected = sel.toString();
+      if (norm(selected) === norm(target)) {
+        // Behold editorens egne sluttegn (NBSP vs. vanlig mellomrom)
+        const actualTrailing = trailing.length ? selected.slice(-trailing.length) : "";
+        if (doc.execCommand("insertText", false, replacement + actualTrailing)) return true;
+      }
+      sel.collapseToEnd();
+    } catch {
+      // editoren tillot ikke markeringsflytting – prøv nodeveien
+    }
+    return false;
+  }
+
+  /** Erstatt via den lagrede tekstnoden (presist i vanlige contenteditable-felt). */
+  function replaceViaNode(word: string, wordStart: number, node: Text, replacement: string): boolean {
+    let start = wordStart;
+    if (node.data.slice(start, start + word.length) !== word) {
+      start = node.data.lastIndexOf(word);
+    }
+    if (start < 0 || start + word.length > node.data.length) return false;
+    try {
+      const sel = doc.getSelection();
+      const range = doc.createRange();
+      range.setStart(node, start);
+      range.setEnd(node, start + word.length);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      return doc.execCommand("insertText", false, replacement);
+    } catch {
+      return false;
+    }
+  }
+
   /** Bytt ut ordet stavekontrollen fant med det valgte forslaget. */
   function replaceLastWord(replacement: string): void {
     if (!active || !spellContext) return;
-    const { word, wordStart, node } = spellContext;
+    const { word, wordStart, trailing, node } = spellContext;
+    let ok = false;
 
     if (isTextInput(active)) {
       active.setRangeText(replacement, wordStart, wordStart + word.length, "preserve");
       active.dispatchEvent(
         new InputEvent("input", { bubbles: true, inputType: "insertText", data: replacement }),
       );
-    } else if (node?.isConnected) {
-      // Finn ordet på nytt i noden — editoren kan ha flyttet innholdet siden
-      // kontrollen kjørte. Vi skriver aldri med offsets vi ikke har bekreftet.
-      let start = wordStart;
-      if (node.data.slice(start, start + word.length) !== word) {
-        start = node.data.lastIndexOf(word);
-      }
-      if (start < 0 || start + word.length > node.data.length) {
-        panel.hide();
-        return;
-      }
-      try {
-        const sel = doc.getSelection();
-        const range = doc.createRange();
-        range.setStart(node, start);
-        range.setEnd(node, start + word.length);
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-        doc.execCommand("insertText", false, replacement);
-      } catch {
-        panel.hide();
-        return;
+      ok = true;
+    } else {
+      // Markeringsveien først (virker også i editorer som bytter ut noder),
+      // deretter den lagrede noden som reserve.
+      ok = replaceViaSelection(word, trailing, replacement);
+      if (!ok && node?.isConnected) {
+        ok = replaceViaNode(word, wordStart, node, replacement);
       }
     }
+
     spellContext = null;
     panel.hide();
-    opts.onAccept?.(replacement);
+    // Bare meld suksess når ordet faktisk ble skrevet inn — ellers ble
+    // forslaget lest opp uten at teksten endret seg (misvisende for brukeren).
+    if (ok) {
+      opts.onAccept?.(replacement);
+    } else {
+      console.warn(
+        `[Skrivestøtte] klarte ikke å erstatte «${word}» i denne editoren.`,
+        active?.tagName,
+      );
+      opts.onReplaceFailed?.(word, replacement);
+    }
   }
 
   /** Kjør stavekontroll på et ord og vis «Mente du …?» hvis noe foreslås. */
   async function checkAndShow(
     word: string,
     wordStart: number,
+    trailing: string,
     node: Text | undefined,
     seq: number,
   ): Promise<void> {
@@ -361,7 +419,7 @@ export function enableWritingSupport(
       return;
     }
     if (seq !== refreshSeq || !active || !suggestions?.length) return;
-    spellContext = { word, wordStart, node };
+    spellContext = { word, wordStart, trailing, node };
     const point = isTextInput(active)
       ? textInputCaretPoint(active)
       : contentEditableCaretPoint(doc);
@@ -378,7 +436,7 @@ export function enableWritingSupport(
     const { text: before, node } = caretContext(active);
     const m = before.match(/([\p{L}][\p{L}'’-]*)([^\p{L}\p{N}]*)$/u);
     if (!m || m[1].length < 2) return;
-    await checkAndShow(m[1], before.length - m[0].length, node, ++refreshSeq);
+    await checkAndShow(m[1], before.length - m[0].length, m[2], node, ++refreshSeq);
   }
 
   let refreshSeq = 0;
@@ -413,7 +471,8 @@ export function enableWritingSupport(
       panel.hide();
       if (opts.checkWord && prefix.length >= 4) {
         const { text: before, node } = caretContext(active);
-        await checkAndShow(prefix, before.length - prefix.length, node, seq);
+        // Markøren står rett etter ordet under skriving – ingen sluttegn
+        await checkAndShow(prefix, before.length - prefix.length, "", node, seq);
       }
       return;
     }
