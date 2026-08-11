@@ -35,16 +35,24 @@ export interface LocalAssets {
   onnxWasmBaseUrl: string;
   piperWasmUrl: string;
   piperDataUrl: string;
+  /**
+   * Tillat flertrådet syntese (raskere, men krever crossOriginIsolated).
+   *
+   * MÅ være av i nettleserutvidelser: ORT starter trådene fra blob:-URL-er,
+   * og MV3-utvidelsers CSP (`script-src 'self'`) blokkerer blob:-skript.
+   * Resultatet er at modellen aldri lastes og hele offscreen-dokumentet dør.
+   * Vanlige nettsider (demoen) har ikke denne restriksjonen.
+   */
+  allowThreads?: boolean;
 }
 
 let localAssets: LocalAssets | undefined;
 
 export function configureLocalAssets(assets: LocalAssets): void {
   localAssets = assets;
-  (globalThis as Record<string, unknown>).__PIPER_VOICE_BASE__ = assets.voiceBaseUrl.replace(
-    /\/$/,
-    "",
-  );
+  const g = globalThis as Record<string, unknown>;
+  g.__PIPER_VOICE_BASE__ = assets.voiceBaseUrl.replace(/\/$/, "");
+  g.__ORT_ALLOW_THREADS__ = assets.allowThreads === true;
 }
 
 export interface SpeakCallbacks {

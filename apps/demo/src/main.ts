@@ -5,12 +5,15 @@ import {
   DEFAULT_VOICE,
 } from "@skrivestotte/tts";
 
-// Samme offline-oppsett som utvidelsen: stemme og WASM serveres lokalt
+// Samme offline-oppsett som utvidelsen: stemme og WASM serveres lokalt.
+// allowThreads kun her — vanlige nettsider tillater ORT sine blob:-workere,
+// utvidelser gjør det ikke (se LocalAssets.allowThreads).
 configureLocalAssets({
   voiceBaseUrl: "/voices",
   onnxWasmBaseUrl: "/ort/",
   piperWasmUrl: "/piper/piper_phonemize.wasm",
   piperDataUrl: "/piper/piper_phonemize.data",
+  allowThreads: true,
 });
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;

@@ -1,5 +1,5 @@
 diff --git a/dist/piper-tts-web.js b/dist/piper-tts-web.js
-index 32767f4efba2b4c0c97f847902ebe7ab23406912..532f5027c98ac3748da9a5a78d50e408004b59b4 100644
+index 32767f4efba2b4c0c97f847902ebe7ab23406912..89528c782ed348ff2ea9a5d066a20f236f632d79 100644
 --- a/dist/piper-tts-web.js
 +++ b/dist/piper-tts-web.js
 @@ -183,6 +183,7 @@ async function readBlob(url) {
@@ -15,7 +15,7 @@ index 32767f4efba2b4c0c97f847902ebe7ab23406912..532f5027c98ac3748da9a5a78d50e408
      __privateSet(this, _ort, await import("onnxruntime-web"));
      __privateGet(this, _ort).env.allowLocalModels = false;
 -    __privateGet(this, _ort).env.wasm.numThreads = navigator.hardwareConcurrency;
-+    __privateGet(this, _ort).env.wasm.numThreads = globalThis.crossOriginIsolated ? Math.min(navigator.hardwareConcurrency || 1, 4) : 1;
++    __privateGet(this, _ort).env.wasm.numThreads = globalThis.__ORT_ALLOW_THREADS__ && globalThis.crossOriginIsolated ? Math.min(navigator.hardwareConcurrency || 1, 4) : 1;
      __privateGet(this, _ort).env.wasm.wasmPaths = __privateGet(this, _wasmPaths).onnxWasm;
      const path = PATH_MAP[this.voiceId];
 -    const modelConfigBlob = await getBlob(`${HF_BASE}/${path}.json`);

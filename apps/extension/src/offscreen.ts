@@ -17,6 +17,15 @@ import type {
 
 const LOG = "[Skrivestøtte offscreen]";
 
+// Fanger feil som ellers bare gir «Uncaught [object ErrorEvent]» i
+// utvidelsens feil-liste, uten spor av hva som faktisk gikk galt.
+self.addEventListener("error", (e) => {
+  console.error(LOG, "uhåndtert feil:", e.message, e.filename, e.lineno);
+});
+self.addEventListener("unhandledrejection", (e) => {
+  console.error(LOG, "uhåndtert promise-avvisning:", e.reason);
+});
+
 // Alt bundles i utvidelsespakken – null internettavhengighet ved bruk.
 configureLocalAssets({
   voiceBaseUrl: chrome.runtime.getURL("voices"),

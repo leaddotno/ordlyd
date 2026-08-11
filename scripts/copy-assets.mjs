@@ -24,15 +24,11 @@ if (!hasVoices) {
   process.exit(1);
 }
 
-// Både trådede og ikke-trådede varianter: med crossOriginIsolated (COOP/COEP
-// i manifest/vite) bruker ORT inntil 4 tråder — vesentlig raskere syntese på
-// svake flerkjerne-maskiner. Uten isolation faller den tilbake til én tråd.
-const ORT_FILES = [
-  "ort-wasm.wasm",
-  "ort-wasm-simd.wasm",
-  "ort-wasm-threaded.wasm",
-  "ort-wasm-simd-threaded.wasm",
-];
+// Utvidelsen kjører alltid enkeltrådet (MV3-CSP blokkerer ORT sine
+// blob:-workere), så de trådede filene er død vekt der — 21 MB spart.
+// Demoen kjører på en vanlig nettside og kan bruke tråder.
+const ORT_FILES_SINGLE = ["ort-wasm.wasm", "ort-wasm-simd.wasm"];
+const ORT_FILES_THREADED = ["ort-wasm-threaded.wasm", "ort-wasm-simd-threaded.wasm"];
 
 const dictSrc = join(ROOT, "assets", "dict");
 const hasDict = await stat(dictSrc).then(() => true).catch(() => false);
@@ -43,10 +39,14 @@ if (!hasDict) {
 
 for (const app of APPS) {
   const pub = join(app, "public");
+  const isExtension = app.endsWith("extension");
   await cp(voicesSrc, join(pub, "voices"), { recursive: true });
   await cp(dictSrc, join(pub, "dict"), { recursive: true });
   await mkdir(join(pub, "ort"), { recursive: true });
-  for (const f of ORT_FILES) {
+  const ortFiles = isExtension
+    ? ORT_FILES_SINGLE
+    : [...ORT_FILES_SINGLE, ...ORT_FILES_THREADED];
+  for (const f of ortFiles) {
     await copyFile(join(ortDist, f), join(pub, "ort", f));
   }
   await mkdir(join(pub, "piper"), { recursive: true });
