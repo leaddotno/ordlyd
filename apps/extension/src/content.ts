@@ -5,23 +5,27 @@
  */
 import { tokenizeWords } from "@skrivestotte/tts/text";
 import { enableWritingSupport, type SuggestSource } from "@skrivestotte/writing";
-import { DEFAULT_SETTINGS, getSettings, onSettingsChanged, type Settings } from "./settings.js";
+import { createDictUI, type DictLookupResult } from "./dict-panel.js";
+import { DEFAULT_SETTINGS, getSettings, onSettingsChanged, saveSettings, type Settings } from "./settings.js";
 import type { TtsEvent } from "./messages.js";
 
 /* ---------- Innstillinger ---------- */
 
 let settings: Settings = DEFAULT_SETTINGS;
-void getSettings().then((s) => {
+function applySettings(s: Settings): void {
   settings = s;
   maybeInitPrediction();
-});
-onSettingsChanged((s) => {
-  settings = s;
+  dictUI.setBoxVisible(s.enabled && s.dictionaryBox);
   if (!s.enabled) {
     hideButton();
-    void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
+    dictUI.hideLookup();
   }
-  maybeInitPrediction();
+}
+
+void getSettings().then(applySettings);
+onSettingsChanged((s) => {
+  if (!s.enabled) void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
+  applySettings(s);
 });
 
 /* ---------- Stil for markering (Custom Highlight API) ---------- */
@@ -117,19 +121,28 @@ function buildWordRanges(extracted: ExtractedSelection): { ranges: Range[]; text
 const host = document.createElement("div");
 host.style.cssText = "position: fixed; z-index: 2147483647; display: none;";
 const shadow = host.attachShadow({ mode: "closed" });
-const button = document.createElement("button");
-button.textContent = "🔊 Les opp";
-button.style.cssText = `
+const buttonRow = document.createElement("div");
+buttonRow.style.cssText = "display: flex; gap: 6px;";
+const BTN_CSS = `
   font: 14px/1 system-ui, sans-serif; padding: 8px 14px; border-radius: 999px;
   border: none; background: #2563eb; color: white; cursor: pointer;
   box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
 `;
-shadow.appendChild(button);
+const button = document.createElement("button");
+button.textContent = "🔊 Les opp";
+button.style.cssText = BTN_CSS;
+const dictButton = document.createElement("button");
+dictButton.textContent = "📖";
+dictButton.title = "Slå opp i ordboka";
+dictButton.style.cssText = BTN_CSS + "background: #0f766e; padding: 8px 11px;";
+buttonRow.append(button, dictButton);
+shadow.appendChild(buttonRow);
 document.documentElement.appendChild(host);
 
 let speaking = false;
 let wordRanges: Range[] = [];
 let pendingRange: Range | null = null;
+let pendingWord: string | null = null;
 
 function setButton(state: "idle" | "speaking") {
   speaking = state === "speaking";
@@ -212,9 +225,35 @@ document.addEventListener("selectionchange", () => {
     return;
   }
   pendingRange = range.cloneRange();
+  // 📖 vises bare når markeringen er ett enkelt ord
+  const words = tokenizeWords(sel.toString().trim());
+  pendingWord = words.length === 1 && words[0].text.length >= 2 ? words[0].text : null;
+  dictButton.style.display = pendingWord ? "" : "none";
   host.style.display = "block";
-  host.style.left = `${Math.min(window.innerWidth - 130, Math.max(8, rect.right - 40))}px`;
+  host.style.left = `${Math.min(window.innerWidth - 190, Math.max(8, rect.right - 40))}px`;
   host.style.top = `${Math.min(window.innerHeight - 48, rect.bottom + 8)}px`;
+});
+
+/* ---------- Ordbok ---------- */
+
+const dictUI = createDictUI(document, {
+  lookup: (word) =>
+    chrome.runtime
+      .sendMessage({ type: "ss-dict", word })
+      .then((res: unknown) =>
+        res && typeof res === "object" ? (res as DictLookupResult) : { bm: [], nn: [] },
+      )
+      .catch(() => ({ bm: [], nn: [] })),
+  // Opplesing av artikkelen går via ekko-kanalen (ingen sidemarkering)
+  speak: (text) => sendEcho("sentence", text),
+  onBoxClosed: () => void saveSettings({ dictionaryBox: false }).catch(() => {}),
+});
+
+dictButton.addEventListener("click", () => {
+  if (!pendingWord) return;
+  const rect = pendingRange?.getBoundingClientRect();
+  dictUI.showLookup(pendingWord, rect?.left ?? 100, (rect?.bottom ?? 100) + 8);
+  hideButton();
 });
 
 /**

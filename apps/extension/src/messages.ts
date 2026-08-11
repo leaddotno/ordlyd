@@ -38,6 +38,18 @@ export interface OffscreenCheck {
   word: string;
 }
 
+/** Ordbok: slå opp et ord i Bokmålsordboka og Nynorskordboka samtidig */
+export interface DictRequest {
+  type: "ss-dict";
+  word: string;
+}
+
+export interface OffscreenDict {
+  type: "ss-offscreen-dict";
+  target: "offscreen";
+  word: string;
+}
+
 /** Skriveekko: bokstav ved tastetrykk, ord ved ordgrense, setning ved .!? */
 export type EchoKind = "letter" | "word" | "sentence";
 
@@ -90,9 +102,11 @@ export type AnyMessage =
   | EchoRequest
   | SuggestRequest
   | CheckRequest
+  | DictRequest
   | OffscreenSpeak
   | OffscreenStop
   | OffscreenEcho
   | OffscreenSuggest
   | OffscreenCheck
+  | OffscreenDict
   | EventEnvelope;

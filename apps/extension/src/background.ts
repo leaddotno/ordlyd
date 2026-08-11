@@ -105,6 +105,20 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
         }
         break;
       }
+      case "ss-dict": {
+        try {
+          await ensureOffscreen();
+          response = await sendToOffscreen({
+            type: "ss-offscreen-dict",
+            target: "offscreen",
+            word: msg.word,
+          });
+        } catch (err) {
+          console.warn("[Skrivestøtte SW] ordbok-oppslag feilet:", err);
+          response = { bm: [], nn: [] };
+        }
+        break;
+      }
       case "ss-echo": {
         try {
           await ensureOffscreen();

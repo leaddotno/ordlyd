@@ -131,11 +131,53 @@ addLog("Offline-modus: stemme og WASM serveres lokalt (ingen internettavhengighe
 
 // Skrivestøtte-testen: samme motorer som utvidelsen bruker
 import {
+  Dictionary,
   Predictor,
   SpellChecker,
   enableWritingSupport,
+  type DictArticle,
   type WritingSupport,
 } from "@skrivestotte/writing";
+
+/* ---------- Ordbok-test ---------- */
+const ordbokBm = new Dictionary("/dict/ordbok/bm");
+const ordbokNn = new Dictionary("/dict/ordbok/nn");
+const dictInput = $<HTMLInputElement>("dictInput");
+const dictOut = $<HTMLDivElement>("dictOut");
+
+function renderDictResult(lang: string, articles: DictArticle[]): string {
+  if (articles.length === 0) return "";
+  const parts = [`<h3 style="margin:8px 0 4px;font-size:0.9rem;color:#445">${lang}</h3>`];
+  for (const art of articles.slice(0, 3)) {
+    const defs = art.d
+      .slice(0, 4)
+      .map((d) => `<li>${d.t || d.u?.[0]?.t || ""}${d.e?.[0] ? `<br><em style="color:#64748b">${d.e[0]}</em>` : ""}</li>`)
+      .join("");
+    parts.push(
+      `<div style="margin-bottom:8px"><strong>${art.w.join(", ")}</strong> <span style="color:#64748b;font-size:0.8rem">${art.k}</span>` +
+        (art.b ? `<div style="color:#475569;font-size:0.8rem">Bøyning: ${art.b.join(", ")}</div>` : "") +
+        `<ol style="margin:4px 0 0 18px;padding:0">${defs}</ol></div>`,
+    );
+  }
+  return parts.join("");
+}
+
+let dictTimer: ReturnType<typeof setTimeout> | undefined;
+dictInput.addEventListener("input", () => {
+  clearTimeout(dictTimer);
+  dictTimer = setTimeout(async () => {
+    const word = dictInput.value.trim();
+    if (!word) {
+      dictOut.innerHTML = "";
+      return;
+    }
+    const t0 = performance.now();
+    const [bm, nn] = await Promise.all([ordbokBm.lookup(word), ordbokNn.lookup(word)]);
+    const html = renderDictResult("Bokmål", bm) + renderDictResult("Nynorsk", nn);
+    dictOut.innerHTML = html || `<em>Ingen treff på «${word}».</em>`;
+    addLog(`Ordbok-oppslag «${word}»: ${bm.length}+${nn.length} treff på ${Math.round(performance.now() - t0)} ms`);
+  }, 250);
+});
 void (async () => {
   const res = await fetch("/dict/nb.txt");
   const words = (await res.text()).split("\n").filter(Boolean);

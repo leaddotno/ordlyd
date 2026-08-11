@@ -4,10 +4,11 @@
  * som videresender til riktig fane.
  */
 import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
-import { Predictor, SpellChecker } from "@skrivestotte/writing";
+import { Dictionary, Predictor, SpellChecker } from "@skrivestotte/writing";
 import { EchoPlayer } from "./echo-player.js";
 import type {
   OffscreenCheck,
+  OffscreenDict,
   OffscreenEcho,
   OffscreenSpeak,
   OffscreenStop,
@@ -75,6 +76,10 @@ function getEngines(): Promise<Engines> {
   return enginesPromise;
 }
 
+/** Ordbøkene (UiB/Språkrådet) — shardet, lastes ved behov, lav minnebruk */
+const ordbokBm = new Dictionary(chrome.runtime.getURL("dict/ordbok/bm"));
+const ordbokNn = new Dictionary(chrome.runtime.getURL("dict/ordbok/nn"));
+
 function emit(tabId: number, event: TtsEvent): void {
   void chrome.runtime.sendMessage({ type: "ss-event", tabId, event }).catch((err) => {
     console.warn(LOG, "kunne ikke sende hendelse:", err);
@@ -85,7 +90,7 @@ function emit(tabId: number, event: TtsEvent): void {
 // annet under oppstart, skal opplesing likevel fungere.
 chrome.runtime.onMessage.addListener(
   (
-    msg: OffscreenSpeak | OffscreenStop | OffscreenEcho | OffscreenSuggest | OffscreenCheck,
+    msg: OffscreenSpeak | OffscreenStop | OffscreenEcho | OffscreenSuggest | OffscreenCheck | OffscreenDict,
     _sender,
     sendResponse,
   ) => {
@@ -111,6 +116,21 @@ chrome.runtime.onMessage.addListener(
         sendResponse(msg.prefix ? predictor.suggest(msg.prefix, msg.max) : []);
       } catch {
         sendResponse([]);
+      }
+    })();
+    return true; // async svar
+  }
+
+  if (msg.type === "ss-offscreen-dict") {
+    void (async () => {
+      try {
+        const [bm, nn] = await Promise.all([
+          ordbokBm.lookup(msg.word).catch(() => []),
+          ordbokNn.lookup(msg.word).catch(() => []),
+        ]);
+        sendResponse({ bm, nn });
+      } catch {
+        sendResponse({ bm: [], nn: [] });
       }
     })();
     return true; // async svar
