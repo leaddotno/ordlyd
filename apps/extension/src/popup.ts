@@ -1,24 +1,24 @@
-import { getSettings, saveSettings } from "./settings.js";
+import { getSettings, saveSettings, type Settings, type Theme } from "./settings.js";
 
-const enabled = document.getElementById("enabled") as HTMLInputElement;
-const rate = document.getElementById("rate") as HTMLInputElement;
-const rateVal = document.getElementById("rateVal") as HTMLSpanElement;
-const prediction = document.getElementById("prediction") as HTMLInputElement;
-const spellcheck = document.getElementById("spellcheck") as HTMLInputElement;
-const dictionaryBox = document.getElementById("dictionaryBox") as HTMLInputElement;
-const echoLetters = document.getElementById("echoLetters") as HTMLInputElement;
-const echoWords = document.getElementById("echoWords") as HTMLInputElement;
-const echoSentences = document.getElementById("echoSentences") as HTMLInputElement;
-const status = document.getElementById("status") as HTMLDivElement;
+const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-function showRate(value: number): void {
-  rateVal.textContent = `${value.toFixed(1)}×`;
-}
+const enabled = $<HTMLInputElement>("enabled");
+const rate = $<HTMLInputElement>("rate");
+const rateVal = $<HTMLSpanElement>("rateVal");
+const prediction = $<HTMLInputElement>("prediction");
+const spellcheck = $<HTMLInputElement>("spellcheck");
+const dictionaryBox = $<HTMLInputElement>("dictionaryBox");
+const echoLetters = $<HTMLInputElement>("echoLetters");
+const echoWords = $<HTMLInputElement>("echoWords");
+const echoSentences = $<HTMLInputElement>("echoSentences");
+const themeStandard = $<HTMLButtonElement>("themeStandard");
+const themeDark = $<HTMLButtonElement>("themeDark");
+const status = $<HTMLDivElement>("status");
 
 let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
 /** Synlig kvittering: brukeren skal SE at innstillingen faktisk ble lagret. */
-function save(patch: Parameters<typeof saveSettings>[0]): void {
+function save(patch: Partial<Settings>): void {
   saveSettings(patch)
     .then(() => {
       status.textContent = "Lagret ✓";
@@ -33,6 +33,16 @@ function save(patch: Parameters<typeof saveSettings>[0]): void {
     });
 }
 
+function applyTheme(theme: Theme): void {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  themeStandard.setAttribute("aria-pressed", String(theme === "standard"));
+  themeDark.setAttribute("aria-pressed", String(theme === "dark"));
+}
+
+function showRate(value: number): void {
+  rateVal.textContent = `${value.toFixed(1)}×`;
+}
+
 getSettings()
   .then((s) => {
     enabled.checked = s.enabled;
@@ -44,6 +54,7 @@ getSettings()
     echoWords.checked = s.echoWords;
     echoSentences.checked = s.echoSentences;
     showRate(s.rate);
+    applyTheme(s.theme);
   })
   .catch((err) => {
     status.textContent = `Kunne ikke lese innstillinger: ${err}`;
@@ -61,3 +72,13 @@ rate.addEventListener("input", () => {
   showRate(value);
   save({ rate: value });
 });
+
+for (const [btn, theme] of [
+  [themeStandard, "standard"],
+  [themeDark, "dark"],
+] as Array<[HTMLButtonElement, Theme]>) {
+  btn.addEventListener("click", () => {
+    applyTheme(theme);
+    save({ theme });
+  });
+}

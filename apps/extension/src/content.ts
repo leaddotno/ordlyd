@@ -4,10 +4,19 @@
  * endres aldri (viktig for å ikke ødelegge weben rundt oss).
  */
 import { tokenizeWords } from "@skrivestotte/tts/text";
-import { enableWritingSupport, type SuggestSource } from "@skrivestotte/writing";
+import {
+  enableWritingSupport,
+  type SuggestSource,
+  type WritingSupport,
+} from "@skrivestotte/writing";
 import { createDictUI, type DictLookupResult } from "./dict-panel.js";
 import { DEFAULT_SETTINGS, getSettings, onSettingsChanged, saveSettings, type Settings } from "./settings.js";
 import type { TtsEvent } from "./messages.js";
+
+/* ---------- Stil for ordmarkering (Custom Highlight API) ---------- */
+
+const markStyle = document.createElement("style");
+document.documentElement.appendChild(markStyle);
 
 /* ---------- Innstillinger ---------- */
 
@@ -15,6 +24,15 @@ let settings: Settings = DEFAULT_SETTINGS;
 function applySettings(s: Settings): void {
   settings = s;
   maybeInitPrediction();
+  const dark = s.theme === "dark";
+  dictUI.setTheme(s.theme);
+  writingSupport?.setDarkTheme(dark);
+  // Ordmarkeringen må også ha nok kontrast i mørk visning
+  markStyle.textContent = dark
+    ? `::highlight(ss-word) { background-color: #b45309; color: #fff8e1; }
+       ::highlight(ss-sentence) { background-color: rgba(180, 83, 9, 0.28); }`
+    : `::highlight(ss-word) { background-color: #fbbf24; color: #111; }
+       ::highlight(ss-sentence) { background-color: rgba(251, 191, 36, 0.25); }`;
   // Ordbok-boksen finnes kun i hovedrammen — med all_frames ville hver
   // iframe på siden ellers fått sin egen boks (så «duplisert» ut for brukeren)
   if (window.self === window.top) {
@@ -31,14 +49,6 @@ onSettingsChanged((s) => {
   if (!s.enabled) void chrome.runtime.sendMessage({ type: "ss-stop" }).catch(() => {});
   applySettings(s);
 });
-
-/* ---------- Stil for markering (Custom Highlight API) ---------- */
-const style = document.createElement("style");
-style.textContent = `
-  ::highlight(ss-word) { background-color: #fbbf24; color: #111; }
-  ::highlight(ss-sentence) { background-color: rgba(251, 191, 36, 0.25); }
-`;
-document.documentElement.appendChild(style);
 
 /* ---------- Kartlegging: markert tekst → ord-Ranges i sidens DOM ---------- */
 
@@ -178,11 +188,13 @@ const remotePredictor: SuggestSource = {
       : [],
 };
 
+let writingSupport: WritingSupport | null = null;
+
 function maybeInitPrediction(): void {
   if (predictionInited || !settings.enabled) return;
   if (!settings.prediction && !settings.spellcheck) return;
   predictionInited = true;
-  enableWritingSupport(document, remotePredictor, {
+  writingSupport = enableWritingSupport(document, remotePredictor, {
     isEnabled: () => settings.enabled && (settings.prediction || settings.spellcheck),
     // Forslag leses opp ved pilnavigering og innsetting når ordekko er på
     onHighlight: (word) => {

@@ -160,26 +160,35 @@ class SuggestionPanel {
       "position: fixed; z-index: 2147483647; display: none;";
     const shadow = this.host.attachShadow({ mode: "closed" });
     const style = doc.createElement("style");
+    // Temaet styres eksplisitt av brukerens innstilling (:host(.dark)),
+    // ikke av systemets fargemodus
     style.textContent = `
+      :host {
+        --bg: #ffffff; --fg: #1a2330; --line: #cbd5e1; --muted: #64748b;
+        --hover: #eff6ff; --sel: #dbeafe;
+        --warn-bg: #fffbeb; --warn-fg: #92400e; --warn-line: #fde68a;
+        --shadow: 0 4px 16px rgb(0 0 0 / 18%);
+      }
+      :host(.dark) {
+        --bg: #1c2128; --fg: #e6edf3; --line: #3d444d; --muted: #a3aeb9;
+        --hover: #2d333b; --sel: #1f6feb;
+        --warn-bg: #2b2113; --warn-fg: #f0c674; --warn-line: #5a4520;
+        --shadow: 0 4px 16px rgb(0 0 0 / 55%);
+      }
       .panel {
-        font: 14px/1.5 system-ui, sans-serif; background: white; color: #1a2330;
-        border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden;
-        box-shadow: 0 4px 16px rgb(0 0 0 / 18%); min-width: 160px;
+        font: 14px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg);
+        border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+        box-shadow: var(--shadow); min-width: 160px;
       }
       .header {
-        padding: 5px 12px 3px; font-size: 12px; font-weight: 700; color: #b45309;
-        background: #fffbeb; border-bottom: 1px solid #fde68a; display: none;
+        padding: 5px 12px 3px; font-size: 12px; font-weight: 700;
+        color: var(--warn-fg); background: var(--warn-bg);
+        border-bottom: 1px solid var(--warn-line); display: none;
       }
       .item { padding: 6px 12px; cursor: pointer; display: flex; gap: 8px; }
-      .item:hover { background: #eff6ff; }
-      .item.selected { background: #dbeafe; }
-      .n { color: #94a3b8; min-width: 1em; }
-      @media (prefers-color-scheme: dark) {
-        .panel { background: #1e293b; color: #e2e8f0; border-color: #475569; }
-        .header { background: #451a03; color: #fbbf24; border-color: #78350f; }
-        .item:hover { background: #334155; }
-        .item.selected { background: #1e40af; }
-      }
+      .item:hover { background: var(--hover); }
+      .item.selected { background: var(--sel); }
+      .n { color: var(--muted); min-width: 1em; }
     `;
     this.list = doc.createElement("div");
     this.list.className = "panel";
@@ -249,6 +258,10 @@ class SuggestionPanel {
     this.selectedIndex = -1;
   }
 
+  setDark(dark: boolean): void {
+    this.host.classList.toggle("dark", dark);
+  }
+
   destroy(): void {
     this.host.remove();
   }
@@ -258,6 +271,8 @@ class SuggestionPanel {
 
 export interface WritingSupport {
   destroy(): void;
+  /** Bytt mellom standard (lys) og mørk visning av forslagspanelet */
+  setDarkTheme(dark: boolean): void;
 }
 
 /**
@@ -573,6 +588,9 @@ export function enableWritingSupport(
       doc.removeEventListener("focusout", onFocusOut);
       doc.removeEventListener("scroll", onScroll, true);
       panel.destroy();
+    },
+    setDarkTheme(dark) {
+      panel.setDark(dark);
     },
   };
 }

@@ -12,6 +12,8 @@ export interface DictLookupResult {
   nn: DictArticle[];
 }
 
+export type Theme = "standard" | "dark";
+
 export interface DictUIDeps {
   lookup: (word: string) => Promise<DictLookupResult>;
   speak: (text: string) => void;
@@ -19,59 +21,79 @@ export interface DictUIDeps {
   onBoxClosed?: () => void;
 }
 
+/**
+ * Farger som CSS-variabler, med to eksplisitte temaer.
+ *
+ * Mørk modus følger anerkjent praksis: ingen ren svart bakgrunn eller ren hvit
+ * tekst (gir halo-effekt og tretthet), lysere flate = høyere «elevasjon»,
+ * dempet blåtone som aksent, og all tekst godt over 4,5:1 i kontrast.
+ *
+ * VIKTIG: knapper arver ikke color fra forelderen — uten `color: inherit` får
+ * de nettleserens svarte standardfarge (det gjorde ✕ usynlig i mørk modus).
+ */
 const PANEL_CSS = `
   * { box-sizing: border-box; }
+  /* Variablene på :host, ikke .card — da arver også den frittstående
+     «Les opp»-knappen (søsken til kortet) samme tema. */
+  :host {
+    --bg: #ffffff; --fg: #1a2330; --muted: #5a6b7d; --line: #cbd5e1;
+    --head: #f1f5f9; --field: #ffffff; --accent: #2563eb; --accent-fg: #ffffff;
+    --hover: #e2e8f0; --shadow: 0 6px 24px rgb(0 0 0 / 22%);
+  }
+  :host(.dark) {
+    --bg: #1c2128; --fg: #e6edf3; --muted: #a3aeb9; --line: #3d444d;
+    --head: #262c36; --field: #12161c; --accent: #4493f8; --accent-fg: #0d1117;
+    --hover: #333b45; --shadow: 0 6px 24px rgb(0 0 0 / 55%);
+  }
   .card {
-    font: 14px/1.5 system-ui, sans-serif; background: white; color: #1a2330;
-    border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden;
-    box-shadow: 0 6px 24px rgb(0 0 0 / 22%); width: 340px; display: flex;
+    font: 14px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    box-shadow: var(--shadow); width: 340px; display: flex;
     flex-direction: column; max-height: 420px;
   }
   .head {
     display: flex; align-items: center; gap: 6px; padding: 8px 10px;
-    background: #f1f5f9; border-bottom: 1px solid #e2e8f0; cursor: default;
+    background: var(--head); border-bottom: 1px solid var(--line); cursor: default;
   }
   .head.grab { cursor: grab; }
   .title { font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tabs { display: flex; gap: 4px; }
   .tab {
-    font: 12px/1 system-ui, sans-serif; border: 1px solid #cbd5e1; background: white;
+    font: 12px/1 system-ui, sans-serif; border: 1px solid var(--line);
+    background: var(--bg); color: inherit;
     border-radius: 999px; padding: 4px 10px; cursor: pointer;
   }
-  .tab.on { background: #2563eb; border-color: #2563eb; color: white; }
+  .tab.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
   .icon {
-    border: none; background: none; cursor: pointer; font-size: 15px;
-    padding: 2px 4px; border-radius: 6px;
+    border: none; background: none; color: inherit; cursor: pointer; font-size: 15px;
+    padding: 2px 5px; border-radius: 6px; line-height: 1;
   }
-  .icon:hover { background: #e2e8f0; }
+  .icon:hover { background: var(--hover); }
+  .icon:focus-visible, .tab:focus-visible, .search:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
   .body { overflow-y: auto; padding: 10px 12px; user-select: text; }
   .selchip {
     position: fixed; z-index: 2147483647; font: 12px/1 system-ui, sans-serif;
     padding: 6px 10px; border-radius: 999px; border: none; cursor: pointer;
-    background: #2563eb; color: white; box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+    background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow);
   }
   .search {
     width: 100%; font: 14px system-ui, sans-serif; padding: 7px 10px; margin-bottom: 8px;
-    border: 1px solid #cbd5e1; border-radius: 8px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--field); color: inherit;
   }
   .art { margin-bottom: 12px; }
   .lemma { font-weight: 700; font-size: 15px; }
-  .wc { color: #64748b; font-size: 12px; margin-left: 6px; }
-  .infl { color: #475569; font-size: 12px; margin: 2px 0 4px; }
+  .wc { color: var(--muted); font-size: 12px; margin-left: 6px; }
+  .infl { color: var(--muted); font-size: 12px; margin: 2px 0 4px; }
   ol { margin: 4px 0 4px 18px; padding: 0; }
   li { margin: 3px 0; }
-  .ex { color: #64748b; font-style: italic; font-size: 13px; display: block; }
-  .empty { color: #64748b; padding: 8px 0; }
+  .ex { color: var(--muted); font-style: italic; font-size: 13px; display: block; }
+  .empty { color: var(--muted); padding: 8px 0; }
   .foot {
-    font-size: 10.5px; color: #94a3b8; padding: 6px 12px; border-top: 1px solid #e2e8f0;
-  }
-  @media (prefers-color-scheme: dark) {
-    .card { background: #1e293b; color: #e2e8f0; border-color: #475569; }
-    .head { background: #0f172a; border-color: #334155; }
-    .tab { background: #1e293b; border-color: #475569; color: #e2e8f0; }
-    .icon:hover { background: #334155; }
-    .search { background: #0f172a; border-color: #475569; color: #e2e8f0; }
-    .foot { border-color: #334155; color: #64748b; }
+    font-size: 10.5px; color: var(--muted); padding: 6px 12px;
+    border-top: 1px solid var(--line);
   }
 `;
 
@@ -295,6 +317,10 @@ class DictCard {
     this.setLang(this.lang);
   }
 
+  setTheme(theme: Theme): void {
+    this.host.classList.toggle("dark", theme === "dark");
+  }
+
   get visible(): boolean {
     return this.host.style.display !== "none";
   }
@@ -315,11 +341,13 @@ export interface DictUI {
   /** Vis/skjul den vedvarende ordbok-boksen */
   setBoxVisible(visible: boolean): void;
   hideLookup(): void;
+  setTheme(theme: Theme): void;
 }
 
 export function createDictUI(doc: Document, deps: DictUIDeps): DictUI {
   let lookupCard: DictCard | null = null;
   let boxCard: DictCard | null = null;
+  let theme: Theme = "standard";
 
   doc.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && lookupCard?.visible) lookupCard.hide();
@@ -327,9 +355,10 @@ export function createDictUI(doc: Document, deps: DictUIDeps): DictUI {
 
   return {
     showLookup(word, x, y) {
-      lookupCard ??= new DictCard(doc, deps, {
-        onClose: () => lookupCard?.hide(),
-      });
+      if (!lookupCard) {
+        lookupCard = new DictCard(doc, deps, { onClose: () => lookupCard?.hide() });
+        lookupCard.setTheme(theme);
+      }
       const vw = doc.defaultView ?? window;
       lookupCard.host.style.left = `${Math.max(8, Math.min(x, vw.innerWidth - 360))}px`;
       lookupCard.host.style.top = `${Math.max(8, Math.min(y, vw.innerHeight - 300))}px`;
@@ -351,6 +380,7 @@ export function createDictUI(doc: Document, deps: DictUIDeps): DictUI {
           // boksen et annet sted, skal den bli der ved neste visning
           boxCard.host.style.right = "16px";
           boxCard.host.style.bottom = "16px";
+          boxCard.setTheme(theme);
         }
         boxCard.show();
       } else {
@@ -359,6 +389,11 @@ export function createDictUI(doc: Document, deps: DictUIDeps): DictUI {
     },
     hideLookup() {
       lookupCard?.hide();
+    },
+    setTheme(next) {
+      theme = next;
+      lookupCard?.setTheme(next);
+      boxCard?.setTheme(next);
     },
   };
 }

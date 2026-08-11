@@ -1,8 +1,12 @@
 /** Delte innstillinger — lagres i chrome.storage.sync (følger brukerens profil). */
 
+export type Theme = "standard" | "dark";
+
 export interface Settings {
   /** Hovedbryter for hele utvidelsen */
   enabled: boolean;
+  /** Visning: «standard» (lys) eller «dark» (mørk) */
+  theme: Theme;
   /** Avspillingshastighet 0.5–2.0 */
   rate: number;
   /** Ordforslag mens man skriver */
@@ -21,6 +25,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
+  theme: "standard",
   rate: 1.0,
   prediction: true,
   spellcheck: true,
