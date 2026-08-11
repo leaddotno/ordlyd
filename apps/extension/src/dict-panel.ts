@@ -44,7 +44,12 @@ const PANEL_CSS = `
     padding: 2px 4px; border-radius: 6px;
   }
   .icon:hover { background: #e2e8f0; }
-  .body { overflow-y: auto; padding: 10px 12px; }
+  .body { overflow-y: auto; padding: 10px 12px; user-select: text; }
+  .selchip {
+    position: fixed; z-index: 2147483647; font: 12px/1 system-ui, sans-serif;
+    padding: 6px 10px; border-radius: 999px; border: none; cursor: pointer;
+    background: #2563eb; color: white; box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+  }
   .search {
     width: 100%; font: 14px system-ui, sans-serif; padding: 7px 10px; margin-bottom: 8px;
     border: 1px solid #cbd5e1; border-radius: 8px;
@@ -117,17 +122,17 @@ function renderArticles(doc: Document, container: HTMLElement, articles: DictArt
   }
 }
 
-/** Tekstversjon av artiklene for opplesing */
-function articlesToSpeech(word: string, articles: DictArticle[]): string {
+/**
+ * Innledningen til opplesing: kun ordet, ordklassen og bøyningen.
+ * Definisjonene leses bare når brukeren selv markerer tekst i panelet
+ * og velger «Les opp» — samme mønster som ellers i systemet.
+ */
+function introToSpeech(word: string, articles: DictArticle[]): string {
+  const art = articles[0];
   const parts: string[] = [word + "."];
-  for (const art of articles.slice(0, 2)) {
-    if (art.k) parts.push(art.k + ".");
-    for (const def of art.d.slice(0, 3)) {
-      if (def.t) parts.push(def.t + ".");
-      else if (def.u?.[0]?.t) parts.push(def.u[0].t + ".");
-    }
-  }
-  return parts.join(" ").slice(0, 600);
+  if (art?.k) parts.push(art.k + ".");
+  if (art?.b?.length) parts.push("Bøyning: " + art.b.join(", ") + ".");
+  return parts.join(" ").slice(0, 400);
 }
 
 class DictCard {
@@ -138,6 +143,8 @@ class DictCard {
   private tabBm: HTMLButtonElement;
   private tabNn: HTMLButtonElement;
   private results: HTMLDivElement;
+  private selChip!: HTMLButtonElement;
+  private shadowRef: ShadowRoot;
   private lang: "bm" | "nn" = "bm";
   private data: DictLookupResult = { bm: [], nn: [] };
   private word = "";
@@ -150,6 +157,7 @@ class DictCard {
     this.host = el(doc, "div");
     this.host.style.cssText = "position: fixed; z-index: 2147483647; display: none;";
     const shadow = this.host.attachShadow({ mode: "closed" });
+    this.shadowRef = shadow;
     const style = el(doc, "style");
     style.textContent = PANEL_CSS;
 
@@ -192,8 +200,38 @@ class DictCard {
     closeBtn.addEventListener("click", () => opts.onClose());
     speakBtn.addEventListener("click", () => {
       const arts = this.data[this.lang];
-      if (this.word && arts.length) this.deps.speak(articlesToSpeech(this.word, arts));
+      if (this.word && arts.length) this.deps.speak(introToSpeech(this.word, arts));
     });
+
+    // Markér tekst i panelet → liten «Les opp»-knapp ved markeringen.
+    // (Sidens vanlige flyteknapp ser ikke markeringer inne i shadow DOM.)
+    this.selChip = el(doc, "button", "selchip", "🔊 Les opp");
+    this.selChip.style.display = "none";
+    shadow.appendChild(this.selChip);
+    this.selChip.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      const text = this.shadowSelectionText();
+      if (text) this.deps.speak(text);
+      this.selChip.style.display = "none";
+    });
+    const updateChip = (): void => {
+      // Vent til markeringen er ferdig oppdatert
+      setTimeout(() => {
+        const sel = this.shadowSelection();
+        const text = sel?.toString().trim() ?? "";
+        if (!text || sel!.rangeCount === 0) {
+          this.selChip.style.display = "none";
+          return;
+        }
+        const rect = sel!.getRangeAt(0).getBoundingClientRect();
+        const vw = doc.defaultView ?? window;
+        this.selChip.style.left = `${Math.min(rect.right, vw.innerWidth - 110)}px`;
+        this.selChip.style.top = `${Math.min(rect.bottom + 6, vw.innerHeight - 40)}px`;
+        this.selChip.style.display = "block";
+      }, 0);
+    };
+    this.body.addEventListener("mouseup", updateChip);
+    this.body.addEventListener("keyup", updateChip);
 
     if (opts.draggable) {
       let drag: { dx: number; dy: number } | null = null;
@@ -212,6 +250,20 @@ class DictCard {
       });
       head.addEventListener("pointerup", () => (drag = null));
     }
+  }
+
+  /**
+   * Markeringen inne i (lukket) shadow DOM. document.getSelection() ser den
+   * ikke — Chromium-baserte nettlesere (Edge) eksponerer den via
+   * shadowRoot.getSelection().
+   */
+  private shadowSelection(): Selection | null {
+    const sr = this.shadowRef as ShadowRoot & { getSelection?(): Selection | null };
+    return sr.getSelection?.() ?? this.doc.getSelection();
+  }
+
+  private shadowSelectionText(): string {
+    return this.shadowSelection()?.toString().trim() ?? "";
   }
 
   private setLang(lang: "bm" | "nn"): void {
@@ -253,6 +305,7 @@ class DictCard {
 
   hide(): void {
     this.host.style.display = "none";
+    this.selChip.style.display = "none";
   }
 }
 
@@ -285,18 +338,20 @@ export function createDictUI(doc: Document, deps: DictUIDeps): DictUI {
     },
     setBoxVisible(visible) {
       if (visible) {
-        boxCard ??= new DictCard(doc, deps, {
-          draggable: true,
-          searchField: true,
-          onClose: () => {
-            boxCard?.hide();
-            deps.onBoxClosed?.();
-          },
-        });
-        boxCard.host.style.right = "16px";
-        boxCard.host.style.bottom = "16px";
-        boxCard.host.style.left = "auto";
-        boxCard.host.style.top = "auto";
+        if (!boxCard) {
+          boxCard = new DictCard(doc, deps, {
+            draggable: true,
+            searchField: true,
+            onClose: () => {
+              boxCard?.hide();
+              deps.onBoxClosed?.();
+            },
+          });
+          // Startposisjon settes KUN ved opprettelse — har brukeren dratt
+          // boksen et annet sted, skal den bli der ved neste visning
+          boxCard.host.style.right = "16px";
+          boxCard.host.style.bottom = "16px";
+        }
         boxCard.show();
       } else {
         boxCard?.hide();

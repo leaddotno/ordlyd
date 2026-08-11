@@ -15,7 +15,11 @@ let settings: Settings = DEFAULT_SETTINGS;
 function applySettings(s: Settings): void {
   settings = s;
   maybeInitPrediction();
-  dictUI.setBoxVisible(s.enabled && s.dictionaryBox);
+  // Ordbok-boksen finnes kun i hovedrammen — med all_frames ville hver
+  // iframe på siden ellers fått sin egen boks (så «duplisert» ut for brukeren)
+  if (window.self === window.top) {
+    dictUI.setBoxVisible(s.enabled && s.dictionaryBox);
+  }
   if (!s.enabled) {
     hideButton();
     dictUI.hideLookup();
