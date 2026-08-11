@@ -24,9 +24,15 @@ if (!hasVoices) {
   process.exit(1);
 }
 
-// Kun ikke-trådede varianter: uten crossOriginIsolated kjører ORT alltid
-// med én tråd (se patch av piper-tts-web), så de trådede filene brukes aldri.
-const ORT_FILES = ["ort-wasm.wasm", "ort-wasm-simd.wasm"];
+// Både trådede og ikke-trådede varianter: med crossOriginIsolated (COOP/COEP
+// i manifest/vite) bruker ORT inntil 4 tråder — vesentlig raskere syntese på
+// svake flerkjerne-maskiner. Uten isolation faller den tilbake til én tråd.
+const ORT_FILES = [
+  "ort-wasm.wasm",
+  "ort-wasm-simd.wasm",
+  "ort-wasm-threaded.wasm",
+  "ort-wasm-simd-threaded.wasm",
+];
 
 const dictSrc = join(ROOT, "assets", "dict");
 const hasDict = await stat(dictSrc).then(() => true).catch(() => false);

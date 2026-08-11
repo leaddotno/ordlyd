@@ -17,8 +17,12 @@ async function ensureOffscreen(): Promise<void> {
     creatingOffscreen = chrome.offscreen
       .createDocument({
         url: OFFSCREEN_URL,
-        reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
-        justification: "Spiller av lokal talesyntese (tekst-til-tale)",
+        // DOM_PARSER i tillegg til AUDIO_PLAYBACK: med kun lyd-grunnen
+        // stenges dokumentet 30 s etter siste avspilling — og da kastes
+        // ordbanken ut og må lastes på nytt midt i skrivingen (merkbart
+        // på svake maskiner). Ordbank-oppslagene holder dokumentet i live.
+        reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK, chrome.offscreen.Reason.DOM_PARSER],
+        justification: "Spiller av lokal talesyntese og holder ordbanken for ordforslag",
       })
       .finally(() => {
         creatingOffscreen = null;

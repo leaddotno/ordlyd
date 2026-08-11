@@ -215,12 +215,15 @@ let watchdog: ReturnType<typeof setTimeout> | undefined;
 
 function armWatchdog(): void {
   clearTimeout(watchdog);
+  // 45 s: første opplesing etter oppstart laster talemodellen (63 MB),
+  // og det kan ta 15–30 s på svake skole-PC-er. Vakthunden skal fange
+  // ekte feil, ikke treg maskinvare.
   watchdog = setTimeout(() => {
-    console.warn("[Skrivestøtte] ingen respons fra talesyntesen på 20 s — nullstiller.");
+    console.warn("[Skrivestøtte] ingen respons fra talesyntesen på 45 s — nullstiller.");
     clearHighlights();
     setButton("idle");
     hideButton();
-  }, 20_000);
+  }, 45_000);
 }
 
 function disarmWatchdog(): void {

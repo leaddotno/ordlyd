@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@mintplex-labs/piper-tts-web@1.0.4': 3a00ccdb2bd004f1816bb6f86a64a6102e1b163c4ca79a64d33897cd74a4ade1
+  '@mintplex-labs/piper-tts-web@1.0.4': d84cdae2d9e04791cf54b4c3fbbdaf7f75d67684c7b4e063ca9aa7947aefb407
 
 importers:
 
@@ -53,7 +53,7 @@ importers:
         version: 1.0.0
       '@mintplex-labs/piper-tts-web':
         specifier: ^1.0.4
-        version: 1.0.4(patch_hash=3a00ccdb2bd004f1816bb6f86a64a6102e1b163c4ca79a64d33897cd74a4ade1)(onnxruntime-web@1.18.0)
+        version: 1.0.4(patch_hash=d84cdae2d9e04791cf54b4c3fbbdaf7f75d67684c7b4e063ca9aa7947aefb407)(onnxruntime-web@1.18.0)
       onnxruntime-web:
         specifier: 1.18.0
         version: 1.18.0
@@ -624,7 +624,7 @@ snapshots:
   '@esbuild/win32-x64@0.25.12':
     optional: true
 
-  '@mintplex-labs/piper-tts-web@1.0.4(patch_hash=3a00ccdb2bd004f1816bb6f86a64a6102e1b163c4ca79a64d33897cd74a4ade1)(onnxruntime-web@1.18.0)':
+  '@mintplex-labs/piper-tts-web@1.0.4(patch_hash=d84cdae2d9e04791cf54b4c3fbbdaf7f75d67684c7b4e063ca9aa7947aefb407)(onnxruntime-web@1.18.0)':
     dependencies:
       onnxruntime-web: 1.18.0
 
