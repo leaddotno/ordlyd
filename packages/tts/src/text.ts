@@ -31,24 +31,79 @@ export function tokenizeWords(text: string): WordToken[] {
 }
 
 /**
- * Enkel setningsdeling med bevarte offsets.
- * Deler etter . ! ? : etterfulgt av mellomrom/linjeskift. God nok for opplesing;
- * forkortelser som deles feil gir bare en ekstra kunstpause.
+ * Forkortelser hvis punktum IKKE avslutter en setning («kl. 14», «bl.a. dette»).
+ * Holdes synkron med normaliseringens liste, pluss noen som ikke ekspanderes.
+ */
+const NO_SPLIT_TAILS = [
+  "bl.a.", "f.eks.", "dvs.", "osv.", "ca.", "mht.", "pga.", "ifm.", "iht.",
+  "ift.", "iflg.", "jf.", "m.m.", "m.a.o.", "o.l.", "nr.", "tlf.", "evt.",
+  "ang.", "vedr.", "inkl.", "ekskl.", "mill.", "mrd.", "stk.", "etg.",
+  "f.o.m.", "t.o.m.", "kl.", "kap.", "pkt.", "st.", "s.", "co.", "mv.",
+];
+
+function endsWithAbbreviation(text: string, dotIndex: number): boolean {
+  const tail = text.slice(Math.max(0, dotIndex - 9), dotIndex + 1).toLowerCase();
+  return NO_SPLIT_TAILS.some(
+    (a) =>
+      tail.endsWith(a) &&
+      // tegnet foran forkortelsen må være ordgrense («bl.a.» skal ikke
+      // matche slutten av et lengre ord som tilfeldigvis ender likt)
+      !/[\p{L}\p{N}]/u.test(tail[tail.length - a.length - 1] ?? " "),
+  );
+}
+
+/**
+ * Setningsdeling med bevarte offsets.
+ * Deler ved . ! ? : og linjeskift, men IKKE når punktumet
+ *  - står midt i tall/datoer/klokkeslett («17.05.2026», «2.500») eller
+ *  - tilhører en kjent forkortelse («kl. 14», «bl.a. dette»).
+ * Uten dette hakkes teksten opp før normaliseringen rekker å ekspandere den.
  */
 export function splitSentences(text: string): SentenceSpan[] {
   const spans: SentenceSpan[] = [];
-  const re = /[^.!?:\n]+[.!?:]*\s*/gu;
-  for (const m of text.matchAll(re)) {
-    const raw = m[0];
+  let start = 0;
+
+  const flush = (end: number): void => {
+    const raw = text.slice(start, end);
     const trimmed = raw.trim();
-    if (!trimmed) continue;
-    const start = m.index! + raw.indexOf(trimmed);
-    spans.push({ text: trimmed, start, end: start + trimmed.length });
+    if (trimmed) {
+      const s = start + raw.indexOf(trimmed);
+      spans.push({ text: trimmed, start: s, end: s + trimmed.length });
+    }
+    start = end;
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "\n") {
+      flush(i + 1);
+      continue;
+    }
+    if (ch !== "." && ch !== "!" && ch !== "?" && ch !== ":") continue;
+
+    // Sluk sammenhengende tegnsetting («?!», «...»)
+    let j = i;
+    while (j + 1 < text.length && /[.!?:]/.test(text[j + 1])) j++;
+
+    const next = text[j + 1];
+    const spaceOrEndAfter = next === undefined || /\s/.test(next);
+    if (!spaceOrEndAfter) {
+      i = j; // «17.05.2026», «2.500», «3.14» — punktum midt i tall/ord
+      continue;
+    }
+    if (ch === "." && i === j && endsWithAbbreviation(text, i)) {
+      i = j; // «kl. 14», «bl.a. dette»
+      continue;
+    }
+    flush(j + 1);
+    i = j;
   }
+  flush(text.length);
+
   if (spans.length === 0 && text.trim()) {
     const t = text.trim();
-    const start = text.indexOf(t);
-    spans.push({ text: t, start, end: start + t.length });
+    const s = text.indexOf(t);
+    spans.push({ text: t, start: s, end: s + t.length });
   }
   return spans;
 }

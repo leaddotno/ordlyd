@@ -5,6 +5,7 @@
  * basert på estimerte tidspunkter.
  */
 import * as piper from "@mintplex-labs/piper-tts-web";
+import { normalizeForSpeech } from "./normalize.js";
 import {
   splitSentences,
   tokenizeWords,
@@ -14,6 +15,7 @@ import {
 } from "./text.js";
 
 export * from "./text.js";
+export { normalizeForSpeech, setPronunciationOverrides } from "./normalize.js";
 
 export const DEFAULT_VOICE = "no_NO-talesyntese-medium" as const;
 
@@ -195,7 +197,9 @@ async function synthesize(text: string, voiceId: string): Promise<Blob> {
         : undefined,
     });
   }
-  return session.predict(text);
+  // Normaliser kun teksten som går til syntesen — ordmarkeringen på siden
+  // bruker fortsatt originalteksten
+  return session.predict(normalizeForSpeech(text));
 }
 
 function blobDuration(blob: Blob): Promise<number> {

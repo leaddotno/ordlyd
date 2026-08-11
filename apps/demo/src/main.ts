@@ -1,9 +1,16 @@
 import {
   SpeechController,
   configureLocalAssets,
+  setPronunciationOverrides,
   tokenizeWords,
   DEFAULT_VOICE,
 } from "@skrivestotte/tts";
+
+// Uttale-overstyringer (samme fil som utvidelsen bruker)
+void fetch("/dict/uttale-overrides.json")
+  .then((res) => res.json())
+  .then((map: Record<string, string>) => setPronunciationOverrides(map))
+  .catch(() => {});
 
 // Samme offline-oppsett som utvidelsen: stemme og WASM serveres lokalt.
 // allowThreads kun her — vanlige nettsider tillater ORT sine blob:-workere,

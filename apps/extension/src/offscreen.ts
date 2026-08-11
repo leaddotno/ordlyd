@@ -3,7 +3,11 @@
  * Sender ord-/setningshendelser tilbake via service workeren,
  * som videresender til riktig fane.
  */
-import { SpeechController, configureLocalAssets } from "@skrivestotte/tts";
+import {
+  SpeechController,
+  configureLocalAssets,
+  setPronunciationOverrides,
+} from "@skrivestotte/tts";
 import { Dictionary, Predictor, SpellChecker } from "@skrivestotte/writing";
 import { EchoPlayer } from "./echo-player.js";
 import type {
@@ -34,6 +38,16 @@ configureLocalAssets({
   piperWasmUrl: chrome.runtime.getURL("piper/piper_phonemize.wasm"),
   piperDataUrl: chrome.runtime.getURL("piper/piper_phonemize.data"),
 });
+
+// Uttale-overstyringer: ord fonemiseringen uttaler feil, med lydrett
+// staving (redigerbar liste — assets/dict/uttale-overrides.json i repoet)
+fetch(chrome.runtime.getURL("dict/uttale-overrides.json"))
+  .then((res) => res.json())
+  .then((map: Record<string, string>) => {
+    setPronunciationOverrides(map);
+    console.log(LOG, `uttale-overstyringer lastet: ${Object.keys(map).filter((k) => !k.startsWith("_")).length} ord`);
+  })
+  .catch((err) => console.warn(LOG, "kunne ikke laste uttale-overstyringer:", err));
 
 const controller = new SpeechController();
 const echoPlayer = new EchoPlayer(
