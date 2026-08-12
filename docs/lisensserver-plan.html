@@ -1,0 +1,971 @@
+<title>Lisensserver for Skrivestøtte — arkitektur, failover og driftsplan</title>
+<style>
+  /* ---------- Tokens: lys (bare :root = komplett palett) ---------- */
+  :root {
+    --ground:      #eef1f1;
+    --surface:     #fafbfb;
+    --surface-2:   #e6ebeb;
+    --line:        #cdd6d6;
+    --line-soft:   #dde4e4;
+    --text:        #142124;
+    --text-soft:   #4a5b5f;
+    --text-faint:  #6d7f83;
+    --petrol:      #0e3d43;
+    --petrol-soft: #14585f;
+    --brass:       #8a6412;
+    --ok:          #1c6647;
+    --ok-bg:       #dcebe3;
+    --warn:        #8a5f08;
+    --warn-bg:     #f2e8d2;
+    --crit:        #97302a;
+    --crit-bg:     #f2dedc;
+    --code-bg:     #e8eded;
+    --shadow:      0 1px 2px rgba(16,32,36,.06), 0 8px 24px -16px rgba(16,32,36,.28);
+
+    --serif: Constantia, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  /* ---------- Tokens: mørk via systemvalg (kun token-override) ---------- */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0b1215;
+      --surface:     #111c20;
+      --surface-2:   #17252a;
+      --line:        #2b3d42;
+      --line-soft:   #223236;
+      --text:        #dde7e8;
+      --text-soft:   #a3b4b7;
+      --text-faint:  #7d9094;
+      --petrol:      #7fc6cc;
+      --petrol-soft: #a5d8dc;
+      --brass:       #d4a648;
+      --ok:          #6fc79b;
+      --ok-bg:       #143024;
+      --warn:        #d9ad55;
+      --warn-bg:     #33280f;
+      --crit:        #e8938c;
+      --crit-bg:     #371917;
+      --code-bg:     #16242a;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  /* ---------- Tokens: mørk via eksplisitt valg ---------- */
+  :root[data-theme="dark"] {
+    --ground:      #0b1215;
+    --surface:     #111c20;
+    --surface-2:   #17252a;
+    --line:        #2b3d42;
+    --line-soft:   #223236;
+    --text:        #dde7e8;
+    --text-soft:   #a3b4b7;
+    --text-faint:  #7d9094;
+    --petrol:      #7fc6cc;
+    --petrol-soft: #a5d8dc;
+    --brass:       #d4a648;
+    --ok:          #6fc79b;
+    --ok-bg:       #143024;
+    --warn:        #d9ad55;
+    --warn-bg:     #33280f;
+    --crit:        #e8938c;
+    --crit-bg:     #371917;
+    --code-bg:     #16242a;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 68ch);
+    justify-content: center;
+    gap: 0;
+    max-width: 100%;
+  }
+  @media (min-width: 1180px) {
+    .wrap {
+      grid-template-columns: 15rem minmax(0, 68ch);
+      column-gap: 4.5rem;
+      justify-content: center;
+    }
+  }
+
+  /* ---------- Topp ---------- */
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 68ch;
+    margin: 0 auto;
+    padding: 4.5rem 0 2.5rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin: 0 0 1.25rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+    line-height: 1.1;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+    color: var(--text);
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    line-height: 1.55;
+    color: var(--text-soft);
+    margin: 0 0 2rem;
+    text-wrap: pretty;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
+    font-family: var(--mono);
+    font-size: .74rem;
+    color: var(--text-faint);
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- Innholdsfortegnelse ----------
+     Merk: overstyringen som viser skinnen ligger etter disse reglene,
+     ellers vinner display:none på likt spesifisitetsnivå. */
+  .rail { display: none; }
+  .rail nav {
+    position: sticky;
+    top: 2rem;
+    font-size: .82rem;
+    line-height: 1.45;
+  }
+  .rail .rail-title {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: .9rem;
+  }
+  .rail ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .rail a {
+    color: var(--text-soft);
+    text-decoration: none;
+    display: flex;
+    gap: .6rem;
+  }
+  .rail a:hover { color: var(--petrol); }
+  .rail a .n {
+    font-family: var(--mono);
+    color: var(--text-faint);
+    font-size: .72rem;
+    padding-top: .12rem;
+    min-width: 1.1rem;
+  }
+  @media (min-width: 1180px) {
+    .rail { display: block; }
+  }
+
+  main { grid-column: auto; min-width: 0; }
+  @media (min-width: 1180px) { main { grid-column: 2; } }
+
+  /* ---------- Typografi ---------- */
+  section { padding-top: 3.25rem; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 1.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0 0 .35rem;
+    display: flex;
+    gap: .8rem;
+    align-items: baseline;
+  }
+  h2 .num {
+    font-family: var(--mono);
+    font-size: .78rem;
+    font-weight: 400;
+    color: var(--brass);
+    letter-spacing: .08em;
+    flex: none;
+    padding-top: .2rem;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 1.02rem;
+    font-weight: 650;
+    letter-spacing: .002em;
+    margin: 2.25rem 0 .5rem;
+    color: var(--text);
+  }
+  h4 {
+    font-family: var(--mono);
+    font-size: .74rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 1.75rem 0 .6rem;
+    font-weight: 400;
+  }
+  .lede {
+    color: var(--text-soft);
+    margin: 0 0 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  p { margin: 0 0 1rem; text-wrap: pretty; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  li > ul, li > ol { margin-top: .45rem; }
+  strong { font-weight: 650; color: var(--text); }
+  a { color: var(--petrol); text-decoration-thickness: 1px; text-underline-offset: .15em; }
+  a:focus-visible, .rail a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: .84em;
+    background: var(--code-bg);
+    padding: .1em .35em;
+    border-radius: 3px;
+    overflow-wrap: break-word;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: .8rem;
+    line-height: 1.6;
+    background: var(--code-bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: 1em; }
+
+  /* ---------- Tabeller ---------- */
+  .tablewrap {
+    overflow-x: auto;
+    margin: 0 0 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .88rem;
+    min-width: 34rem;
+  }
+  th, td {
+    text-align: left;
+    padding: .68rem .85rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: .69rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 400;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: .18em .5em;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .chip.ok   { background: var(--ok-bg);   color: var(--ok); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.crit { background: var(--crit-bg); color: var(--crit); }
+
+  /* ---------- Blokker ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--brass);
+    border-radius: 4px;
+    padding: 1.1rem 1.25rem;
+    margin: 0 0 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .callout .tag {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--brass);
+    display: block;
+    margin-bottom: .5rem;
+  }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+  .callout.danger { border-left-color: var(--crit); }
+  .callout.danger .tag { color: var(--crit); }
+
+  .decision {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1.25rem 1.4rem;
+    margin: 0 0 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .decision .dh {
+    display: flex;
+    gap: .8rem;
+    align-items: baseline;
+    margin-bottom: .6rem;
+  }
+  .decision .did {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .08em;
+    color: var(--brass);
+    flex: none;
+  }
+  .decision .dt {
+    font-family: var(--serif);
+    font-size: 1.12rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  .decision p:last-child { margin-bottom: 0; }
+  .verdict {
+    font-family: var(--mono);
+    font-size: .74rem;
+    color: var(--text-faint);
+    border-top: 1px solid var(--line-soft);
+    padding-top: .7rem;
+    margin-top: .9rem;
+  }
+
+  .mermaid {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1.25rem;
+    margin: 0 0 1.5rem;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  details {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .8rem 1.1rem;
+    margin: 0 0 1rem;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: .95rem;
+  }
+  details[open] summary { margin-bottom: .8rem; }
+
+  .toc-mobile { grid-column: 1 / -1; margin: 0 auto 1rem; max-width: 68ch; width: 100%; }
+  @media (min-width: 1180px) { .toc-mobile { display: none; } }
+  .toc-mobile ol { padding-left: 1.1rem; font-size: .9rem; }
+
+  footer {
+    grid-column: 1 / -1;
+    max-width: 68ch;
+    margin: 4rem auto 0;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: .82rem;
+    color: var(--text-faint);
+  }
+  footer a { color: var(--text-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Skrivestøtte · fase 2 · arkitekturnotat</p>
+    <h1>Lisensserver som tåler å være utilgjengelig</h1>
+    <p class="standfirst">Én lisensserver for alle produktene våre — nettleserutvidelsen i dag, PC-applikasjonene senere. Bygget rundt et krav som snur den vanlige designen på hodet: en elev som ikke får kontakt med serveren skal ikke merke det.</p>
+    <div class="meta">
+      <span>Utarbeidet 12. august 2026</span>
+      <span>Status: forslag til beslutning</span>
+      <span>Første kunde: Telemark fylkeskommune</span>
+    </div>
+  </header>
+
+  <details class="toc-mobile">
+    <summary>Innhold — 13 kapitler</summary>
+    <ol>
+      <li><a href="#sammendrag">Sammendrag</a></li>
+      <li><a href="#premisser">Fem premisser å avklare</a></li>
+      <li><a href="#arkitektur">Arkitektur</a></li>
+      <li><a href="#datamodell">Kunder og lisenspooler</a></li>
+      <li><a href="#kvittering">Lisenskvitteringen</a></li>
+      <li><a href="#failover">Failover-matrisen</a></li>
+      <li><a href="#tillit">Adresseendring og nødplan</a></li>
+      <li><a href="#oppdatering">Oppdatering av programvare</a></li>
+      <li><a href="#drift">Hosting og kostnad</a></li>
+      <li><a href="#jus">Juss og anskaffelse</a></li>
+      <li><a href="#faseplan">Faseplan</a></li>
+      <li><a href="#risiko">Risikoregister</a></li>
+      <li><a href="#neste">Avgjørelser jeg trenger fra deg</a></li>
+    </ol>
+  </details>
+
+  <aside class="rail">
+    <nav aria-label="Innhold">
+      <p class="rail-title">Innhold</p>
+      <ol>
+        <li><a href="#sammendrag"><span class="n">1</span><span>Sammendrag</span></a></li>
+        <li><a href="#premisser"><span class="n">2</span><span>Fem premisser å avklare</span></a></li>
+        <li><a href="#arkitektur"><span class="n">3</span><span>Arkitektur</span></a></li>
+        <li><a href="#datamodell"><span class="n">4</span><span>Kunder og lisenspooler</span></a></li>
+        <li><a href="#kvittering"><span class="n">5</span><span>Lisenskvitteringen</span></a></li>
+        <li><a href="#failover"><span class="n">6</span><span>Failover-matrisen</span></a></li>
+        <li><a href="#tillit"><span class="n">7</span><span>Adresseendring og nødplan</span></a></li>
+        <li><a href="#oppdatering"><span class="n">8</span><span>Oppdatering av programvare</span></a></li>
+        <li><a href="#drift"><span class="n">9</span><span>Hosting og kostnad</span></a></li>
+        <li><a href="#jus"><span class="n">10</span><span>Juss og anskaffelse</span></a></li>
+        <li><a href="#faseplan"><span class="n">11</span><span>Faseplan</span></a></li>
+        <li><a href="#risiko"><span class="n">12</span><span>Risikoregister</span></a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+
+    <section id="sammendrag">
+      <h2><span class="num">01</span> Sammendrag</h2>
+      <p class="lede">Det bærende valget er hvor tilliten bor. Ikke i en nettadresse, ikke i et sertifikat, men i en signeringsnøkkel som ligger offline hos deg.</p>
+
+      <p>Klienten får en <strong>signert lisenskvittering</strong> hver gang den snakker med serveren. Kvitteringen er gyldig i <strong>100 dager</strong> og fornyes hvert døgn. Ingen nettverksforespørsel er nødvendig for å bruke programmet — verifiseringen skjer lokalt mot en innebygd offentlig nøkkel. Dermed er kravet ditt om to måneders levetid dekket med <strong>40 dagers margin</strong>, nok til å ri av en sommerferie der en elev-PC står i et skap.</p>
+
+      <p>Fordi tilliten ligger i nøkkelen og ikke i adressen, løser det samme grepet nødsituasjonen din: om serveren flytter til ny IP, nytt domene eller ny leverandør, henter klienten en <strong>signert endepunktsliste</strong> og følger den. En kapret DNS kan sende klienten til en falsk server, men den falske serveren kan ikke signere en gyldig kvittering, og klienten beholder da simpelthen den den har.</p>
+
+      <p>Tre ting i researchen endrer premissene dine, og de er verdt å lese før faseplanen:</p>
+      <ul>
+        <li><strong>«E-post i pool» kan ikke være innlogging.</strong> En e-postadresse er en påstand, ikke et bevis — hvem som helst kan skrive <code>elev@telemarkfylke.no</code>. Poolen er riktig som <em>tilgangsliste</em>, men identiteten må komme fra Feide eller Entra ID.</li>
+        <li><strong>Feide er den forventede standarden</strong> i norsk skole, gratis for tjenesteleverandører — og søknadsprosessen har lang ledetid. Den bør sendes i uke 1, ikke i uke 20.</li>
+        <li><strong>Reservedomenene må bestemmes før første utgivelse.</strong> MV3 låser hvilke adresser utvidelsen får kontakte i manifestet. Et domene du ikke listet opp på forhånd, kan du ikke bytte til i en krise uten en ny butikkgodkjenning som tar opptil sju arbeidsdager.</li>
+      </ul>
+
+      <div class="callout">
+        <span class="tag">Anbefalt grunnprinsipp</span>
+        <p><strong>Fail open, ikke fail closed.</strong> Dette er hjelpemiddelprogramvare for elever med dysleksi. En lisenssjekk som slår ut opplesingen midt i en prøve er en verre feil enn en lisens som lever noen uker for lenge. Håndhevingen som faktisk betyr noe er administrativ — fylket fjerner utvidelsen via Intune når avtalen tar slutt — ikke en sperre som rammer eleven.</p>
+      </div>
+    </section>
+
+    <section id="premisser">
+      <h2><span class="num">02</span> Fem premisser å avklare</h2>
+      <p class="lede">Disse fem valgene bestemmer arkitekturen. Alle har en anbefaling, men de er dine å ta.</p>
+
+      <div class="decision">
+        <div class="dh"><span class="did">P1</span><span class="dt">Identitet må skilles fra lisens</span></div>
+        <p>Slik du beskrev det, gjør e-postadressen to jobber samtidig: den beviser hvem du er, og den avgjør hva du får bruke. Den kan bare gjøre den siste. Riktig mønster er at brukeren logger inn med <strong>OIDC</strong> hos Feide eller Entra ID, som gir en kryptografisk verifisert identitet, og at vi <em>deretter</em> slår identiteten opp i kundens lisenspool.</p>
+        <p>Praktisk konsekvens: pool-oppføringer lagres med <strong>utsteder-kvalifisert nøkkel</strong> — <code>feide:jk@telemarkfylke.no</code> eller <code>entra:{tenant}/{objectId}</code> — og e-postadressen blir kun visningsinformasjon. Microsoft er tydelig på at e-postpåstanden «isn't guaranteed to be correct and is mutable over time», så den skal aldri være autorisasjonsnøkkelen.</p>
+        <p class="verdict">Anbefaling: behold e-postlisten som administrasjonsgrensesnitt for superadmin, men autoriser på verifisert identitet.</p>
+      </div>
+
+      <div class="decision">
+        <div class="dh"><span class="did">P2</span><span class="dt">Feide først, Entra ID som nummer to</span></div>
+        <p>Feide er identitetsføderasjonen for norsk utdanning, drevet av Sikt, med over 1,3 millioner brukere og i bruk hos fylkeskommunene for videregående. Det er <strong>gratis</strong> å være tjenesteleverandør. For en kjøper i skolesektoren er Feide-integrasjon nærmest en forventning, og det gir oss to attributter som er gull for lisensiering: <code>eduPersonAffiliation</code> (elev eller ansatt) og <code>schacHomeOrganization</code> (hvilken skoleeier).</p>
+        <p>Den administrative delen er den lange stanga: søknad til Sikt, registrering i <code>kunde.feide.no</code>, <strong>begrunnelse for hvert attributt vi ber om</strong>, en leverandørerklæring om informasjonssikkerhet og personvern, og databehandleravtale — og til slutt må Telemark selv aktivere tjenesten. Entra ID kommer som nummer to, primært fordi PC-applikasjonene trenger stille SSO på Intune-administrerte maskiner.</p>
+        <p class="verdict">Anbefaling: send Feide-søknaden i uke 1. Teknisk integrasjon kan bygges parallelt.</p>
+      </div>
+
+      <div class="decision">
+        <div class="dh"><span class="did">P3</span><span class="dt">Regelbaserte pooler, ikke bare e-postlister</span></div>
+        <p>Telemark har i størrelsesorden titusen elever og ansatte. En pool som vedlikeholdes adresse for adresse blir utdatert i august hvert år og genererer supporthenvendelser hele høsten. Løsningen er at en pool kan inneholde <strong>tre typer oppføringer</strong>: eksplisitte identiteter, domenemønster (<code>*@telemarkfylke.no</code>), og regler over verifiserte påstander (<code>utsteder = Telemarks Feide-realm OG affiliation = student</code>).</p>
+        <p>Regelvarianten er også den mest personvernvennlige: vi trenger ikke lagre en liste over hvilke elever som har dysleksi. Det er en betydelig fordel når fylkets personvernombud leser dokumentasjonen.</p>
+        <p class="verdict">Anbefaling: bygg alle tre. Superadmin velger per kunde. Regel er standard, liste er unntaket.</p>
+      </div>
+
+      <div class="decision">
+        <div class="dh"><span class="did">P4</span><span class="dt">Reservedomenene låses i første utgivelse</span></div>
+        <p>Nettleserutvidelser under Manifest V3 kan bare kontakte adresser som står i <code>host_permissions</code> i manifestet. Listen er frosset ved bygging. Skal vi kunne peke klientene mot et helt nytt domene i en krise, må <em>alle</em> kandidatdomenene stå i manifestet fra dag én — ellers er eneste vei ut en ny butikkinnsending med opptil sju arbeidsdagers behandlingstid, midt i hendelsen.</p>
+        <p>Konkret: registrer <strong>tre domener hos tre ulike registrarer med tre ulike DNS-leverandører</strong> nå, og list opp alle tre. Kostnaden er noen hundrelapper i året. Alternativet er å stå uten manøvreringsrom den dagen det gjelder.</p>
+        <p class="verdict">Anbefaling: beslutt domenenavnene før vi skriver den første linjen med lisenskode.</p>
+      </div>
+
+      <div class="decision">
+        <div class="dh"><span class="did">P5</span><span class="dt">Stemmen ut av utvidelsespakken</span></div>
+        <p>Utvidelsen er i dag 165 MB, hovedsakelig den 63 MB store stemmemodellen. Det gjør hver oppdatering til en full nedlasting per elev, og det er tvilsomt om pakken i det hele tatt går gjennom butikken — Microsoft dokumenterer ingen størrelsesgrense, som betyr at vi ikke vet hvor taket er.</p>
+        <p>Det gode: <strong>ONNX-vekter regnes som data, ikke kode</strong>. Regelen om ekstern kode gjelder JavaScript og WebAssembly, ikke modellvekter. Vi kan derfor laste ned stemmen fra vår egen CDN ved første oppstart og lagre den i Cache Storage med <code>unlimitedStorage</code>, mens WASM-runtimen blir liggende i pakken. Utvidelsen faller til noen få megabyte, og alle senere oppdateringer blir små.</p>
+        <p class="verdict">Anbefaling: gjør dette som en del av lisensarbeidet — det er forutsetningen for en fornuftig oppdateringskanal.</p>
+      </div>
+    </section>
+
+    <section id="arkitektur">
+      <h2><span class="num">03</span> Arkitektur</h2>
+      <p class="lede">Én server, flere produkter. Klienten er alltid i stand til å svare «ja, du har lisens» uten nettverk.</p>
+
+      <pre class="mermaid">
+flowchart TB
+  U["Elev eller ansatt"] --> C["Klient: Edge-utvidelse<br/>eller Windows-app"]
+  C -->|"OIDC-innlogging"| I["Feide eller Entra ID"]
+  I -->|"verifisert identitet"| C
+  C -->|"POST /v1/license/refresh"| S["Lisensserver<br/>Azure Norway East"]
+  S --> DB[("PostgreSQL")]
+  S --> KV["Key Vault:<br/>signeringsnøkkel"]
+  S -->|"signert kvittering, 100 dager"| C
+  C --> L["Lokal cache: kvittering<br/>+ siste kjente tid"]
+  L -->|"lokal verifisering hver oppstart"| C
+  C -.->|"engangs, ved første oppstart"| CDN["CDN: stemmemodell 63 MB"]
+      </pre>
+
+      <p>Serveren har fire ansvarsområder og ikke mer: den autentiserer via OIDC, den slår opp i lisenspoolen, den signerer kvitteringer, og den publiserer signert konfigurasjon (minsteversjon, funksjonsflagg, endepunktsliste). Alt annet — talesyntese, ordbok, stavekontroll — forblir lokalt på maskinen, slik det er i dag.</p>
+
+      <p>Det gir en viktig egenskap: <strong>serveren er aldri på den kritiske stien</strong>. Ingen bruker venter på den. Fornyelse skjer i bakgrunnen via <code>chrome.alarms</code> i utvidelsen, som er det eneste som overlever at MV3 dreper service-workeren etter 30 sekunder uten aktivitet.</p>
+
+      <h3>Produktregister, ikke hardkodede klienter</h3>
+      <p>Siden både PC-applikasjoner og fremtidige funksjoner skal snakke med samme server, modelleres klientene som data. Hvert produkt har en <code>product_id</code>, et sett tilgjengelige <code>features</code>, og en minsteversjon. En kunde kjøper funksjoner, ikke programmer. Det betyr at når PC-appen kommer, er serverendringen én rad i en tabell — ikke en ny kodesti.</p>
+    </section>
+
+    <section id="datamodell">
+      <h2><span class="num">04</span> Kunder og lisenspooler</h2>
+      <p class="lede">Superadmin → kunde → pool → rettigheter. Fire nivåer, ikke fem.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Tabell</th><th>Innhold</th><th>Merknad</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>tenants</code></td><td>Kunde: navn, org.nr., status, gyldig fra/til, kontaktperson, dato for signert databehandleravtale</td><td>Superadmin oppretter</td></tr>
+            <tr><td><code>identity_providers</code></td><td>Per kunde: Feide-realm, Entra <code>tid</code>, eller «magisk lenke»</td><td>Avgjør hvilke utstedere som godtas for kunden</td></tr>
+            <tr><td><code>license_pools</code></td><td>Navn, status, maks seter, gyldighetsperiode, hvilke produkter og funksjoner poolen gir</td><td>En kunde kan ha flere, f.eks. elever og ansatte</td></tr>
+            <tr><td><code>pool_rules</code></td><td>Regel over verifiserte påstander: <code>affiliation = student</code></td><td>Anbefalt standard (P3)</td></tr>
+            <tr><td><code>pool_entries</code></td><td>Eksplisitte identiteter og domenemønstre, med e-post som visningsnavn</td><td>Ditt e-postpool-krav</td></tr>
+            <tr><td><code>deny_entries</code></td><td>Eksplisitt utestenging som slår regler</td><td>Nødbrems for enkeltbrukere</td></tr>
+            <tr><td><code>installs</code></td><td>Tilfeldig <code>install_uuid</code>, produkt, versjon, sist sett, plattform</td><td>Ingen maskinvare-fingeravtrykk — se under</td></tr>
+            <tr><td><code>receipts</code></td><td>Utstedte kvitteringer: id, subjekt, <code>kid</code>, utstedt, utløper</td><td>Grunnlag for revisjon og tilbakekalling</td></tr>
+            <tr><td><code>signing_keys</code></td><td><code>kid</code>, algoritme, offentlig nøkkel, status, gyldighet</td><td>Muliggjør rotasjon uten å bryte klienter</td></tr>
+            <tr><td><code>audit_log</code></td><td>Append-only: hvem gjorde hva, når</td><td>Kjøper kommer til å spørre om dette</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Ingen maskinvare-fingeravtrykk</h3>
+      <p>Det er fristende å binde en lisens til maskinen. Ikke gjør det. Et maskinvare-fingeravtrykk er personopplysning under GDPR, krever eget behandlingsgrunnlag, og lesing av identifikatorer fra terminalutstyr faller inn under ekomdirektivets artikkel 5(3) med mindre det er «strengt nødvendig». I tillegg brekker det hver gang skolen reinstallerer en maskin.</p>
+      <p>Bruk i stedet en <strong>tilfeldig, klientgenerert <code>install_uuid</code></strong> pluss den fødererte bruker-IDen som setenhet. Setetelling per bruker er både riktigere og lettere å forsvare. Vi lagrer <code>install_uuid</code>, <code>tenant</code>, subjekt og <code>last_seen</code> — ikke maskinnavn, ikke serienummer, ikke IP-logg.</p>
+
+      <h3>Superadmin-flyten</h3>
+      <ol>
+        <li>Opprett kunde, registrer org.nr. og gyldighetsperiode.</li>
+        <li>Knytt identitetsleverandør: Feide-realm og/eller Entra-tenant.</li>
+        <li>Opprett pool, velg produkter og funksjoner, sett setetak og utløp.</li>
+        <li>Fyll poolen: regel (anbefalt), CSV-import av e-postadresser, eller domenemønster.</li>
+        <li>Følg bruk: aktive seter, siste 30 dagers unike brukere, klientversjoner i felt.</li>
+      </ol>
+      <p>Superadmin-innlogging skal ha <strong>passkey eller maskinvarenøkkel</strong>, ikke passord. Kontoen kan endre hvem som har tilgang til programvare for tusenvis av elever.</p>
+    </section>
+
+    <section id="kvittering">
+      <h2><span class="num">05</span> Lisenskvitteringen</h2>
+      <p class="lede">Hjertet i designet: et lite signert dokument som klienten kan stole på uten å spørre noen.</p>
+
+      <pre><code>{
+  "v": 1,
+  "kid": "sk-2026-08",
+  "iss": "https://lisens.skrivestotte.no",
+  "sub": "feide:jk@telemarkfylke.no",
+  "tenant": "telemark-fk",
+  "install": "9f2c1a7e-…",
+  "products": {
+    "edge-extension": { "features": ["tts", "ordbok", "stavekontroll", "prediksjon"] },
+    "win-desktop":    { "features": ["tts", "ordbok"] }
+  },
+  "iat": 1786512000,
+  "softExp": 1786512000 + 70 dager,
+  "exp":     1786512000 + 100 dager,
+  "serverTime": 1786512000,
+  "minVersion": { "edge-extension": "1.4.0" },
+  "endpointsVer": 7,
+  "revoked": ["sk-2025-11"]
+}</code></pre>
+
+      <h3>Dobbel signatur — én av funnene som overrasket meg</h3>
+      <p>Ed25519 er det riktige valget: kort, rask, ingen algoritmeforvirring. WebCrypto har hatt det påskrudd som standard siden Chromium 137 i mai 2025, så utvidelsen er dekket. Men <strong>.NET har fortsatt ikke Ed25519 innebygd</strong> — API-forslaget står oppført mot .NET 11. PC-applikasjonen ville altså trengt et tredjepartsbibliotek for kryptografi, som er nøyaktig det stedet man ikke vil ha ekstra avhengigheter.</p>
+      <p>Løsningen er å signere hver kvittering <strong>to ganger</strong> over samme kanoniske innhold: Ed25519 og ECDSA P-256. P-256 finnes innebygd både i WebCrypto og <code>System.Security.Cryptography</code>. Utvidelsen foretrekker Ed25519, PC-appen bruker P-256, og eldre Edge-installasjoner i fylket har en vei videre. Kostnaden er 64 ekstra byte.</p>
+      <p>Verifikatoren skal <strong>hardpinne algoritmen</strong> og ignorere alt som står i et eventuelt header-felt. De klassiske JWT-feilene — <code>alg: none</code> og algoritmeforvirring — oppstår fordi verifikatoren spør dokumentet hvordan det skal sjekkes. Vi bruker et fast konvoluttformat i stedet, samme disiplin som PASETO bygger på.</p>
+
+      <h3>Levetid og fornyingskadens</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Parameter</th><th class="num">Valg</th><th>Begrunnelse</th></tr></thead>
+          <tbody>
+            <tr><td>Kvitteringens levetid</td><td class="num">100 dager</td><td>Kravet er 60. Marginen dekker sommerferie og en server som er nede en stund. Til sammenligning: Microsoft 365 gir 30 dager, Adobe 30–99, Keygen 30 som standard.</td></tr>
+            <tr><td>Fornyelsesforsøk</td><td class="num">hver 24. time</td><td>Glidende utløp: hvert svar setter ny 100-dagers frist. Ett vellykket forsøk i kvartalet er nok.</td></tr>
+            <tr><td>Varsel til bruker</td><td class="num">dag 70</td><td>Diskré banner: «kontakt IT». 30 dager er rikelig til å rekke å gjøre noe.</td></tr>
+            <tr><td>Etter utløp</td><td class="num">degradert</td><td>Opplesing fortsetter. Serveravhengige funksjoner slås av. Ingen hard sperre.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Klokkejuks: den viktigste avveiningen</h3>
+      <p>En offline klient kan ikke vite hva klokka egentlig er. Standardgrepet er et <strong>monotont høyvannsmerke</strong>: vi lagrer den seneste tiden vi har sett — enten fra serveren eller fra systemklokka — og reagerer hvis klokka plutselig går bakover.</p>
+      <p>Spørsmålet er hva «reagerer» betyr. Keygens vedlikeholder advarer eksplisitt om at tidsovervåking gir falske positiver fra sommertid og tidssoneskift. På en skole-PC er feil klokke langt mer sannsynlig enn juks.</p>
+      <div class="callout danger">
+        <span class="tag">Anbefaling</span>
+        <p>Tillat <strong>±48 timers avvik</strong>, lagre høyvannsmerket i UTC, og ved avvik utover det: marker kvitteringen <code>needs_online_recheck</code>, vis en diskré melding — og <strong>fortsett å fungere</strong>. Aldri utestengelse på grunnlag av en klokke. En elev som mister opplesingen fordi PC-en har feil dato, er en supportsak vi ikke skal ha, og et omdømmetap vi ikke trenger.</p>
+      </div>
+
+      <h3>Tilbakekalling og hva vi skal love i avtalen</h3>
+      <p>Langlevde offline-kvitteringer har en ubehagelig konsekvens: tilbakekalling virker først ved neste fornyelse. Det er ikke en svakhet i designet vårt, det er en lov i faget — sertifikatbransjen kortet nettopp ned levetiden på TLS-sertifikater til 47 dager nettopp fordi tilbakekalling ikke er til å stole på.</p>
+      <p>Vi håndterer det ved å være åpne om det: <strong>typisk under 24 timer, verst tenkelig 100 dager</strong>, formulert som en tjenestebeskrivelse i avtalen. Hver fornyelse leverer med en liten signert tilbakekallingsliste. For akutte tilfeller finnes to raskere kanaler: nøkkelrotasjon (bytt <code>kid</code>, gamle kvitteringer faller) og fylkets egen Intune-avinstallering, som virker i løpet av minutter.</p>
+    </section>
+
+    <section id="failover">
+      <h2><span class="num">06</span> Failover-matrisen</h2>
+      <p class="lede">Dette er tabellen jeg ville vist til en sikkerhetsansvarlig som spør «hva skjer når det svikter».</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Situasjon</th><th>Klienten gjør</th><th>Bruker merker</th><th>Varighet</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ingen internettforbindelse</td>
+              <td>Verifiserer lagret kvittering lokalt</td>
+              <td><span class="chip ok">Ingenting</span></td>
+              <td class="num">100 dager</td>
+            </tr>
+            <tr>
+              <td>Lisensserveren er nede</td>
+              <td>Beholder siste gode kvittering, nytt forsøk med eksponentiell backoff og jitter</td>
+              <td><span class="chip ok">Ingenting</span></td>
+              <td class="num">100 dager</td>
+            </tr>
+            <tr>
+              <td>Nede lenger enn 100 dager</td>
+              <td>Degradert modus: opplesing virker, serverfunksjoner av</td>
+              <td><span class="chip warn">Banner</span></td>
+              <td>Til kontakt</td>
+            </tr>
+            <tr>
+              <td>Serveren har flyttet til ny adresse</td>
+              <td>Leser signert endepunktsliste, prøver domene 2 og 3, godtar Intune-overstyring</td>
+              <td><span class="chip ok">Ingenting</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>DNS kapret, klienten treffer falsk server</td>
+              <td>Signaturen validerer ikke → svaret forkastes, gammel kvittering beholdes</td>
+              <td><span class="chip ok">Ingenting</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Signeringsnøkkelen er lekket</td>
+              <td>Rotnøkkelen signerer ny nøkkelliste; klienten godtar ny <code>kid</code>, forkaster gammel</td>
+              <td><span class="chip ok">Ingenting</span></td>
+              <td>Timer</td>
+            </tr>
+            <tr>
+              <td>Rotnøkkelen er lekket</td>
+              <td>Kan ikke løses over nett — ny klientversjon må ut via butikk og Intune</td>
+              <td><span class="chip crit">Oppdatering</span></td>
+              <td>Dager</td>
+            </tr>
+            <tr>
+              <td>Bruker fjernet fra poolen</td>
+              <td>Neste fornyelse avslås → degradert ved utløp</td>
+              <td><span class="chip warn">Banner</span></td>
+              <td>≤ 100 dager</td>
+            </tr>
+            <tr>
+              <td>Systemklokka satt tilbake</td>
+              <td>Høyvannsmerke slår inn, flagger for ny nettsjekk, fortsetter å virke</td>
+              <td><span class="chip ok">Diskré</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>Feide eller Entra er nede</td>
+              <td>Berører bare ny førstegangsinnlogging; eksisterende brukere upåvirket</td>
+              <td><span class="chip ok">Ingenting</span></td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Legg merke til mønsteret: <strong>ni av ti rader er usynlige for brukeren</strong>. Den ene som ikke er det — lekket rotnøkkel — er også den eneste som krever at vi får ny kode ut til alle. Det er derfor kapittel 8 om oppdateringskanalen er en sikkerhetsmekanisme, ikke bare en bekvemmelighet.</p>
+    </section>
+
+    <section id="tillit">
+      <h2><span class="num">07</span> Adresseendring og nødplan</h2>
+      <p class="lede">Kravet ditt om å kunne bytte lisensserver er egentlig et spørsmål om hvor tilliten er festet. Svaret er: i en nøkkel som ligger i en safe.</p>
+
+      <pre class="mermaid">
+flowchart TB
+  R["Rotnøkkel — offline<br/>2 av 3 maskinvarenøkler"] -->|"signerer"| K["Endepunkts- og nøkkelliste<br/>endpoints.json"]
+  R -.->|"kun offentlig del<br/>pinnet i klienten"| C["Klient"]
+  K --> E1["lisens.domene-1.no"]
+  K --> E2["reserve.domene-2.no"]
+  K --> E3["reserve.domene-3.no"]
+  K -->|"godkjenner kid"| S["Signeringsnøkkel<br/>online i Key Vault"]
+  S -->|"signerer"| T["Lisenskvitteringer"]
+  C -->|"verifiserer kjeden lokalt"| T
+      </pre>
+
+      <h3>To nøkkelnivåer</h3>
+      <p>Rotnøkkelen er <strong>offline</strong>, fordelt som 2-av-3 på maskinvarenøkler på tre fysiske steder, og brukes bare i en skriftlig prosedyre noen få ganger i året. Den signerer én ting: listen over gyldige endepunkter og signeringsnøkler. Signeringsnøkkelen er online i Azure Key Vault, roteres kvartalsvis, og signerer kvitteringer. Klienten pinner bare rotens offentlige nøkkel.</p>
+      <p>Modellen er hentet fra <a href="https://theupdateframework.github.io/specification/latest/">The Update Framework</a>, som er den eneste veletablerte spesifikasjonen med selvautentiserende nøkkelrotasjon: en ny rotversjon må signeres av terskelen både i den gamle og den nye versjonen, og klienten går gjennom versjonene i rekkefølge og nekter å gå bakover. Sigstore driver en reell småskala-instans av dette med 3-av-5 på personlige maskinvarenøkler — beviset på at det er gjennomførbart for et lite team.</p>
+
+      <div class="callout">
+        <span class="tag">Fallgruve verdt å kjenne</span>
+        <p>TUF-metadata har utløpsdato som frysebeskyttelse. En klient som har vært offline i månedsvis vil avvise utløpt metadata og dermed låse seg selv. Sett rotens utløp til <strong>1–2 år</strong>, og la en utløpt-men-gyldig-signert endepunktsliste brukes <em>til å finne serveren</em>, aldri til å avgjøre lisensspørsmål.</p>
+      </div>
+
+      <h3>DNS er infrastruktur, ikke tillit</h3>
+      <p>Domenene får <strong>60–120 sekunders TTL</strong> på helsesjekkede failover-oppføringer, to uavhengige autoritative DNS-leverandører, og registrarlås (<code>clientTransferProhibited</code> og <code>clientUpdateProhibited</code>) med phishing-resistent MFA på hver konto som kan endre DNS. Det siste er den direkte lærdommen fra CISAs nøddirektiv 19-01 om DNS-kapring.</p>
+      <p>Men DNSSEC beskytter <em>ikke</em> klientene våre — nettlesernes og Windows' stub-resolvere validerer stort sett ikke. Derfor er signaturen på kvitteringen den eneste tilliten som teller.</p>
+
+      <h3>Ikke pinn TLS-sertifikater</h3>
+      <p>Det ser ut som riktig svar og er det ikke. OWASP frarår det, HPKP ble fjernet fra Chrome i 2018, og begrunnelsen treffer oss direkte: pinning kan skape et utfall <em>og samtidig blokkere oppdateringen som skulle rettet det</em>. I tillegg bryter det med TLS-inspeksjon, som er svært sannsynlig på et fylkeskommunalt skolenett. Vi bruker vanlige tillitslagre, HSTS, CAA-oppføringer og overvåking av Certificate Transparency — og pinner vår <em>egen</em> signeringsnøkkel på applikasjonsnivå.</p>
+
+      <h3>Overstyringskanal for administrator</h3>
+      <p>Siste utvei skal ikke være avhengig av at noe av vårt fungerer. Fylkets egen IT skal kunne peke klientene et nytt sted:</p>
+      <ul>
+        <li><strong>Utvidelsen:</strong> <code>managed_schema</code> i manifestet og <code>chrome.storage.managed</code>. Verdien skrives til <code>HKLM\SOFTWARE\Policies\Microsoft\Edge\3rdparty\extensions\&lt;id&gt;\policy</code>. Merk fallgruven: Intune-ADMX-innlesing får <em>ikke</em> skrive under den stien, så dette må gjøres med et PowerShell-skript eller en Win32-app via Intune Management Extension.</li>
+        <li><strong>PC-appen:</strong> les <code>HKLM\SOFTWARE\Policies\&lt;leverandør&gt;\Skrivestotte</code> først, deretter vanlig innstilling, deretter innebygd standard.</li>
+      </ul>
+
+      <h3>Nødprosedyre: serveren har byttet adresse</h3>
+      <ol>
+        <li>Reis den nye serveren, samme API-versjon, samme signeringsnøkkel om den er intakt.</li>
+        <li>Signer ny <code>endpoints.json</code> med rotnøkkelen. Versjonsnummeret må øke.</li>
+        <li>Publiser til alle tre domener <em>og</em> til uforanderlig objektlagring med lang cache.</li>
+        <li>Pek DNS om. Med 60 sekunders TTL er de fleste klienter over innen minutter.</li>
+        <li>Ved kapret eller tapt domene: send Intune-registerskriptet til fylket som umiddelbar overstyring.</li>
+        <li>Følg fornyelsesraten i telemetrien til den er tilbake på normalnivå.</li>
+      </ol>
+      <p>Prosedyren skal <strong>øves kvartalsvis</strong> i et testmiljø, med navngitt ansvarlig, break-glass-tilgang til registrar, DNS og Key Vault, og en ferdigskrevet kundemelding. En nødplan som ikke er prøvd, er en antakelse.</p>
+    </section>
+
+    <section id="oppdatering">
+      <h2><span class="num">08</span> Oppdatering av programvare</h2>
+      <p class="lede">Her ligger den mest ubehagelige overraskelsen i hele researchen — og den bør pilottestes før vi låser arkitekturen.</p>
+
+      <div class="callout danger">
+        <span class="tag">Må verifiseres på en ekte TFK-maskin</span>
+        <p>Tre Microsoft-dokumenter <strong>motsier hverandre</strong> om hvorvidt rene Entra-tilknyttede maskiner kan tvangsinstallere utvidelser som ikke ligger i butikken. Én side sier det ikke virker uten hybrid-tilknytning; <code>ExtensionSettings</code>-siden sier det virker med Entra; <code>ExtensionInstallForcelist</code>-siden sier tvangsinstallering utenfor butikken er begrenset til Active Directory-domener. Dette avgjør om vi kan selvhoste utvidelsen i det hele tatt. <strong>Test det på én maskin i Telemark før vi bygger noe rundt det.</strong></p>
+      </div>
+
+      <h3>Nettleserutvidelsen: to veier</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>&nbsp;</th><th>Edge Add-ons-butikken</th><th>Selvhosting</th></tr></thead>
+          <tbody>
+            <tr><th>Ledetid per utgivelse</th><td>Opptil 7 arbeidsdager, også for rettelser</td><td>Umiddelbart</td></tr>
+            <tr><th>Gradvis utrulling</th><td>Finnes ikke</td><td>Vi styrer selv</td></tr>
+            <tr><th>Tilbakerulling</th><td>Finnes ikke</td><td>Mulig, men Edge nedgraderer ikke selv</td></tr>
+            <tr><th>Rekkevidde</th><td>Alle, også private maskiner</td><td>Kun administrerte maskiner — og se advarselen over</td></tr>
+            <tr><th>Bindinger</th><td>Butikkpolicy 1.2.4: oppdatering <em>kun</em> gjennom butikken</td><td>Krever <code>override_update_url: true</code> i <code>ExtensionSettings</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Anbefaling: butikken som primærkanal</strong> — den rekker private maskiner, som er halve poenget med hjelpemiddelprogramvare — kombinert med policy-styrt tvangsinstallering via Intune for skolemaskinene. Men merk at butikkpolicyen forbyr egen oppdateringsmekanisme, så valget er reelt et enten-eller. Edge poller for oppdateringer omtrent hver femte time med ±10 % jitter.</p>
+
+      <h3>Nødbremsen finnes allerede</h3>
+      <p><code>ExtensionSettings</code> har <code>minimum_version_required</code>, og Microsofts dokumentasjon er utvetydig: Edge deaktiverer utvidelser under den versjonen, <strong>også tvangsinstallerte</strong>. Det er en reell administrativ nødbrems som fylket kan trykke på via Intune i løpet av minutter — uten at vi trenger å bygge noe. Vi supplerer med et eget signert konfigurasjonsendepunkt som melder minsteversjon og funksjonsflagg, og som <strong>feiler åpent</strong> hvis det ikke er tilgjengelig.</p>
+
+      <h3>Gradvis utrulling uten server-side tilstand</h3>
+      <p>Deterministisk bøtting: <code>SHA256(install_uuid + funksjonsnavn) % 100 &lt; prosent</code>. Da holder kohorten seg stabil når vi går fra 10 % til 50 %, uten en tildelingstabell på serveren. Ringrekkefølge: internt → 1–5 % → 20 % → 50 % → alle. Behold hver nødbrems i 30 dager etter en utgivelse.</p>
+
+      <h3>PC-applikasjonene</h3>
+      <p><strong>Signert MSIX med en hostet <code>.appinstaller</code></strong> er anbefalingen — samme artefakt fungerer for Intune-flåten og for private maskiner. Nøkkelinnstillingene: <code>HoursBetweenUpdateChecks</code> (0–255, standard 24), og <code>&lt;AutomaticBackgroundTask/&gt;</code> som sjekker hver åttende time <em>også når appen ikke kjører</em> — det er den uovervåkede oppdateringsstien. Bruk 2021-navnerommet; Visual Studio genererer fortsatt 2017/2, som stille dropper <code>ShowPrompt</code>. Signering kan gjøres med Azure Artifact Signing til rundt ti dollar måneden.</p>
+      <p>Frarådet: WiX Burns selvoppdatering er i praksis ikke funksjonell, Squirrel.Windows er uten vedlikeholder, og ClickOnce mistet bakgrunnsoppdatering på moderne .NET. Om MSIX skulle vise seg umulig, er <strong>Velopack</strong> det aktive alternativet.</p>
+
+      <h3>Stemmen på CDN</h3>
+      <p>Fra P5: last modellen ned i biter på 4–8 MB med <code>Range</code>-forespørsler, verifiser hver bit mot en <strong>innebygd SHA-256-manifest</strong> — <code>fetch</code>-parameteren <code>integrity</code> kan ikke kombineres med Range-forespørsler — og lagre i Cache Storage. Kjør nedlastingen i offscreen-dokumentet, ikke i service-workeren, som dør etter 30 sekunder. Innholdsadresser URL-en (<code>voice-&lt;sha256&gt;.onnx</code>) med ett års uforanderlig cache. Kod alltid en vei tilbake for cache-bom.</p>
+    </section>
+
+    <section id="drift">
+      <h2><span class="num">09</span> Hosting og kostnad</h2>
+      <p class="lede">Valget her handler mindre om teknologi og mer om hvor mange spørsmål fylkets innkjøper må stille.</p>
+
+      <p><strong>Azure Norway East</strong> for lisensserveren og all personopplysning. Begrunnelsen er ikke teknisk overlegenhet, men friksjon: Telemark har allerede avtale med Microsoft gjennom Entra og Intune, dataene blir liggende i Norge innenfor EUs databoundary, og underleverandørlisten vår blir én linje. Vercel og Neon i EU-region er raskere å bygge på, men er amerikanske databehandlere, og da må kunden gjennom en overføringsvurdering med SCC-er — det koster uker i salgsprosessen.</p>
+      <p>Ett unntak: <strong>stemmemodellen på Cloudflare R2</strong> med EU-jurisdiksjon. Den er en offentlig fil uten personopplysninger, og R2 har ingen egressavgift. Azures egen CDN står oppført blant tjenestene som er unntatt EUs databoundary på grunn av global kantcaching — irrelevant for en modellfil, men noe å nevne i dokumentasjonen framfor å bli spurt om.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Post</th><th class="num">Anslag per måned</th><th>Merknad</th></tr></thead>
+          <tbody>
+            <tr><td>PostgreSQL Flexible Server, burstable</td><td class="num">300–450 kr</td><td>Lasten er noen tusen forespørsler i døgnet</td></tr>
+            <tr><td>Container Apps eller App Service</td><td class="num">200–400 kr</td><td>Ikke skaler til null — første forespørsel skal være rask</td></tr>
+            <tr><td>Key Vault og signering</td><td class="num">50–150 kr</td><td>Managed HSM koster vesentlig mer og trengs ikke ennå</td></tr>
+            <tr><td>R2 for stemmemodellen</td><td class="num">30–60 kr</td><td>Ingen egressavgift; 63 MB × antall førstegangsinstallasjoner</td></tr>
+            <tr><td>Kodesignering</td><td class="num">~110 kr</td><td>Azure Artifact Signing, trengs først til PC-appen</td></tr>
+            <tr><td>Tre domener og DNS</td><td class="num">~100 kr</td><td>Fordelt fra årlig avgift, tre ulike registrarer</td></tr>
+            <tr><th>Sum</th><th class="num">~800–1 300 kr</th><th>Mot lisenskostnaden for IntoWords per elev</th></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Til sammenligning: kommersielle lese- og skrivestøtteverktøy prises typisk per bruker per år. Med titusen brukere er hele infrastrukturregningen mindre enn én lisens.</p>
+    </section>
+
+    <section id="jus">
+      <h2><span class="num">10</span> Juss og anskaffelse</h2>
+      <p class="lede">Ikke juridisk rådgivning — men dette er papirene kjøperen kommer til å be om, og én designbeslutning med reell økonomisk konsekvens.</p>
+
+      <p>Rollene er klare: fylkeskommunen er <strong>behandlingsansvarlig</strong>, vi er <strong>databehandler</strong>. Databehandleravtale er lovpålagt. Bruk DFØs standardmal, som ligger i Feides kundeportal — egen avtaletekst gir forhandlingsrunder vi ikke trenger.</p>
+
+      <div class="callout">
+        <span class="tag">Designbeslutning med økonomisk konsekvens</span>
+        <p>Datatilsynets liste over behandlinger som <strong>krever</strong> personvernkonsekvensvurdering inkluderer å behandle personopplysninger for å vurdere <em>læring, mestring og trivsel</em> i skolen. Så lenge vi aldri lagrer teksten elevene leser eller skriver, og aldri lager framgangsrapporter per elev, holder vi oss sannsynligvis utenfor listen. Legger vi til et «lesefremgang»-dashbord, blir DPIA obligatorisk og salgssyklusen merkbart lengre.</p>
+        <p>Å holde all tekst på maskinen er den billigste etterlevelsesbeslutningen vi kan ta — og den er allerede tatt, siden arkitekturen er lokal-først.</p>
+      </div>
+
+      <h3>Universell utforming er et rettskrav</h3>
+      <p>Forskrift om universell utforming av IKT krever WCAG 2.1 nivå A og AA — 48 av 78 suksesskriterier — og har vært gjeldende siden 1. februar 2023. Det kreves også en <strong>tilgjengelighetserklæring</strong> publisert via uustatus.no. For et hjelpemiddel til elever med dysleksi er dette ikke en avkrysningsboks; det er selve produktløftet. Popup, ordbokboks og forslagspanel må gjennom en reell WCAG-gjennomgang, ikke en egenerklæring.</p>
+
+      <h3>Papirmappen som må ligge klar før første salg</h3>
+      <ul>
+        <li>Databehandleravtale på DFØ-mal</li>
+        <li>DPIA-støttepakke: databeskrivelse, flytdiagram, underleverandørliste, oppbevaringstider</li>
+        <li>Leverandørerklæring om informasjonssikkerhet og personvern til Feide</li>
+        <li>Tilgjengelighetserklæring registrert på uustatus.no</li>
+        <li>Forhåndssvar på KS SkoleSecs standard sikkerhetskrav</li>
+      </ul>
+      <p>Én ting til, som er ren markedsføringsverdi: <strong>Tryggere digital læring</strong> (Sikt, Udir og KS) vurderer nå informasjonssikkerhet, personvern og universell utforming for skoleverktøy og publiserer resultatet i den offentlige Læremiddelkatalogen, med første pulje i mai 2026. Det er ingen godkjenningsordning, men fravær eller svak vurdering er synlig for hver innkjøper. Vi bør stå der frivillig og tidlig. Særlig fordi Datatilsynet gjennomførte over femti brevkontroller i skolesektoren i 2025 og fortsetter med stedlige tilsyn — kjøperne er nervøse og vil ha papirene på bordet først.</p>
+    </section>
+
+    <section id="faseplan">
+      <h2><span class="num">11</span> Faseplan</h2>
+      <p class="lede">Rekkefølgen er styrt av ledetid, ikke av hva som er morsomst å bygge. Tre ting i fase 0 blokkerer alt annet.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Fase</th><th>Innhold</th><th class="num">Varighet</th><th>Blokkerer</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>L0</strong><br>Ledetid</td>
+              <td>Feide-søknad sendt. Tre domener registrert hos ulike registrarer. Nøkkelseremoni for rotnøkkel. Azure-abonnement i Norway East.</td>
+              <td class="num">1–2 uker</td>
+              <td>Alt</td>
+            </tr>
+            <tr>
+              <td><strong>L1</strong><br>Server</td>
+              <td>Datamodell, superadmin-grensesnitt, Feide-OIDC, pooloppslag med regler og lister, kvitteringssignering, <code>/v1/license/refresh</code>, revisjonslogg.</td>
+              <td class="num">3 uker</td>
+              <td>L2</td>
+            </tr>
+            <tr>
+              <td><strong>L2</strong><br>Klient</td>
+              <td>Delt lisensbibliotek: verifisering med dobbel signatur, tilstandsmaskin, høyvannsmerke, <code>chrome.alarms</code>-fornyelse, degradert modus, <code>storage.managed</code>-overstyring.</td>
+              <td class="num">2 uker</td>
+              <td>L4</td>
+            </tr>
+            <tr>
+              <td><strong>L3</strong><br>Agilitet</td>
+              <td>Signert <code>endpoints.json</code>, speil på uforanderlig lagring, backoff med jitter, Intune-skript dokumentert, nødprosedyre skrevet <em>og øvd</em>.</td>
+              <td class="num">1 uke</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>L4</strong><br>Distribusjon</td>
+              <td>Stemme flyttet til CDN (165 MB → få MB). Pilottest av selvhosting på TFK-maskin. Butikkinnsending. Minsteversjon og funksjonsflagg. Deterministisk utrulling.</td>
+              <td class="num">2 uker</td>
+              <td>Pilot</td>
+            </tr>
+            <tr>
+              <td><strong>L5</strong><br>Etterlevelse</td>
+              <td>DPA, DPIA-støttepakke, leverandørerklæring, WCAG-gjennomgang, tilgjengelighetserklæring. Pilot med 10–20 elever.</td>
+              <td class="num">2 uker</td>
+              <td>Salg</td>
+            </tr>
+            <tr>
+              <td><strong>L6</strong><br>PC-app</td>
+              <td>Samme lisensbibliotek i .NET med P-256-verifisering. MSIX og <code>.appinstaller</code>. Entra-SSO. Intune-utrulling.</td>
+              <td class="num">senere</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Den kritiske stien er <strong>L0 → L1 → L2 → L4</strong>, omtrent åtte uker til en pilot med ekte lisenshåndtering. L3 og L5 kan gå parallelt. L0 er bare noen dagers arbeid, men hvis Feide-søknaden ikke er sendt, står hele L1 og venter på noen andres saksbehandling.</p>
+    </section>
+
+    <section id="risiko">
+      <h2><span class="num">12</span> Risikoregister</h2>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>#</th><th>Risiko</th><th>Håndtering</th><th>Alvor</th></tr></thead>
+          <tbody>
+            <tr><td>R1</td><td>Selvhosting av utvidelsen virker ikke på Entra-tilknyttede maskiner (dokumentasjonen motsier seg selv)</td><td>Pilottest i L0. Butikken som primærkanal uansett.</td><td><span class="chip crit">Høy</span></td></tr>
+            <tr><td>R2</td><td>Feide-søknaden tar lengre tid enn antatt, eller attributter avslås</td><td>Send i uke 1. Be bare om <code>userid-feide</code> og <code>groups-org</code>. Entra ID som parallell vei inn.</td><td><span class="chip crit">Høy</span></td></tr>
+            <tr><td>R3</td><td>Rotnøkkel mistet eller lekket</td><td>2-av-3 på tre steder. Skriftlig gjenopprettingsprosedyre. Øves kvartalsvis.</td><td><span class="chip warn">Middels</span></td></tr>
+            <tr><td>R4</td><td>Butikkens behandlingstid blokkerer en hasterettelse</td><td>Nødbremsen er administrativ: <code>minimum_version_required</code> via Intune virker på minutter.</td><td><span class="chip warn">Middels</span></td></tr>
+            <tr><td>R5</td><td>Udokumentert størrelsesgrense i butikken avviser pakken</td><td>P5 fjerner problemet: pakken faller til noen få megabyte.</td><td><span class="chip warn">Middels</span></td></tr>
+            <tr><td>R6</td><td>Falske utestengelser fra klokkeavvik</td><td>±48 timer, aldri sperre, alltid flagg for ny nettsjekk.</td><td><span class="chip ok">Lav</span></td></tr>
+            <tr><td>R7</td><td>Personvernombudet krever DPIA</td><td>Ingen teksthenting, ingen framgangsanalyse per elev. DPIA-støttepakke klar uansett.</td><td><span class="chip ok">Lav</span></td></tr>
+            <tr><td>R8</td><td>Lisensdeling utenfor kunden</td><td>Setetak per bruker, telemetri på uvanlige mønstre. Aksepter en viss lekkasje — alternativet rammer elever.</td><td><span class="chip ok">Lav</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="neste">
+      <h2><span class="num">13</span> Fire avgjørelser jeg trenger fra deg</h2>
+      <p class="lede">Ingenting av dette krever kode først. Alle fire er beslutninger, og tre av dem har ledetid.</p>
+      <ol>
+        <li><strong>Domenenavn.</strong> Hvilke tre? De låses i utvidelsens manifest ved første utgivelse (P4), så dette er den mest tidskritiske avgjørelsen i dokumentet.</li>
+        <li><strong>Feide, Entra eller begge først.</strong> Anbefaling: Feide-søknaden sendes nå, Entra bygges når PC-appen nærmer seg.</li>
+        <li><strong>Fail open eller hard sperre etter utløp.</strong> Anbefaling: degradert modus, aldri hard sperre. Dette er et produktvalg, ikke et teknisk.</li>
+        <li><strong>Hvem eier rotnøkkelen.</strong> Tre maskinvarenøkler trenger tre personer eller tre steder — og en avklaring av om fylkeskommunen selv skal ha en av dem.</li>
+      </ol>
+      <p>Når domenene er valgt, kan L0 starte samme dag.</p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Utarbeidet for Skrivestøtte-prosjektet, Telemark fylkeskommune, 12. august 2026. Anbefalingene er bygget på gjeldende dokumentasjon fra Microsoft Learn, Sikt/Feide, Datatilsynet, Tilsynet for universell utforming av IKT, OWASP, The Update Framework og Keygen. Punktene markert som må-verifiseres i kapittel 8 og 11 er der dokumentasjonen motsier seg selv og en pilottest må avgjøre. Dette er ikke juridisk rådgivning — juss og personvern må kvalitetssikres av fylkets personvernombud.</p>
+  </footer>
+
+</div>
