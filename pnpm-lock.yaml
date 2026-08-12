@@ -50,6 +50,22 @@ importers:
         specifier: ^6.0.0
         version: 6.4.3(@types/node@26.1.2)(tsx@4.23.12)
 
+  apps/lisensserver:
+    dependencies:
+      '@skrivestotte/license-core':
+        specifier: workspace:*
+        version: link:../../packages/license-core
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
+  packages/license-core:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/tts:
     dependencies:
       '@diffusionstudio/piper-wasm':

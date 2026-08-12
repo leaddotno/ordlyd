@@ -505,7 +505,7 @@
       <div class="decision">
         <div class="dh"><span class="did">P1</span><span class="dt">E-post + lisenskode er en ekte pålogging — når koden behandles som et passord</span></div>
         <p>En e-postadresse alene er en påstand hvem som helst kan skrive. Koden er det som gjør den til et bevis: den er utdelt, hemmelig og knyttet til én lisens. Flyten blir slik du beskrev den — superadmin importerer en medlemsliste under en kunde, systemet genererer en tilfeldig sjusifret kode per adresse, og eleven logger inn med e-post + kode.</p>
-        <p>Det som gjør dette trygt, skjer på serversiden. Sju sifre er bare ti millioner kombinasjoner, så to ting er ufravikelige: <strong>ratebegrensning</strong> på innlogging (per lisens og per nett, med økende ventetid — gjetting mot tjenesten blir da et århundreprosjekt) og <strong>pepret hash i hvile</strong>. Vanlig passordhashing er ikke nok for så korte koder — uten en hemmelig nøkkel utenfor databasen (pepper i Key Vault) kan en lekket tabell knekkes på sekunder.</p>
+        <p>Det som gjør dette trygt, skjer på serversiden. Sju sifre er bare ti millioner kombinasjoner, så to ting er ufravikelige: <strong>ratebegrensning</strong> på innlogging (per lisens og per nett, med økende ventetid — gjetting mot tjenesten blir da et århundreprosjekt) og <strong>pepret hash i hvile</strong>. Vanlig passordhashing er ikke nok for så korte koder — uten en hemmelig nøkkel utenfor databasen (pepperet bor i Vercels secret-lager, aldri i Supabase) kan en lekket tabell knekkes på sekunder.</p>
         <p>Og en detalj som betyr mye for akkurat våre brukere: bare sifre er et godt valg for dyslektikere — ingen b/d- eller I/l-forveksling. Vis koden i grupper («123 4567»), tillat liming, ha en «vis koden»-knapp i stedet for prikker, og krev innloggingen bare <em>én gang per maskin</em>.</p>
         <p class="verdict">Anbefaling: behold sju sifre. Sikkerheten ligger i ratebegrensningen og pepperet, ikke i kodelengden.</p>
       </div>
@@ -546,11 +546,11 @@
       <pre class="mermaid">
 flowchart TB
   U["Elev"] --> C["Klient: Edge-utvidelse<br/>eller Windows-app"]
-  C -->|"pålogging én gang per maskin:<br/>e-post + lisenskode"| S["Lisensserver<br/>Azure Norway East"]
+  C -->|"pålogging én gang per maskin:<br/>e-post + lisenskode"| S["Lisensserver<br/>Vercel, EU-region"]
   C -.->|"påbygg senere:<br/>Feide / Entra OIDC"| S
   C -->|"POST /v1/license/refresh<br/>(døgnlig, i bakgrunnen)"| S
-  S --> DB[("PostgreSQL")]
-  S --> KV["Key Vault:<br/>signeringsnøkkel + pepper"]
+  S --> DB[("Supabase Postgres<br/>EU-region")]
+  S --> KV["Vercel secrets:<br/>signeringsnøkkel + pepper"]
   S -->|"signert kvittering, 100 dager"| C
   C --> L["Lokal cache: kvittering<br/>+ siste kjente tid"]
   L -->|"lokal verifisering hver oppstart"| C
@@ -756,13 +756,13 @@ flowchart TB
   K --> E1["lisens.domene-1.no"]
   K --> E2["reserve.domene-2.no"]
   K --> E3["reserve.domene-3.no"]
-  K -->|"godkjenner kid"| S["Signeringsnøkkel<br/>online i Key Vault"]
+  K -->|"godkjenner kid"| S["Signeringsnøkkel<br/>online hos Vercel"]
   S -->|"signerer"| T["Lisenskvitteringer"]
   C -->|"verifiserer kjeden lokalt"| T
       </pre>
 
       <h3>To nøkkelnivåer</h3>
-      <p>Rotnøkkelen er <strong>offline</strong>, fordelt som 2-av-3 på maskinvarenøkler på tre fysiske steder, og brukes bare i en skriftlig prosedyre noen få ganger i året. Den signerer én ting: listen over gyldige endepunkter og signeringsnøkler. Signeringsnøkkelen er online i Azure Key Vault, roteres kvartalsvis, og signerer kvitteringer. Klienten pinner bare rotens offentlige nøkkel.</p>
+      <p>Rotnøkkelen er <strong>offline</strong>, fordelt som 2-av-3 på maskinvarenøkler på tre fysiske steder, og brukes bare i en skriftlig prosedyre noen få ganger i året. Den signerer én ting: listen over gyldige endepunkter og signeringsnøkler. Signeringsnøkkelen er online i Vercels secret-lager, roteres kvartalsvis, og signerer kvitteringer. Klienten pinner bare rotens offentlige nøkkel.</p>
       <p>Modellen er hentet fra <a href="https://theupdateframework.github.io/specification/latest/">The Update Framework</a>, som er den eneste veletablerte spesifikasjonen med selvautentiserende nøkkelrotasjon: en ny rotversjon må signeres av terskelen både i den gamle og den nye versjonen, og klienten går gjennom versjonene i rekkefølge og nekter å gå bakover. Sigstore driver en reell småskala-instans av dette med 3-av-5 på personlige maskinvarenøkler — beviset på at det er gjennomførbart for et lite team.</p>
 
       <div class="callout">
@@ -793,7 +793,7 @@ flowchart TB
         <li>Ved kapret eller tapt domene: send Intune-registerskriptet til fylket som umiddelbar overstyring.</li>
         <li>Følg fornyelsesraten i telemetrien til den er tilbake på normalnivå.</li>
       </ol>
-      <p>Prosedyren skal <strong>øves kvartalsvis</strong> i et testmiljø, med navngitt ansvarlig, break-glass-tilgang til registrar, DNS og Key Vault, og en ferdigskrevet kundemelding. En nødplan som ikke er prøvd, er en antakelse.</p>
+      <p>Prosedyren skal <strong>øves kvartalsvis</strong> i et testmiljø, med navngitt ansvarlig, break-glass-tilgang til registrar, DNS, Vercel og Supabase, og en ferdigskrevet kundemelding. En nødplan som ikke er prøvd, er en antakelse.</p>
     </section>
 
     <section id="oppdatering">
@@ -836,22 +836,44 @@ flowchart TB
 
     <section id="drift">
       <h2><span class="num">09</span> Hosting og kostnad</h2>
-      <p class="lede">Valget her handler mindre om teknologi og mer om hvor mange spørsmål fylkets innkjøper må stille.</p>
+      <p class="lede">Avgjort: Vercel + Supabase i EU-region — valgt for pris, fart og lav driftsbyrde, med Azure Norway East som øvd exit-plan.</p>
 
-      <p><strong>Azure Norway East</strong> for lisensserveren og all personopplysning. Begrunnelsen er ikke teknisk overlegenhet, men friksjon: Telemark har allerede avtale med Microsoft gjennom Entra og Intune, dataene blir liggende i Norge innenfor EUs databoundary, og underleverandørlisten vår blir én linje. Vercel og Neon i EU-region er raskere å bygge på, men er amerikanske databehandlere, og da må kunden gjennom en overføringsvurdering med SCC-er — det koster uker i salgsprosessen.</p>
-      <p>Ett unntak: <strong>stemmemodellen på Cloudflare R2</strong> med EU-jurisdiksjon. Den er en offentlig fil uten personopplysninger, og R2 har ingen egressavgift. Azures egen CDN står oppført blant tjenestene som er unntatt EUs databoundary på grunn av global kantcaching — irrelevant for en modellfil, men noe å nevne i dokumentasjonen framfor å bli spurt om.</p>
+      <p>Non-profit-modellen tippet valget. Databasen i planen er helt vanlig PostgreSQL, og arbeidslasten — små JSON-kall, døgnlige fornyelser, Ed25519-signering — er som skapt for serverless. Det avgjørende er at arkitekturen gjør vertsvalget <strong>reversibelt</strong>: klientene stoler på signeringsnøkkelen, ikke på verten, så et bytte senere er <code>pg_dump</code>, ny deploy og en ny signert endepunktsliste. Nødplanen for «serveren flytter» i kapittel 7 er også migrasjonsplanen.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Komponent</th><th>Løsning</th></tr></thead>
+          <tbody>
+            <tr><td>API (<code>/v1/license/refresh</code>, innlogging, admin)</td><td>Vercel serverless functions, region låst til Frankfurt</td></tr>
+            <tr><td>Database</td><td>Supabase Postgres i EU-region, tilkobling via deres pooler (påkrevd med serverless)</td></tr>
+            <tr><td>Pepper og signeringsnøkkel</td><td>Vercel-secrets — <strong>utenfor</strong> databasen, det er hele poenget med pepperet</td></tr>
+            <tr><td>Stemmemodell (63 MB)</td><td>Cloudflare R2 med EU-jurisdiksjon — offentlig fil uten personopplysninger, ingen egressavgift</td></tr>
+            <tr><td><code>endpoints.json</code>-speil</td><td>Uforanderlig objektlagring på R2, som i kapittel 7</td></tr>
+            <tr><td>Opprydding og vedlikehold</td><td>Vercel Cron</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Tre regler som gjør valget forsvarlig</h3>
+      <ul>
+        <li><strong>Utvidelsen snakker aldri direkte med Supabase.</strong> Ingen anon-nøkkel i klienten, ingen Row Level Security-modell mot brukere — klienten kjenner bare vårt API. Supabase brukes som ren Postgres fra serverfunksjonene, og radsikkerhet er skrudd på uten policyer, slik at alt annet enn service-rollen er stengt ute.</li>
+        <li><strong>Ratebegrensningen trenger delt tilstand</strong> — serverless-instanser deler ikke minne. På denne skalaen holder en Postgres-tabell.</li>
+        <li><strong>Hash-i-hvile bærer personvernet:</strong> ligger e-poster og koder som peprede hasher i Supabase mens pepperet bor hos Vercel, er medlemslisten uleselig selv med full databasetilgang. Det er det som gjør amerikansk-eide underleverandører (Vercel Inc., Supabase Inc., Cloudflare) forsvarlige med SCC-er og EU-regioner — og de tre står i underleverandørlisten i DPIA-støttepakken fra dag én.</li>
+      </ul>
+
+      <h3>Exit-planen</h3>
+      <p>Utløseren er definert på forhånd: den dagen en skoleeier krever EØS-eid databehandling — eller et personvernombud avviser SCC-grunnlaget — flyttes serveren til Azure Norway East etter prosedyren i kapittel 7. Klientene merker ingenting. Merk også at Supabase' gratisnivå pauser inaktive prosjekter; produksjon skal stå på betalt nivå.</p>
 
       <div class="tablewrap">
         <table>
           <thead><tr><th>Post</th><th class="num">Anslag per måned</th><th>Merknad</th></tr></thead>
           <tbody>
-            <tr><td>PostgreSQL Flexible Server, burstable</td><td class="num">300–450 kr</td><td>Lasten er noen tusen forespørsler i døgnet</td></tr>
-            <tr><td>Container Apps eller App Service</td><td class="num">200–400 kr</td><td>Ikke skaler til null — første forespørsel skal være rask</td></tr>
-            <tr><td>Key Vault og signering</td><td class="num">50–150 kr</td><td>Managed HSM koster vesentlig mer og trengs ikke ennå</td></tr>
+            <tr><td>Supabase Pro (Postgres, EU-region)</td><td class="num">~260 kr</td><td>Gratisnivået pauser inaktive prosjekter — ikke for produksjon</td></tr>
+            <tr><td>Vercel Pro (API og admin)</td><td class="num">~210 kr</td><td>Serverless — lasten er noen tusen forespørsler i døgnet</td></tr>
             <tr><td>R2 for stemmemodellen</td><td class="num">30–60 kr</td><td>Ingen egressavgift; 63 MB × antall førstegangsinstallasjoner</td></tr>
             <tr><td>Kodesignering</td><td class="num">~110 kr</td><td>Azure Artifact Signing, trengs først til PC-appen</td></tr>
             <tr><td>Tre domener og DNS</td><td class="num">~100 kr</td><td>Fordelt fra årlig avgift, tre ulike registrarer</td></tr>
-            <tr><th>Sum</th><th class="num">~800–1 300 kr</th><th>Mot lisenskostnaden for IntoWords per elev</th></tr>
+            <tr><th>Sum</th><th class="num">~600–750 kr</th><th>Omtrent halvparten av Azure-alternativet</th></tr>
           </tbody>
         </table>
       </div>
@@ -900,7 +922,7 @@ flowchart TB
           <tbody>
             <tr>
               <td><strong>L0</strong><br>Ledetid</td>
-              <td>Tre domener registrert hos ulike registrarer. Nøkkelseremoni for rotnøkkel. Azure-abonnement i Norway East. Feide-søknaden kan sendes parallelt — den blokkerer ikke lenger noe.</td>
+              <td>Tre domener registrert hos ulike registrarer. Nøkkelseremoni for rotnøkkel. Vercel- og Supabase-prosjekter opprettet i EU-region (Frankfurt). Feide-søknaden kan sendes parallelt — den blokkerer ikke lenger noe.</td>
               <td class="num">1 uke</td>
               <td>Alt</td>
             </tr>
@@ -955,7 +977,7 @@ flowchart TB
           <thead><tr><th>#</th><th>Risiko</th><th>Håndtering</th><th>Alvor</th></tr></thead>
           <tbody>
             <tr><td>R1</td><td>Selvhosting av utvidelsen virker ikke på Entra-tilknyttede maskiner (dokumentasjonen motsier seg selv)</td><td>Pilottest i L0. Butikken som primærkanal uansett.</td><td><span class="chip crit">Høy</span></td></tr>
-            <tr><td>R2</td><td>Databaselekkasje avslører medlemsliste eller koder</td><td>Pepret hash i hvile (nøkkel i Key Vault), maskert visning, rå IP maks 30 dager. En lekkasje skal ikke gi en leselig liste.</td><td><span class="chip warn">Middels</span></td></tr>
+            <tr><td>R2</td><td>Databaselekkasje avslører medlemsliste eller koder</td><td>Pepret hash i hvile (pepperet hos Vercel, utenfor databasen), maskert visning, IP kun som pseudonymisert nettnøkkel. En lekkasje skal ikke gi en leselig liste.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R3</td><td>Rotnøkkel mistet eller lekket</td><td>2-av-3 på tre steder. Skriftlig gjenopprettingsprosedyre. Øves kvartalsvis.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R4</td><td>Butikkens behandlingstid blokkerer en hasterettelse</td><td>Nødbremsen er administrativ: <code>minimum_version_required</code> via Intune virker på minutter.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R5</td><td>Udokumentert størrelsesgrense i butikken avviser pakken</td><td>P5 fjerner problemet: pakken faller til noen få megabyte.</td><td><span class="chip warn">Middels</span></td></tr>
