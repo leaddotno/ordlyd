@@ -39,6 +39,7 @@ const NO_SPLIT_TAILS = [
   "ift.", "iflg.", "jf.", "m.m.", "m.a.o.", "o.l.", "nr.", "tlf.", "evt.",
   "ang.", "vedr.", "inkl.", "ekskl.", "mill.", "mrd.", "stk.", "etg.",
   "f.o.m.", "t.o.m.", "kl.", "kap.", "pkt.", "st.", "s.", "co.", "mv.",
+  "hhv.", "vha.", "avd.",
 ];
 
 function endsWithAbbreviation(text: string, dotIndex: number): boolean {

@@ -46,6 +46,11 @@ const ABBREVIATIONS: Record<string, string> = {
   "t.o.m.": "til og med",
   "kl.": "klokka",
   "mvh": "med vennlig hilsen",
+  "kap.": "kapittel",
+  "pkt.": "punkt",
+  "hhv.": "henholdsvis",
+  "vha.": "ved hjelp av",
+  "avd.": "avdeling",
 };
 
 const MONTHS = [
@@ -79,10 +84,22 @@ function escapeForRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Oppslag på både «f.eks.» og «f.eks» — folk sløyfer ofte det avsluttende
+ * punktumet, og da skal forkortelsen likevel leses ut.
+ */
+const ABBREV_LOOKUP = new Map<string, string>();
+for (const [key, value] of Object.entries(ABBREVIATIONS)) {
+  const lower = key.toLowerCase();
+  ABBREV_LOOKUP.set(lower, value);
+  ABBREV_LOOKUP.set(lower.replace(/\.$/, ""), value);
+}
+
 const ABBREV_REGEX = new RegExp(
-  `(?<![\\p{L}\\p{N}])(${Object.keys(ABBREVIATIONS)
-    .sort((a, b) => b.length - a.length) // lengste først («f.o.m.» før «f.eks.»-kollisjoner)
-    .map(escapeForRegex)
+  `(?<![\\p{L}\\p{N}.])(${Object.keys(ABBREVIATIONS)
+    .map((k) => k.toLowerCase().replace(/\.$/, "")) // stamme uten sluttpunktum
+    .sort((a, b) => b.length - a.length) // lengste først («f.o.m.» før «f.»-kollisjoner)
+    .map((stem) => `${escapeForRegex(stem)}\\.?`)
     .join("|")})(?![\\p{L}\\p{N}])`,
   "giu",
 );
@@ -91,19 +108,23 @@ export function normalizeForSpeech(text: string): string {
   let s = text;
 
   // Forkortelser → fulle ord
-  s = s.replace(ABBREV_REGEX, (m) => ABBREVIATIONS[m.toLowerCase()] ?? m);
+  s = s.replace(ABBREV_REGEX, (m) => ABBREV_LOOKUP.get(m.toLowerCase()) ?? m);
 
-  // Dato dd.mm.yyyy → «17. mai 2026» (månedsnavn leses alltid riktig)
-  s = s.replace(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g, (m, d, mnd, y) => {
+  // Dato dd.mm.yyyy → «17. mai 2026» (månedsnavn leses alltid riktig).
+  // Tosifret årstall godtas også («17.05.26»).
+  s = s.replace(/\b(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})\b/g, (m, d, mnd, y) => {
+    const day = Number(d);
     const mi = Number(mnd);
-    return mi >= 1 && mi <= 12 ? `${Number(d)}. ${MONTHS[mi - 1]} ${y}` : m;
+    if (day < 1 || day > 31 || mi < 1 || mi > 12) return m;
+    return `${day}. ${MONTHS[mi - 1]} ${y}`;
   });
 
   // Klokkeslett 14:30 → «14 30» (leses «fjorten tretti»)
   s = s.replace(/\b(\d{1,2}):(\d{2})\b/g, "$1 $2");
 
-  // Tusenskille med punktum: 2.500 → 2500 (ellers leses det som desimaltall)
-  s = s.replace(/\b(\d{1,3})\.(\d{3})(?!\d|\.\d)\b/g, "$1$2");
+  // Tusenskille med punktum: 2.500 → 2500, 2.500.000 → 2500000
+  // (ellers leses gruppene som desimaltall)
+  s = s.replace(/\b\d{1,3}(?:\.\d{3})+\b/g, (m) => m.replace(/\./g, ""));
 
   // Enheter og symboler
   s = s.replace(/\bkm\/t\b/gi, "kilometer i timen");
