@@ -427,10 +427,10 @@
   <header class="masthead">
     <p class="eyebrow">Skrivestøtte · fase 2 · arkitekturnotat</p>
     <h1>Lisensserver som tåler å være utilgjengelig</h1>
-    <p class="standfirst">Én lisensserver for alle produktene våre — nettleserutvidelsen i dag, PC-applikasjonene senere. Bygget rundt et krav som snur den vanlige designen på hodet: en elev som ikke får kontakt med serveren skal ikke merke det.</p>
+    <p class="standfirst">Én lisensserver for alle produktene våre — nettleserutvidelsen i dag, PC-applikasjonene senere. Verktøyet deles ut gratis til alle med lese- og skrivevansker; lisensen er et kontroll- og stengeverktøy, ikke en betalingsmur. Og designet er bygget rundt et krav som snur det vanlige på hodet: en elev som ikke får kontakt med serveren skal ikke merke det.</p>
     <div class="meta">
-      <span>Utarbeidet 12. august 2026</span>
-      <span>Status: forslag til beslutning</span>
+      <span>Utarbeidet 12. august 2026 · revidert etter avklart lisensmodell</span>
+      <span>Modell: gratis utdeling, symbolsk pris for foreninger og kommuner</span>
       <span>Første kunde: Telemark fylkeskommune</span>
     </div>
   </header>
@@ -470,6 +470,7 @@
         <li><a href="#jus"><span class="n">10</span><span>Juss og anskaffelse</span></a></li>
         <li><a href="#faseplan"><span class="n">11</span><span>Faseplan</span></a></li>
         <li><a href="#risiko"><span class="n">12</span><span>Risikoregister</span></a></li>
+        <li><a href="#neste"><span class="n">13</span><span>Avgjørelser</span></a></li>
       </ol>
     </nav>
   </aside>
@@ -484,42 +485,43 @@
 
       <p>Fordi tilliten ligger i nøkkelen og ikke i adressen, løser det samme grepet nødsituasjonen din: om serveren flytter til ny IP, nytt domene eller ny leverandør, henter klienten en <strong>signert endepunktsliste</strong> og følger den. En kapret DNS kan sende klienten til en falsk server, men den falske serveren kan ikke signere en gyldig kvittering, og klienten beholder da simpelthen den den har.</p>
 
-      <p>Tre ting i researchen endrer premissene dine, og de er verdt å lese før faseplanen:</p>
+      <p>Lisensmodellen er avklart: verktøyet er i praksis non-profit, og lisensens jobb er å gi oversikt over bruken og en mulighet til å stenge kontoer som misbrukes — ikke å hindre enhver tenkelig omgåelse. Det forenkler planen på ett stort punkt og skjerper den på to:</p>
       <ul>
-        <li><strong>«E-post i pool» kan ikke være innlogging.</strong> En e-postadresse er en påstand, ikke et bevis — hvem som helst kan skrive <code>elev@telemarkfylke.no</code>. Poolen er riktig som <em>tilgangsliste</em>, men identiteten må komme fra Feide eller Entra ID.</li>
-        <li><strong>Feide er den forventede standarden</strong> i norsk skole, gratis for tjenesteleverandører — og søknadsprosessen har lang ledetid. Den bør sendes i uke 1, ikke i uke 20.</li>
-        <li><strong>Reservedomenene må bestemmes før første utgivelse.</strong> MV3 låser hvilke adresser utvidelsen får kontakte i manifestet. Et domene du ikke listet opp på forhånd, kan du ikke bytte til i en krise uten en ny butikkgodkjenning som tar opptil sju arbeidsdager.</li>
+        <li><strong>E-post + lisenskode blir primærpåloggingen.</strong> En e-postadresse alene er en påstand hvem som helst kan skrive; koden er det som gjør den til et bevis. Det holder — forutsatt at koden behandles som et passord på serversiden: tilfeldig generert, aldri lagret i klartekst, og med ratebegrensning på innlogging. Feide og Entra ID bygges som pluggbare påbygg, ikke som fundament, og er ikke lenger på kritisk sti.</li>
+        <li><strong>Medlemslisten er det mest sensitive vi rører.</strong> En liste over Dysleksi Norges medlemmer forteller i seg selv at personene har dysleksi — en opplysning i GDPRs særlige kategori. Designet må behandle selve listen som det følsomme objektet: minimal lagring, kort logglevetid, helst hashet i hvile.</li>
+        <li><strong>Reservedomenene må fortsatt bestemmes før første utgivelse.</strong> MV3 låser hvilke adresser utvidelsen får kontakte i manifestet. Et domene du ikke listet opp på forhånd, kan du ikke bytte til i en krise uten en ny butikkgodkjenning som tar opptil sju arbeidsdager.</li>
       </ul>
 
       <div class="callout">
-        <span class="tag">Anbefalt grunnprinsipp</span>
-        <p><strong>Fail open, ikke fail closed.</strong> Dette er hjelpemiddelprogramvare for elever med dysleksi. En lisenssjekk som slår ut opplesingen midt i en prøve er en verre feil enn en lisens som lever noen uker for lenge. Håndhevingen som faktisk betyr noe er administrativ — fylket fjerner utvidelsen via Intune når avtalen tar slutt — ikke en sperre som rammer eleven.</p>
+        <span class="tag">Avgjort grunnprinsipp</span>
+        <p><strong>Fail open, ikke fail closed.</strong> Dette er hjelpemiddelprogramvare for elever med dysleksi, delt ut gratis. En lisenssjekk som slår ut opplesingen midt i en prøve er en verre feil enn en lisens som lever noen uker for lenge. Håndhevingen er å <em>stenge kontoer</em> som misbrukes — ved neste fornyelse mister de kvitteringen — ikke en sperre som kan ramme en elev som tilfeldigvis er offline.</p>
       </div>
     </section>
 
     <section id="premisser">
       <h2><span class="num">02</span> Fem premisser å avklare</h2>
-      <p class="lede">Disse fem valgene bestemmer arkitekturen. Alle har en anbefaling, men de er dine å ta.</p>
+      <p class="lede">Disse fem valgene bestemmer arkitekturen — oppdatert etter den avklarte lisensmodellen.</p>
 
       <div class="decision">
-        <div class="dh"><span class="did">P1</span><span class="dt">Identitet må skilles fra lisens</span></div>
-        <p>Slik du beskrev det, gjør e-postadressen to jobber samtidig: den beviser hvem du er, og den avgjør hva du får bruke. Den kan bare gjøre den siste. Riktig mønster er at brukeren logger inn med <strong>OIDC</strong> hos Feide eller Entra ID, som gir en kryptografisk verifisert identitet, og at vi <em>deretter</em> slår identiteten opp i kundens lisenspool.</p>
-        <p>Praktisk konsekvens: pool-oppføringer lagres med <strong>utsteder-kvalifisert nøkkel</strong> — <code>feide:jk@telemarkfylke.no</code> eller <code>entra:{tenant}/{objectId}</code> — og e-postadressen blir kun visningsinformasjon. Microsoft er tydelig på at e-postpåstanden «isn't guaranteed to be correct and is mutable over time», så den skal aldri være autorisasjonsnøkkelen.</p>
-        <p class="verdict">Anbefaling: behold e-postlisten som administrasjonsgrensesnitt for superadmin, men autoriser på verifisert identitet.</p>
+        <div class="dh"><span class="did">P1</span><span class="dt">E-post + lisenskode er en ekte pålogging — når koden behandles som et passord</span></div>
+        <p>En e-postadresse alene er en påstand hvem som helst kan skrive. Koden er det som gjør den til et bevis: den er utdelt, hemmelig og knyttet til én lisens. Flyten blir slik du beskrev den — superadmin importerer en medlemsliste under en kunde, systemet genererer en tilfeldig sjusifret kode per adresse, og eleven logger inn med e-post + kode.</p>
+        <p>Det som gjør dette trygt, skjer på serversiden. Sju sifre er bare ti millioner kombinasjoner, så to ting er ufravikelige: <strong>ratebegrensning</strong> på innlogging (per lisens og per nett, med økende ventetid — gjetting mot tjenesten blir da et århundreprosjekt) og <strong>pepret hash i hvile</strong>. Vanlig passordhashing er ikke nok for så korte koder — uten en hemmelig nøkkel utenfor databasen (pepper i Key Vault) kan en lekket tabell knekkes på sekunder.</p>
+        <p>Og en detalj som betyr mye for akkurat våre brukere: bare sifre er et godt valg for dyslektikere — ingen b/d- eller I/l-forveksling. Vis koden i grupper («123 4567»), tillat liming, ha en «vis koden»-knapp i stedet for prikker, og krev innloggingen bare <em>én gang per maskin</em>.</p>
+        <p class="verdict">Anbefaling: behold sju sifre. Sikkerheten ligger i ratebegrensningen og pepperet, ikke i kodelengden.</p>
       </div>
 
       <div class="decision">
-        <div class="dh"><span class="did">P2</span><span class="dt">Feide først, Entra ID som nummer to</span></div>
-        <p>Feide er identitetsføderasjonen for norsk utdanning, drevet av Sikt, med over 1,3 millioner brukere og i bruk hos fylkeskommunene for videregående. Det er <strong>gratis</strong> å være tjenesteleverandør. For en kjøper i skolesektoren er Feide-integrasjon nærmest en forventning, og det gir oss to attributter som er gull for lisensiering: <code>eduPersonAffiliation</code> (elev eller ansatt) og <code>schacHomeOrganization</code> (hvilken skoleeier).</p>
-        <p>Den administrative delen er den lange stanga: søknad til Sikt, registrering i <code>kunde.feide.no</code>, <strong>begrunnelse for hvert attributt vi ber om</strong>, en leverandørerklæring om informasjonssikkerhet og personvern, og databehandleravtale — og til slutt må Telemark selv aktivere tjenesten. Entra ID kommer som nummer to, primært fordi PC-applikasjonene trenger stille SSO på Intune-administrerte maskiner.</p>
-        <p class="verdict">Anbefaling: send Feide-søknaden i uke 1. Teknisk integrasjon kan bygges parallelt.</p>
+        <div class="dh"><span class="did">P2</span><span class="dt">Feide og Entra ID som påbygg — kontrakten bygges nå, koblingen senere</span></div>
+        <p>Du vil ha åpning for Feide og Intune uten å gjøre dem til fundament. Ett grep gjør det billig: alle identiteter i systemet lagres <strong>utsteder-kvalifisert</strong> fra dag én — <code>code:…</code> for lisenskode-pålogging, senere <code>feide:…</code> og <code>entra:…</code>. Pooler, kvitteringer og revisjonslogg bryr seg aldri om <em>hvordan</em> noen logget inn, bare om det verifiserte subjektet.</p>
+        <p>Da er en fremtidig Feide-kobling en ny innloggingsvei, ikke en ombygging: når en fylkeskommune vil ha SSO, kobles OIDC på, og deres pool fylles av en regel (<code>affiliation = student</code>) i stedet for en liste. Feide er identitetsføderasjonen for norsk utdanning (Sikt, over 1,3 millioner brukere), gratis for tjenesteleverandører — søknaden kan sendes når som helst, men den blokkerer ikke lenger noe.</p>
+        <p class="verdict">Anbefaling: bygg den utsteder-kvalifiserte kontrakten i L1. Selve OIDC-integrasjonene venter til en skoleeier ber om dem.</p>
       </div>
 
       <div class="decision">
-        <div class="dh"><span class="did">P3</span><span class="dt">Regelbaserte pooler, ikke bare e-postlister</span></div>
-        <p>Telemark har i størrelsesorden titusen elever og ansatte. En pool som vedlikeholdes adresse for adresse blir utdatert i august hvert år og genererer supporthenvendelser hele høsten. Løsningen er at en pool kan inneholde <strong>tre typer oppføringer</strong>: eksplisitte identiteter, domenemønster (<code>*@telemarkfylke.no</code>), og regler over verifiserte påstander (<code>utsteder = Telemarks Feide-realm OG affiliation = student</code>).</p>
-        <p>Regelvarianten er også den mest personvernvennlige: vi trenger ikke lagre en liste over hvilke elever som har dysleksi. Det er en betydelig fordel når fylkets personvernombud leser dokumentasjonen.</p>
-        <p class="verdict">Anbefaling: bygg alle tre. Superadmin velger per kunde. Regel er standard, liste er unntaket.</p>
+        <div class="dh"><span class="did">P3</span><span class="dt">Lagre mindre enn du tror du trenger</span></div>
+        <p>Kravet ditt er riktig og bør spikres som arkitekturregel: serveren kjenner <strong>e-post, kodehash, kunde og status</strong> — ikke navn, ikke klasse, ikke fødselsdato, ikke hvilke funksjoner eleven bruker. Innstillingene (skriveekko av/på, hastighet, tema) blir liggende lokalt i nettleseren slik de gjør i dag. Serveren skal aldri kunne svare på «hvordan bruker denne eleven verktøyet».</p>
+        <p>Ett hakk strengere er verdt å vurdere for foreningslister: lagre selve e-posten som <strong>pepret hash</strong> med en maskert visningsvariant (<code>j***@domene.no</code>) i adminpanelet. Innlogging og support fungerer fortsatt — brukeren oppgir e-posten sin, vi hasher og slår opp. Prisen er at kodelisten bare kan eksporteres i importøyeblikket; mistede koder erstattes med nye i stedet for å slås opp.</p>
+        <p class="verdict">Anbefaling: klartekst e-post er akseptabelt; hash i hvile er anbefalt der listen i seg selv er sensitiv (kap. 10).</p>
       </div>
 
       <div class="decision">
@@ -543,19 +545,19 @@
 
       <pre class="mermaid">
 flowchart TB
-  U["Elev eller ansatt"] --> C["Klient: Edge-utvidelse<br/>eller Windows-app"]
-  C -->|"OIDC-innlogging"| I["Feide eller Entra ID"]
-  I -->|"verifisert identitet"| C
-  C -->|"POST /v1/license/refresh"| S["Lisensserver<br/>Azure Norway East"]
+  U["Elev"] --> C["Klient: Edge-utvidelse<br/>eller Windows-app"]
+  C -->|"pålogging én gang per maskin:<br/>e-post + lisenskode"| S["Lisensserver<br/>Azure Norway East"]
+  C -.->|"påbygg senere:<br/>Feide / Entra OIDC"| S
+  C -->|"POST /v1/license/refresh<br/>(døgnlig, i bakgrunnen)"| S
   S --> DB[("PostgreSQL")]
-  S --> KV["Key Vault:<br/>signeringsnøkkel"]
+  S --> KV["Key Vault:<br/>signeringsnøkkel + pepper"]
   S -->|"signert kvittering, 100 dager"| C
   C --> L["Lokal cache: kvittering<br/>+ siste kjente tid"]
   L -->|"lokal verifisering hver oppstart"| C
   C -.->|"engangs, ved første oppstart"| CDN["CDN: stemmemodell 63 MB"]
       </pre>
 
-      <p>Serveren har fire ansvarsområder og ikke mer: den autentiserer via OIDC, den slår opp i lisenspoolen, den signerer kvitteringer, og den publiserer signert konfigurasjon (minsteversjon, funksjonsflagg, endepunktsliste). Alt annet — talesyntese, ordbok, stavekontroll — forblir lokalt på maskinen, slik det er i dag.</p>
+      <p>Serveren har fire ansvarsområder og ikke mer: den verifiserer påloggingen (e-post + lisenskode nå, Feide/Entra senere), den slår opp i lisenspoolen, den signerer kvitteringer, og den publiserer signert konfigurasjon (minsteversjon, funksjonsflagg, endepunktsliste). Alt annet — talesyntese, ordbok, stavekontroll — forblir lokalt på maskinen, slik det er i dag.</p>
 
       <p>Det gir en viktig egenskap: <strong>serveren er aldri på den kritiske stien</strong>. Ingen bruker venter på den. Fornyelse skjer i bakgrunnen via <code>chrome.alarms</code> i utvidelsen, som er det eneste som overlever at MV3 dreper service-workeren etter 30 sekunder uten aktivitet.</p>
 
@@ -574,12 +576,13 @@ flowchart TB
           </thead>
           <tbody>
             <tr><td><code>tenants</code></td><td>Kunde: navn, org.nr., status, gyldig fra/til, kontaktperson, dato for signert databehandleravtale</td><td>Superadmin oppretter</td></tr>
-            <tr><td><code>identity_providers</code></td><td>Per kunde: Feide-realm, Entra <code>tid</code>, eller «magisk lenke»</td><td>Avgjør hvilke utstedere som godtas for kunden</td></tr>
+            <tr><td><code>identity_providers</code></td><td>Per kunde: lisenskode (standard), senere Feide-realm eller Entra <code>tid</code></td><td>Avgjør hvilke påloggingsveier som godtas for kunden</td></tr>
             <tr><td><code>license_pools</code></td><td>Navn, status, maks seter, gyldighetsperiode, hvilke produkter og funksjoner poolen gir</td><td>En kunde kan ha flere, f.eks. elever og ansatte</td></tr>
-            <tr><td><code>pool_rules</code></td><td>Regel over verifiserte påstander: <code>affiliation = student</code></td><td>Anbefalt standard (P3)</td></tr>
-            <tr><td><code>pool_entries</code></td><td>Eksplisitte identiteter og domenemønstre, med e-post som visningsnavn</td><td>Ditt e-postpool-krav</td></tr>
+            <tr><td><code>pool_rules</code></td><td>Regel over verifiserte påstander: <code>affiliation = student</code></td><td>Tas i bruk når Feide-påbygget kommer (P2)</td></tr>
+            <tr><td><code>pool_entries</code></td><td>E-post (evt. pepret hash), kodehash, status, sist brukt</td><td>Én rad = én lisens = én bruker</td></tr>
             <tr><td><code>deny_entries</code></td><td>Eksplisitt utestenging som slår regler</td><td>Nødbrems for enkeltbrukere</td></tr>
             <tr><td><code>installs</code></td><td>Tilfeldig <code>install_uuid</code>, produkt, versjon, sist sett, plattform</td><td>Ingen maskinvare-fingeravtrykk — se under</td></tr>
+            <tr><td><code>usage_counters</code></td><td>Aggregert per lisens per døgn: aktive installasjoner, antall ulike nett</td><td>Misbruksdeteksjon uten varig IP-lagring — se under</td></tr>
             <tr><td><code>receipts</code></td><td>Utstedte kvitteringer: id, subjekt, <code>kid</code>, utstedt, utløper</td><td>Grunnlag for revisjon og tilbakekalling</td></tr>
             <tr><td><code>signing_keys</code></td><td><code>kid</code>, algoritme, offentlig nøkkel, status, gyldighet</td><td>Muliggjør rotasjon uten å bryte klienter</td></tr>
             <tr><td><code>audit_log</code></td><td>Append-only: hvem gjorde hva, når</td><td>Kjøper kommer til å spørre om dette</td></tr>
@@ -589,15 +592,20 @@ flowchart TB
 
       <h3>Ingen maskinvare-fingeravtrykk</h3>
       <p>Det er fristende å binde en lisens til maskinen. Ikke gjør det. Et maskinvare-fingeravtrykk er personopplysning under GDPR, krever eget behandlingsgrunnlag, og lesing av identifikatorer fra terminalutstyr faller inn under ekomdirektivets artikkel 5(3) med mindre det er «strengt nødvendig». I tillegg brekker det hver gang skolen reinstallerer en maskin.</p>
-      <p>Bruk i stedet en <strong>tilfeldig, klientgenerert <code>install_uuid</code></strong> pluss den fødererte bruker-IDen som setenhet. Setetelling per bruker er både riktigere og lettere å forsvare. Vi lagrer <code>install_uuid</code>, <code>tenant</code>, subjekt og <code>last_seen</code> — ikke maskinnavn, ikke serienummer, ikke IP-logg.</p>
+      <p>Bruk i stedet en <strong>tilfeldig, klientgenerert <code>install_uuid</code></strong> pluss lisensen som setenhet. Vi lagrer <code>install_uuid</code>, kunde, lisens og <code>last_seen</code> — ikke maskinnavn og ikke serienummer.</p>
 
-      <h3>Superadmin-flyten</h3>
+      <h3>Misbruksdeteksjon uten overvåking</h3>
+      <p>Modellen er raus med vilje: en elev skal kunne bruke samme lisens hjemme og på skolen, så flere installasjoner per lisens er normalt. Det vi ser etter er en kode som er <em>spredd på nettet</em> — og det synes i to tall: antall aktive installasjoner per lisens, og hvor mange ulike nettverk fornyelsene kommer fra.</p>
+      <p>Grepet som gjør dette personvernvennlig: IP-adressen brukes i beregningen, men lagres ikke varig. Ved hver fornyelse oppdaterer serveren et <strong>aggregert døgntall</strong> per lisens (aktive installasjoner, antall ulike nett), og rå IP beholdes bare i sikkerhetslogg med kort levetid, maks 30 dager. Terskelverdier — si flere enn åtte aktive installasjoner, eller fornyelser fra svært mange nett samme døgn — flagger lisensen i superadmin-panelet. Så avgjør et menneske: stenge, eller gi rette eier ny kode. Ingen automatisk utestengelse.</p>
+
+      <h3>Superadmin-flyten: fra medlemsliste til 5 000 lisenser</h3>
       <ol>
-        <li>Opprett kunde, registrer org.nr. og gyldighetsperiode.</li>
-        <li>Knytt identitetsleverandør: Feide-realm og/eller Entra-tenant.</li>
-        <li>Opprett pool, velg produkter og funksjoner, sett setetak og utløp.</li>
-        <li>Fyll poolen: regel (anbefalt), CSV-import av e-postadresser, eller domenemønster.</li>
-        <li>Følg bruk: aktive seter, siste 30 dagers unike brukere, klientversjoner i felt.</li>
+        <li>Opprett kunden «Dysleksi Norge», registrer avtale og gyldighetsperiode.</li>
+        <li>Opprett pool, velg produkter og funksjoner, sett utløp.</li>
+        <li>Importer CSV med e-postadresser. Systemet genererer en tilfeldig sjusifret kode per adresse.</li>
+        <li>Eksporter e-post + kode som CSV <strong>i importøyeblikket</strong> — det er foreningen som deler ut kodene til medlemmene sine, ikke vi. Da slipper vi direkte kontakt med medlemsregisteret, og serveren trenger aldri lagre kodene i klartekst.</li>
+        <li>Følg bruk per kunde: aktive lisenser, installasjoner per lisens, klientversjoner i felt.</li>
+        <li>Ved misbruk: steng kontoen (én knapp) — neste fornyelse avslås — eller generer ny kode til rette eier.</li>
       </ol>
       <p>Superadmin-innlogging skal ha <strong>passkey eller maskinvarenøkkel</strong>, ikke passord. Kontoen kan endre hvem som har tilgang til programvare for tusenvis av elever.</p>
     </section>
@@ -610,8 +618,8 @@ flowchart TB
   "v": 1,
   "kid": "sk-2026-08",
   "iss": "https://lisens.skrivestotte.no",
-  "sub": "feide:jk@telemarkfylke.no",
-  "tenant": "telemark-fk",
+  "sub": "code:1b9f42…",
+  "tenant": "dysleksi-norge",
   "install": "9f2c1a7e-…",
   "products": {
     "edge-extension": { "features": ["tts", "ordbok", "stavekontroll", "prediksjon"] },
@@ -625,6 +633,9 @@ flowchart TB
   "endpointsVer": 7,
   "revoked": ["sk-2025-11"]
 }</code></pre>
+
+      <h3>Fra kode til kvittering — eleven logger inn én gang</h3>
+      <p>Eleven skriver e-post og kode i utvidelsens popup <em>én gang per maskin</em>. Serveren verifiserer, registrerer installasjonen og svarer med kvitteringen pluss en installasjonshemmelighet. Alle senere fornyelser autentiseres med installasjonshemmeligheten i bakgrunnen — koden lagres aldri på klienten, og eleven ser aldri en innloggingsskjerm igjen. Stenges kontoen, avslås neste fornyelse, og klienten går i degradert modus når kvitteringen løper ut.</p>
 
       <h3>Dobbel signatur — én av funnene som overrasket meg</h3>
       <p>Ed25519 er det riktige valget: kort, rask, ingen algoritmeforvirring. WebCrypto har hatt det påskrudd som standard siden Chromium 137 i mai 2025, så utvidelsen er dekket. Men <strong>.NET har fortsatt ikke Ed25519 innebygd</strong> — API-forslaget står oppført mot .NET 11. PC-applikasjonen ville altså trengt et tredjepartsbibliotek for kryptografi, som er nøyaktig det stedet man ikke vil ha ekstra avhengigheter.</p>
@@ -710,7 +721,7 @@ flowchart TB
               <td>Dager</td>
             </tr>
             <tr>
-              <td>Bruker fjernet fra poolen</td>
+              <td>Konto stengt for misbruk eller fjernet fra poolen</td>
               <td>Neste fornyelse avslås → degradert ved utløp</td>
               <td><span class="chip warn">Banner</span></td>
               <td>≤ 100 dager</td>
@@ -851,7 +862,12 @@ flowchart TB
       <h2><span class="num">10</span> Juss og anskaffelse</h2>
       <p class="lede">Ikke juridisk rådgivning — men dette er papirene kjøperen kommer til å be om, og én designbeslutning med reell økonomisk konsekvens.</p>
 
-      <p>Rollene er klare: fylkeskommunen er <strong>behandlingsansvarlig</strong>, vi er <strong>databehandler</strong>. Databehandleravtale er lovpålagt. Bruk DFØs standardmal, som ligger i Feides kundeportal — egen avtaletekst gir forhandlingsrunder vi ikke trenger.</p>
+      <p>Rollene skifter med kanalen. Overfor en skoleeier er fylkeskommunen <strong>behandlingsansvarlig</strong> og vi <strong>databehandler</strong> — databehandleravtale er lovpålagt, og DFØs standardmal sparer forhandlingsrunder. Men når verktøyet deles ut til privatpersoner via en forening, er vi selv behandlingsansvarlig for lisensregisteret, med eget grunnlag og egen personvernerklæring. Begge hattene må dokumenteres.</p>
+
+      <div class="callout danger">
+        <span class="tag">Medlemslisten er i seg selv en helseopplysning</span>
+        <p>En liste over Dysleksi Norges medlemmer forteller at personene på den har dysleksi — det er en opplysning i GDPRs særlige kategori, uansett hvor uskyldige feltene ser ut. Konsekvensene for designet: avtalen med foreningen må avklare deres grunnlag for å dele listen (typisk medlemmenes samtykke), vi lagrer minst mulig og helst hashet i hvile slik at en databaselekkasje ikke gir en leselig liste, rå IP lever maks 30 dager — og det er foreningen som deler ut kodene, slik at vi aldri kontakter medlemmene direkte.</p>
+      </div>
 
       <div class="callout">
         <span class="tag">Designbeslutning med økonomisk konsekvens</span>
@@ -864,9 +880,10 @@ flowchart TB
 
       <h3>Papirmappen som må ligge klar før første salg</h3>
       <ul>
-        <li>Databehandleravtale på DFØ-mal</li>
+        <li>Avtale med hver forening om grunnlaget for å dele medlemslisten, og personvernerklæring for direktebrukere</li>
+        <li>Databehandleravtale på DFØ-mal for skoleeiere</li>
         <li>DPIA-støttepakke: databeskrivelse, flytdiagram, underleverandørliste, oppbevaringstider</li>
-        <li>Leverandørerklæring om informasjonssikkerhet og personvern til Feide</li>
+        <li>Leverandørerklæring til Feide — først når SSO-påbygget bygges</li>
         <li>Tilgjengelighetserklæring registrert på uustatus.no</li>
         <li>Forhåndssvar på KS SkoleSecs standard sikkerhetskrav</li>
       </ul>
@@ -883,19 +900,19 @@ flowchart TB
           <tbody>
             <tr>
               <td><strong>L0</strong><br>Ledetid</td>
-              <td>Feide-søknad sendt. Tre domener registrert hos ulike registrarer. Nøkkelseremoni for rotnøkkel. Azure-abonnement i Norway East.</td>
-              <td class="num">1–2 uker</td>
+              <td>Tre domener registrert hos ulike registrarer. Nøkkelseremoni for rotnøkkel. Azure-abonnement i Norway East. Feide-søknaden kan sendes parallelt — den blokkerer ikke lenger noe.</td>
+              <td class="num">1 uke</td>
               <td>Alt</td>
             </tr>
             <tr>
               <td><strong>L1</strong><br>Server</td>
-              <td>Datamodell, superadmin-grensesnitt, Feide-OIDC, pooloppslag med regler og lister, kvitteringssignering, <code>/v1/license/refresh</code>, revisjonslogg.</td>
+              <td>Datamodell, superadmin-grensesnitt med passkey, CSV-import med kodegenerering og engangs-eksport, pålogging e-post + kode (pepret hash, ratebegrensning), kvitteringssignering, <code>/v1/license/refresh</code>, kontostenging, aggregerte brukstall, revisjonslogg.</td>
               <td class="num">3 uker</td>
               <td>L2</td>
             </tr>
             <tr>
               <td><strong>L2</strong><br>Klient</td>
-              <td>Delt lisensbibliotek: verifisering med dobbel signatur, tilstandsmaskin, høyvannsmerke, <code>chrome.alarms</code>-fornyelse, degradert modus, <code>storage.managed</code>-overstyring.</td>
+              <td>Delt lisensbibliotek: innlogging i popup (én gang per maskin), verifisering med dobbel signatur, tilstandsmaskin, høyvannsmerke, <code>chrome.alarms</code>-fornyelse, degradert modus, <code>storage.managed</code>-overstyring.</td>
               <td class="num">2 uker</td>
               <td>L4</td>
             </tr>
@@ -913,13 +930,13 @@ flowchart TB
             </tr>
             <tr>
               <td><strong>L5</strong><br>Etterlevelse</td>
-              <td>DPA, DPIA-støttepakke, leverandørerklæring, WCAG-gjennomgang, tilgjengelighetserklæring. Pilot med 10–20 elever.</td>
+              <td>Avtale med forening/kommune om deling av medlemslister, DPIA-støttepakke, WCAG-gjennomgang, tilgjengelighetserklæring. Pilot med 10–20 elever.</td>
               <td class="num">2 uker</td>
-              <td>Salg</td>
+              <td>Utdeling</td>
             </tr>
             <tr>
-              <td><strong>L6</strong><br>PC-app</td>
-              <td>Samme lisensbibliotek i .NET med P-256-verifisering. MSIX og <code>.appinstaller</code>. Entra-SSO. Intune-utrulling.</td>
+              <td><strong>L6</strong><br>Påbygg</td>
+              <td>Feide- og Entra-OIDC for skoleeiere som vil ha SSO (leverandørerklæring, attributtbegrunnelse). PC-app: samme lisensbibliotek i .NET med P-256, MSIX og <code>.appinstaller</code>, Intune-utrulling.</td>
               <td class="num">senere</td>
               <td>—</td>
             </tr>
@@ -927,7 +944,7 @@ flowchart TB
         </table>
       </div>
 
-      <p>Den kritiske stien er <strong>L0 → L1 → L2 → L4</strong>, omtrent åtte uker til en pilot med ekte lisenshåndtering. L3 og L5 kan gå parallelt. L0 er bare noen dagers arbeid, men hvis Feide-søknaden ikke er sendt, står hele L1 og venter på noen andres saksbehandling.</p>
+      <p>Den kritiske stien er <strong>L0 → L1 → L2 → L4</strong>, omtrent sju uker til en pilot med ekte lisenshåndtering. L3 og L5 går parallelt. Den viktigste endringen fra forrige utkast: Feide er ute av kritisk sti, så ingenting venter lenger på noen andres saksbehandling.</p>
     </section>
 
     <section id="risiko">
@@ -938,13 +955,13 @@ flowchart TB
           <thead><tr><th>#</th><th>Risiko</th><th>Håndtering</th><th>Alvor</th></tr></thead>
           <tbody>
             <tr><td>R1</td><td>Selvhosting av utvidelsen virker ikke på Entra-tilknyttede maskiner (dokumentasjonen motsier seg selv)</td><td>Pilottest i L0. Butikken som primærkanal uansett.</td><td><span class="chip crit">Høy</span></td></tr>
-            <tr><td>R2</td><td>Feide-søknaden tar lengre tid enn antatt, eller attributter avslås</td><td>Send i uke 1. Be bare om <code>userid-feide</code> og <code>groups-org</code>. Entra ID som parallell vei inn.</td><td><span class="chip crit">Høy</span></td></tr>
+            <tr><td>R2</td><td>Databaselekkasje avslører medlemsliste eller koder</td><td>Pepret hash i hvile (nøkkel i Key Vault), maskert visning, rå IP maks 30 dager. En lekkasje skal ikke gi en leselig liste.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R3</td><td>Rotnøkkel mistet eller lekket</td><td>2-av-3 på tre steder. Skriftlig gjenopprettingsprosedyre. Øves kvartalsvis.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R4</td><td>Butikkens behandlingstid blokkerer en hasterettelse</td><td>Nødbremsen er administrativ: <code>minimum_version_required</code> via Intune virker på minutter.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R5</td><td>Udokumentert størrelsesgrense i butikken avviser pakken</td><td>P5 fjerner problemet: pakken faller til noen få megabyte.</td><td><span class="chip warn">Middels</span></td></tr>
             <tr><td>R6</td><td>Falske utestengelser fra klokkeavvik</td><td>±48 timer, aldri sperre, alltid flagg for ny nettsjekk.</td><td><span class="chip ok">Lav</span></td></tr>
             <tr><td>R7</td><td>Personvernombudet krever DPIA</td><td>Ingen teksthenting, ingen framgangsanalyse per elev. DPIA-støttepakke klar uansett.</td><td><span class="chip ok">Lav</span></td></tr>
-            <tr><td>R8</td><td>Lisensdeling utenfor kunden</td><td>Setetak per bruker, telemetri på uvanlige mønstre. Aksepter en viss lekkasje — alternativet rammer elever.</td><td><span class="chip ok">Lav</span></td></tr>
+            <tr><td>R8</td><td>Lisensdeling utenfor målgruppen eller koder spredd på nettet</td><td>Akseptert restrisiko i en gratismodell. Aggregerte brukstall flagger avvik; stenging og ny kode er mottrekket.</td><td><span class="chip ok">Lav</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -952,12 +969,12 @@ flowchart TB
 
     <section id="neste">
       <h2><span class="num">13</span> Fire avgjørelser jeg trenger fra deg</h2>
-      <p class="lede">Ingenting av dette krever kode først. Alle fire er beslutninger, og tre av dem har ledetid.</p>
+      <p class="lede">To av forrige rundes spørsmål er nå avgjort: Feide og Entra bygges som påbygg senere, og systemet feiler åpent. Disse fire gjenstår.</p>
       <ol>
-        <li><strong>Domenenavn.</strong> Hvilke tre? De låses i utvidelsens manifest ved første utgivelse (P4), så dette er den mest tidskritiske avgjørelsen i dokumentet.</li>
-        <li><strong>Feide, Entra eller begge først.</strong> Anbefaling: Feide-søknaden sendes nå, Entra bygges når PC-appen nærmer seg.</li>
-        <li><strong>Fail open eller hard sperre etter utløp.</strong> Anbefaling: degradert modus, aldri hard sperre. Dette er et produktvalg, ikke et teknisk.</li>
-        <li><strong>Hvem eier rotnøkkelen.</strong> Tre maskinvarenøkler trenger tre personer eller tre steder — og en avklaring av om fylkeskommunen selv skal ha en av dem.</li>
+        <li><strong>Domenenavn.</strong> Hvilke tre? De låses i utvidelsens manifest ved første utgivelse (P4), så dette er fortsatt den mest tidskritiske avgjørelsen i dokumentet.</li>
+        <li><strong>Hvem deler ut kodene.</strong> Anbefaling: foreningen eller kommunen selv, via engangs-eksporten ved import. Alternativet er at vi sender e-post til hvert medlem — da må vi drifte utsending og havner i direkte kontakt med medlemsregisteret.</li>
+        <li><strong>Klartekst eller hash i hvile.</strong> Anbefaling: e-post og kode lagres som pepret hash, med maskert visning i adminpanelet. Prisen er at kodelisten bare kan eksporteres i importøyeblikket — mistede koder erstattes med nye i stedet for å gjenfinnes.</li>
+        <li><strong>Hvem vokter rotnøkkelen.</strong> Tre maskinvarenøkler trenger tre personer eller tre steder. Med 2-av-3 tåler dere å miste én.</li>
       </ol>
       <p>Når domenene er valgt, kan L0 starte samme dag.</p>
     </section>
