@@ -1,5 +1,5 @@
 {
-  "name": "@skrivestotte/lisensserver",
+  "name": "@ordlyd/lisensserver",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@skrivestotte/license-core": "workspace:*",
+    "@ordlyd/license-core": "workspace:*",
     "postgres": "^3.4.5"
   },
   "devDependencies": {

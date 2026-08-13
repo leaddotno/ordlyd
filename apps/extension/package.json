@@ -1,5 +1,5 @@
 {
-  "name": "@skrivestotte/extension",
+  "name": "@ordlyd/extension",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@skrivestotte/tts": "workspace:*",
-    "@skrivestotte/writing": "workspace:*"
+    "@ordlyd/tts": "workspace:*",
+    "@ordlyd/writing": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.280",

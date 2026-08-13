@@ -7,8 +7,8 @@ import {
   SpeechController,
   configureLocalAssets,
   setPronunciationOverrides,
-} from "@skrivestotte/tts";
-import { Dictionary, Predictor, SpellChecker } from "@skrivestotte/writing";
+} from "@ordlyd/tts";
+import { Dictionary, Predictor, SpellChecker } from "@ordlyd/writing";
 import { EchoPlayer } from "./echo-player.js";
 import type {
   OffscreenCheck,
@@ -20,7 +20,7 @@ import type {
   TtsEvent,
 } from "./messages.js";
 
-const LOG = "[Skrivestøtte offscreen]";
+const LOG = "[Ordlyd offscreen]";
 
 // Fanger feil som ellers bare gir «Uncaught [object ErrorEvent]» i
 // utvidelsens feil-liste, uten spor av hva som faktisk gikk galt.

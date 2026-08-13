@@ -7,7 +7,7 @@
  * Ord-/setningsekko syntetiseres direkte (der er ~300 ms helt greit),
  * med LRU-cache for ofte brukte ord.
  */
-import { synthesizeText } from "@skrivestotte/tts";
+import { synthesizeText } from "@ordlyd/tts";
 
 /** Norske bokstavnavn og tall slik Piper skal uttale dem */
 const LETTER_NAMES: Record<string, string> = {

@@ -1,11 +1,11 @@
 {
-  "name": "skrivestotte",
+  "name": "ordlyd",
   "private": true,
   "version": "0.0.1",
   "description": "Lese- og skrivestøtte for nettleseren – lokal TTS (Piper) og skrivestøtte for dyslektikere",
   "scripts": {
     "setup-assets": "node scripts/fetch-voice.mjs && node scripts/build-wordbank.mjs && node --max-old-space-size=8192 scripts/build-dictionary.mjs && node scripts/copy-assets.mjs",
-    "demo": "pnpm --filter @skrivestotte/demo dev",
+    "demo": "pnpm --filter @ordlyd/demo dev",
     "build": "pnpm -r build"
   },
   "packageManager": "pnpm@11.20.0",

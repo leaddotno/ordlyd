@@ -48,7 +48,7 @@ const p256Only = [await importVerifyKeys({ kid: jwks.kid, p256: jwks.p256 })];
 const payload: ReceiptPayload = {
   v: 1,
   kid: "sk-test",
-  iss: "https://lisens.skrivestotte.no",
+  iss: "https://lisens.ordlyd.no",
   sub: "code:abc123",
   tenant: "dysleksi-norge",
   install: "inst-1",

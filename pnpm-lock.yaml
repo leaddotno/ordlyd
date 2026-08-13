@@ -17,10 +17,10 @@ importers:
 
   apps/demo:
     dependencies:
-      '@skrivestotte/tts':
+      '@ordlyd/tts':
         specifier: workspace:*
         version: link:../../packages/tts
-      '@skrivestotte/writing':
+      '@ordlyd/writing':
         specifier: workspace:*
         version: link:../../packages/writing-engine
     devDependencies:
@@ -33,10 +33,10 @@ importers:
 
   apps/extension:
     dependencies:
-      '@skrivestotte/tts':
+      '@ordlyd/tts':
         specifier: workspace:*
         version: link:../../packages/tts
-      '@skrivestotte/writing':
+      '@ordlyd/writing':
         specifier: workspace:*
         version: link:../../packages/writing-engine
     devDependencies:
@@ -52,7 +52,7 @@ importers:
 
   apps/lisensserver:
     dependencies:
-      '@skrivestotte/license-core':
+      '@ordlyd/license-core':
         specifier: workspace:*
         version: link:../../packages/license-core
       postgres:

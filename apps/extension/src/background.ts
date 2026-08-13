@@ -65,7 +65,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
             max: msg.max,
           });
         } catch (err) {
-          console.warn("[Skrivestøtte SW] forslag feilet:", err);
+          console.warn("[Ordlyd SW] forslag feilet:", err);
           response = [];
         }
         break;
@@ -83,7 +83,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
             tabId,
           });
         } catch (err) {
-          console.error("[Skrivestøtte SW] Klarte ikke å starte opplesing:", err);
+          console.error("[Ordlyd SW] Klarte ikke å starte opplesing:", err);
           sendEventToTab(tabId, {
             kind: "error",
             message: err instanceof Error ? err.message : String(err),
@@ -100,7 +100,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
             word: msg.word,
           });
         } catch (err) {
-          console.warn("[Skrivestøtte SW] stavekontroll feilet:", err);
+          console.warn("[Ordlyd SW] stavekontroll feilet:", err);
           response = [];
         }
         break;
@@ -114,7 +114,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
             word: msg.word,
           });
         } catch (err) {
-          console.warn("[Skrivestøtte SW] ordbok-oppslag feilet:", err);
+          console.warn("[Ordlyd SW] ordbok-oppslag feilet:", err);
           response = { bm: [], nn: [] };
         }
         break;
@@ -131,7 +131,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
           });
         } catch (err) {
           // Ekko er ikke kritisk — logg og gå videre
-          console.warn("[Skrivestøtte SW] ekko feilet:", err);
+          console.warn("[Ordlyd SW] ekko feilet:", err);
         }
         break;
       }
@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
           await ensureOffscreen();
           await sendToOffscreen({ type: "ss-offscreen-stop", target: "offscreen" });
         } catch (err) {
-          console.error("[Skrivestøtte SW] Stopp feilet:", err);
+          console.error("[Ordlyd SW] Stopp feilet:", err);
         }
         // Uansett: bekreft stopp til fanen så knappen aldri henger
         if (sender.tab?.id != null) {

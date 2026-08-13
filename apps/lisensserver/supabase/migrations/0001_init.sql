@@ -1,4 +1,4 @@
--- Skrivestøtte lisensserver — grunnskjema (Supabase / Postgres 15+)
+-- Ordlyd lisensserver — grunnskjema (Supabase / Postgres 15+)
 --
 -- Sikkerhetsmodell: ALL tilgang skjer via service-rollen fra Vercel-
 -- funksjonene. Row Level Security er skrudd PÅ uten policyer, slik at

@@ -7,7 +7,7 @@
  */
 
 import { timingSafeEqual } from "node:crypto";
-import { importSigningKeys, type SigningKeyPair, type PrivateJwks } from "@skrivestotte/license-core";
+import { importSigningKeys, type SigningKeyPair, type PrivateJwks } from "@ordlyd/license-core";
 import { createSql, PostgresDb, type Sql } from "./db-postgres.js";
 import type { Db } from "./types.js";
 

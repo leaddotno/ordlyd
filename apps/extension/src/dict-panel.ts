@@ -5,7 +5,7 @@
  *
  * Kreditering av UiB og Språkrådet er et lisenskrav og ligger i bunnteksten.
  */
-import type { DictArticle, DictDef } from "@skrivestotte/writing";
+import type { DictArticle, DictDef } from "@ordlyd/writing";
 
 export interface DictLookupResult {
   bm: DictArticle[];

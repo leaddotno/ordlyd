@@ -3,12 +3,12 @@
  * synkront med opplesingen. Bruker CSS Custom Highlight API, så sidens DOM
  * endres aldri (viktig for å ikke ødelegge weben rundt oss).
  */
-import { tokenizeWords } from "@skrivestotte/tts/text";
+import { tokenizeWords } from "@ordlyd/tts/text";
 import {
   enableWritingSupport,
   type SuggestSource,
   type WritingSupport,
-} from "@skrivestotte/writing";
+} from "@ordlyd/writing";
 import { createDictUI, type DictLookupResult } from "./dict-panel.js";
 import { DEFAULT_SETTINGS, getSettings, onSettingsChanged, saveSettings, type Settings } from "./settings.js";
 import type { TtsEvent } from "./messages.js";
@@ -284,7 +284,7 @@ function armWatchdog(): void {
   // og det kan ta 15–30 s på svake skole-PC-er. Vakthunden skal fange
   // ekte feil, ikke treg maskinvare.
   watchdog = setTimeout(() => {
-    console.warn("[Skrivestøtte] ingen respons fra talesyntesen på 45 s — nullstiller.");
+    console.warn("[Ordlyd] ingen respons fra talesyntesen på 45 s — nullstiller.");
     clearHighlights();
     setButton("idle");
     hideButton();
@@ -315,7 +315,7 @@ button.addEventListener("click", () => {
   armWatchdog();
   document.getSelection()?.removeAllRanges(); // markeringen vår skal synes i stedet
   chrome.runtime.sendMessage({ type: "ss-speak", text: built.text, rate: settings.rate }).catch((err) => {
-    console.error("[Skrivestøtte] kunne ikke starte opplesing:", err);
+    console.error("[Ordlyd] kunne ikke starte opplesing:", err);
     disarmWatchdog();
     setButton("idle");
     hideButton();
@@ -425,7 +425,7 @@ chrome.runtime.onMessage.addListener((event: TtsEvent) => {
       button.textContent = `⬇ ${Math.round((event.loaded / Math.max(1, event.total)) * 100)} %`;
       break;
     case "error":
-      console.warn("[Skrivestøtte] TTS-feil:", event.message);
+      console.warn("[Ordlyd] TTS-feil:", event.message);
     // fallthrough
     case "end":
       clearHighlights();

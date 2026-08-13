@@ -9,7 +9,7 @@
 
 import { vercelHandler } from "../../src/http.js";
 import { getSigningKeys, ok } from "../../src/runtime.js";
-import { exportPublicJwks } from "@skrivestotte/license-core";
+import { exportPublicJwks } from "@ordlyd/license-core";
 
 export default vercelHandler("GET", async () => {
   const jwks = await exportPublicJwks(await getSigningKeys());

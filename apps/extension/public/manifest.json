@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Skrivestøtte (spike)",
+  "name": "Ordlyd",
   "version": "0.0.1",
   "description": "Marker tekst og få den opplest med norsk stemme. All talesyntese kjører lokalt i nettleseren.",
   "minimum_chrome_version": "116",
@@ -8,7 +8,7 @@
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Skrivestøtte – innstillinger"
+    "default_title": "Ordlyd – innstillinger"
   },
   "background": {
     "service_worker": "background.js",

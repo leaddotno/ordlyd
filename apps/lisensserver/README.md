@@ -1,4 +1,4 @@
-# Skrivestøtte lisensserver
+# Ordlyd lisensserver
 
 Vercel (Frankfurt) + Supabase Postgres (Frankfurt). Se `docs/lisensserver-plan.html`
 for hele arkitekturen.
@@ -7,7 +7,7 @@ for hele arkitekturen.
 
 | Del | Status |
 |---|---|
-| `@skrivestotte/license-core` — kvitteringsformat, hashing, kodegenerering | ✅ 30 tester grønne |
+| `@ordlyd/license-core` — kvitteringsformat, hashing, kodegenerering | ✅ 30 tester grønne |
 | `src/logic.ts` — import, innlogging, fornyelse, stenging | ✅ testet mot MemoryDb |
 | `src/db-postgres.ts` — Postgres mot Supabase | ✅ skrevet, ikke kjørt mot ekte base ennå |
 | `api/` — Vercel-funksjoner | ✅ skrevet, venter på første deploy |

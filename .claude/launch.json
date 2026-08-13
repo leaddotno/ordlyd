@@ -4,7 +4,7 @@
     {
       "name": "demo",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@skrivestotte/demo", "dev", "--port", "5173"],
+      "runtimeArgs": ["--filter", "@ordlyd/demo", "dev", "--port", "5173"],
       "port": 5173
     }
   ]

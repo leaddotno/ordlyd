@@ -411,7 +411,7 @@ export function enableWritingSupport(
       opts.onAccept?.(replacement);
     } else {
       console.warn(
-        `[Skrivestøtte] klarte ikke å erstatte «${word}» i denne editoren.`,
+        `[Ordlyd] klarte ikke å erstatte «${word}» i denne editoren.`,
         active?.tagName,
       );
       opts.onReplaceFailed?.(word, replacement);

@@ -22,10 +22,10 @@ import {
   RECEIPT_SOFT_TTL_SEC,
   type SigningKeyPair,
   type ReceiptPayload,
-} from "@skrivestotte/license-core";
+} from "@ordlyd/license-core";
 import type { Db, LicensePool, PoolEntry } from "./types.js";
 
-export const ISSUER = "https://lisens.skrivestotte.no";
+export const ISSUER = "https://lisens.ordlyd.no";
 
 /** Ratebegrensning: maks forsøk per nøkkel innenfor vinduet. */
 export const RATE_WINDOW_SEC = 15 * 60;

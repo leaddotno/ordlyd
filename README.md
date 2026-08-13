@@ -1,4 +1,4 @@
-# Skrivestøtte
+# Ordlyd
 
 Lese- og skrivestøtte for nettleseren (Edge/Chrome) — erstatning for IntoWords/Lingdys.
 All prosessering skjer lokalt hos brukeren: tekst-til-tale med Piper (WebAssembly),
@@ -9,7 +9,7 @@ senere ordprediksjon og dysleksitilpasset stavekontroll.
 | Mappe | Innhold |
 |---|---|
 | `packages/tts` | TTS-motor: Piper i nettleseren, setningsdeling, ord-tidsestimat, avspillingskontroller |
-| `packages/writing-engine` | Skrivestøtte: ordprediksjon (frekvensrangert prefiks-fullføring) + forslags-panel ved skrivemarkøren |
+| `packages/writing-engine` | Skrivehjelp: ordprediksjon (frekvensrangert prefiks-fullføring) + forslags-panel ved skrivemarkøren |
 | `apps/demo` | Testside: syntese + ordmarkering + skrivestøtte |
 | `apps/extension` | Edge-utvidelse (MV3): opplesing av markert tekst, ordforslag i tekstfelt, innstillinger (popup) |
 
@@ -24,7 +24,7 @@ pnpm demo            # testside på http://localhost:5173
 Bygg utvidelsen:
 
 ```bash
-pnpm --filter @skrivestotte/extension build
+pnpm --filter @ordlyd/extension build
 ```
 
 Last inn `apps/extension/dist` som «unpacked extension» i edge://extensions (utviklermodus).

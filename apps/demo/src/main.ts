@@ -4,7 +4,7 @@ import {
   setPronunciationOverrides,
   tokenizeWords,
   DEFAULT_VOICE,
-} from "@skrivestotte/tts";
+} from "@ordlyd/tts";
 
 // Uttale-overstyringer (samme fil som utvidelsen bruker)
 void fetch("/dict/uttale-overrides.json")
@@ -136,7 +136,7 @@ speakBtn.addEventListener("click", async () => {
 
 addLog("Offline-modus: stemme og WASM serveres lokalt (ingen internettavhengighet).");
 
-// Skrivestøtte-testen: samme motorer som utvidelsen bruker
+// Skrivehjelp-testen: samme motorer som utvidelsen bruker
 import {
   Dictionary,
   Predictor,
@@ -144,7 +144,7 @@ import {
   enableWritingSupport,
   type DictArticle,
   type WritingSupport,
-} from "@skrivestotte/writing";
+} from "@ordlyd/writing";
 
 /* ---------- Ordbok-test ---------- */
 const ordbokBm = new Dictionary("/dict/ordbok/bm");

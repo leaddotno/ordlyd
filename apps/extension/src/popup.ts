@@ -29,7 +29,7 @@ function save(patch: Partial<Settings>): void {
     })
     .catch((err) => {
       status.textContent = `Kunne ikke lagre: ${err instanceof Error ? err.message : err}`;
-      console.error("[Skrivestøtte popup]", err);
+      console.error("[Ordlyd popup]", err);
     });
 }
 
