@@ -12,6 +12,7 @@
 import { vercelHandler } from "../../src/http.js";
 import { getDb, ok, unauthorized, bearerToken, secretEquals, requireEnv } from "../../src/runtime.js";
 import { createSql } from "../../src/db-postgres.js";
+// Cron bruker CRON_SECRET, ikke ADMIN_TOKEN — derfor egen sjekk her.
 
 export const NET_RETENTION_DAYS = 30;
 export const ATTEMPT_RETENTION_DAYS = 1;

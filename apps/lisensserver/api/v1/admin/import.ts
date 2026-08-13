@@ -10,14 +10,15 @@
  */
 
 import { vercelHandler, requireString } from "../../../src/http.js";
-import { getDb, getPepper, newId, ok, badRequest, unauthorized, bearerToken, secretEquals, requireEnv } from "../../../src/runtime.js";
+import { getDb, getPepper, newId, ok, badRequest } from "../../../src/runtime.js";
+import { requireAdmin } from "../../../src/admin-auth.js";
 import { importEntries } from "../../../src/logic.js";
 
 const MAX_EMAILS_PER_CALL = 5000;
 
 export default vercelHandler("POST", async (req) => {
-  const token = bearerToken(req.headers);
-  if (!token || !secretEquals(token, requireEnv("ADMIN_TOKEN"))) return unauthorized();
+  const denied = requireAdmin(req.headers);
+  if (denied) return denied;
 
   const poolId = requireString(req.body, "poolId");
   const emails = req.body.emails;

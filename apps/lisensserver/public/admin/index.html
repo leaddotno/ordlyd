@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Ordlyd — superadmin</title>
+<style>
+  :root {
+    --ground: #eef1f1; --surface: #fafbfb; --surface-2: #e6ebeb;
+    --line: #cdd6d6; --line-soft: #dde4e4;
+    --text: #142124; --text-soft: #4a5b5f; --text-faint: #6d7f83;
+    --petrol: #0e3d43; --petrol-ink: #ffffff; --brass: #8a6412;
+    --ok: #1c6647; --ok-bg: #dcebe3;
+    --warn: #8a5f08; --warn-bg: #f2e8d2;
+    --crit: #97302a; --crit-bg: #f2dedc;
+    --code-bg: #e8eded;
+    --shadow: 0 1px 2px rgba(16,32,36,.06), 0 8px 24px -18px rgba(16,32,36,.3);
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1215; --surface: #111c20; --surface-2: #17252a;
+      --line: #2b3d42; --line-soft: #223236;
+      --text: #dde7e8; --text-soft: #a3b4b7; --text-faint: #7d9094;
+      --petrol: #7fc6cc; --petrol-ink: #06171a; --brass: #d4a648;
+      --ok: #6fc79b; --ok-bg: #143024;
+      --warn: #d9ad55; --warn-bg: #33280f;
+      --crit: #e8938c; --crit-bg: #371917;
+      --code-bg: #16242a;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.7);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 1.25rem 5rem;
+    background: var(--ground); color: var(--text);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 78rem; margin: 0 auto; }
+
+  header.top {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: baseline;
+    justify-content: space-between;
+    padding: 1.75rem 0 1.25rem; border-bottom: 1px solid var(--line);
+    margin-bottom: 1.75rem;
+  }
+  header.top h1 { font-size: 1.3rem; margin: 0; letter-spacing: -.01em; }
+  header.top .sub {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-faint);
+  }
+  .headright { display: flex; align-items: center; gap: .75rem; font-size: .82rem; color: var(--text-faint); }
+
+  h2 { font-size: 1.05rem; margin: 0 0 .2rem; letter-spacing: -.005em; }
+  .hint { font-size: .85rem; color: var(--text-soft); margin: 0 0 1rem; }
+  p { margin: 0 0 .8rem; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 7px; padding: 1.2rem 1.35rem; margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  @media (min-width: 62rem) { .grid2 { grid-template-columns: 1fr 1fr; } }
+
+  label { display: block; font-size: .8rem; font-weight: 600; margin: 0 0 .3rem; }
+  input[type=text], input[type=date], input[type=password], select, textarea {
+    width: 100%; font-family: inherit; font-size: .9rem;
+    padding: .5rem .65rem; border-radius: 5px;
+    border: 1px solid var(--line); background: var(--ground); color: var(--text);
+  }
+  textarea { font-family: var(--mono); font-size: .82rem; min-height: 8rem; resize: vertical; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--brass); outline-offset: 2px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: .8rem; }
+  .row > * { flex: 1 1 12rem; }
+  .checks { display: flex; flex-wrap: wrap; gap: .3rem .95rem; margin-bottom: .9rem; }
+  .checks label { display: flex; align-items: center; gap: .35rem; font-weight: 400; font-size: .87rem; margin: 0; }
+  .checks input { width: auto; }
+
+  button {
+    font-family: inherit; font-size: .87rem; font-weight: 600;
+    padding: .5rem .95rem; border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
+  }
+  button:hover:not(:disabled) { border-color: var(--petrol); }
+  button:disabled { opacity: .55; cursor: default; }
+  button.primary { background: var(--petrol); color: var(--petrol-ink); border-color: var(--petrol); }
+  button.small { font-size: .78rem; padding: .28rem .6rem; font-weight: 500; }
+  button.danger { color: var(--crit); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; min-width: 34rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  th {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-faint); font-weight: 400;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  td.mono { font-family: var(--mono); font-size: .8rem; }
+
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: .67rem;
+    letter-spacing: .05em; text-transform: uppercase;
+    padding: .16em .5em; border-radius: 3px; white-space: nowrap;
+  }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.crit { background: var(--crit-bg); color: var(--crit); }
+
+  .stat { display: flex; gap: 1.4rem; flex-wrap: wrap; margin: .5rem 0 0; }
+  .stat div { display: flex; flex-direction: column; }
+  .stat .v { font-size: 1.35rem; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .stat .k { font-family: var(--mono); font-size: .65rem; letter-spacing: .09em; text-transform: uppercase; color: var(--text-faint); }
+
+  .banner { border-radius: 6px; padding: .7rem 1rem; margin-bottom: 1rem; font-size: .87rem; }
+  .banner.ok { background: var(--ok-bg); color: var(--ok); }
+  .banner.err { background: var(--crit-bg); color: var(--crit); }
+  .banner.warn { background: var(--warn-bg); color: var(--warn); }
+  .banner:empty { display: none; }
+
+  .interim {
+    font-size: .8rem; color: var(--text-soft);
+    border-left: 3px solid var(--brass); padding: .3rem 0 .3rem .75rem; margin: 0 0 1.1rem;
+  }
+  .hidden { display: none !important; }
+  .muted { color: var(--text-faint); }
+  code { font-family: var(--mono); font-size: .84em; background: var(--code-bg); padding: .08em .32em; border-radius: 3px; }
+  .poolrow { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; padding: .5rem 0; border-top: 1px solid var(--line-soft); }
+  .poolrow:first-of-type { border-top: 0; }
+  .poolname { font-weight: 600; font-size: .9rem; }
+  .tenantcard h3 { margin: 0 0 .15rem; font-size: 1rem; }
+  .tenantcard .slug { font-family: var(--mono); font-size: .72rem; color: var(--text-faint); }
+  .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .9rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ INNLOGGING ============ -->
+  <section id="login">
+    <header class="top">
+      <div>
+        <h1>Ordlyd — superadmin</h1>
+        <div class="sub">Lisensadministrasjon</div>
+      </div>
+    </header>
+    <div class="card" style="max-width: 30rem">
+      <h2>Logg inn</h2>
+      <p class="hint">Lim inn admin-nøkkelen (<code>ADMIN_TOKEN</code> fra Vercel).</p>
+      <div id="loginMsg" class="banner"></div>
+      <form id="loginForm">
+        <label for="token">Admin-nøkkel</label>
+        <input type="password" id="token" autocomplete="current-password" spellcheck="false" />
+        <div class="actions">
+          <button class="primary" type="submit" id="loginBtn">Logg inn</button>
+        </div>
+      </form>
+      <p class="interim" style="margin-top:1.1rem">
+        Midlertidig innlogging med delt nøkkel. Erstattes av passkey — nøkkelen lagres bare
+        i denne fanen og forsvinner når du lukker den.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ PANEL ============ -->
+  <section id="panel" class="hidden">
+    <header class="top">
+      <div>
+        <h1>Ordlyd — superadmin</h1>
+        <div class="sub" id="envLabel">Lisensadministrasjon</div>
+      </div>
+      <div class="headright">
+        <span id="serverState"></span>
+        <button class="small" id="reloadBtn">Oppdater</button>
+        <button class="small" id="logoutBtn">Logg ut</button>
+      </div>
+    </header>
+
+    <div id="msg" class="banner"></div>
+
+    <div class="card">
+      <h2>Oversikt</h2>
+      <div class="stat" id="stats"></div>
+    </div>
+
+    <!-- Flaggede lisenser -->
+    <div class="card hidden" id="flaggedCard">
+      <h2>Mulig deling — til vurdering</h2>
+      <p class="hint" id="flaggedHint"></p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>E-post</th><th>Kunde</th><th>Pool</th>
+            <th class="num">Maskiner</th><th class="num">Nett (7 d)</th><th>Handling</th>
+          </tr></thead>
+          <tbody id="flaggedBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Kunder og pooler -->
+    <div class="card">
+      <h2>Kunder og lisenspooler</h2>
+      <p class="hint">Velg en pool for å se lisensene, eller importer en medlemsliste.</p>
+      <div id="tenants"></div>
+    </div>
+
+    <!-- Lisenser i valgt pool -->
+    <div class="card hidden" id="entriesCard">
+      <h2 id="entriesTitle">Lisenser</h2>
+      <p class="hint">Koden vises aldri — den finnes ikke i databasen, bare som hash. Mistet kode løses ved å importere adressen på nytt i en pool.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>E-post</th><th>Status</th><th>Sist brukt</th>
+            <th class="num">Maskiner</th><th class="num">Nett (7 d)</th><th>Handling</th>
+          </tr></thead>
+          <tbody id="entriesBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Import -->
+    <div class="card hidden" id="importCard">
+      <h2 id="importTitle">Importer medlemsliste</h2>
+      <p class="hint">Én e-postadresse per linje, eller komma-/semikolonseparert. Maks 5000 per gang.</p>
+      <textarea id="emails" placeholder="medlem1@eksempel.no&#10;medlem2@eksempel.no"></textarea>
+      <div class="actions">
+        <button class="primary" id="importBtn">Importer og generer koder</button>
+        <button class="small" id="importCancel">Avbryt</button>
+        <span class="muted" id="emailCount" style="align-self:center;font-size:.82rem"></span>
+      </div>
+      <div id="importResult" class="hidden" style="margin-top:1.2rem">
+        <div class="banner warn">
+          <strong>Dette er engangs-eksporten.</strong> Serveren lagrer bare hasher, så denne
+          listen kan aldri hentes ut igjen. Last den ned nå og gi den til kunden.
+        </div>
+        <div class="actions" style="margin-top:0;margin-bottom:.9rem">
+          <button class="primary" id="downloadBtn">Last ned CSV</button>
+          <span class="muted" id="importSummary" style="align-self:center;font-size:.82rem"></span>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>E-post</th><th>Lisenskode</th></tr></thead>
+            <tbody id="importBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <!-- Ny kunde -->
+      <div class="card">
+        <h2>Ny kunde</h2>
+        <p class="hint">En forening, kommune eller fylkeskommune.</p>
+        <div class="row">
+          <div>
+            <label for="tName">Navn</label>
+            <input type="text" id="tName" placeholder="Dysleksi Norge" />
+          </div>
+          <div>
+            <label for="tSlug">Kortnavn</label>
+            <input type="text" id="tSlug" placeholder="dysleksi-norge" spellcheck="false" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="tValid">Gyldig til og med <span class="muted">(valgfritt)</span></label>
+            <input type="date" id="tValid" />
+          </div>
+        </div>
+        <div class="actions"><button class="primary" id="tenantBtn">Opprett kunde</button></div>
+      </div>
+
+      <!-- Ny pool -->
+      <div class="card">
+        <h2>Ny lisenspool</h2>
+        <p class="hint">Funksjonene du velger blir skrevet inn i hver kvittering poolen utsteder.</p>
+        <div class="row">
+          <div>
+            <label for="pTenant">Kunde</label>
+            <select id="pTenant"></select>
+          </div>
+          <div>
+            <label for="pName">Navn på pool</label>
+            <input type="text" id="pName" placeholder="Medlemmer 2026" />
+          </div>
+        </div>
+        <label>Funksjoner</label>
+        <div class="checks" id="featureChecks"></div>
+        <label>Produkter</label>
+        <div class="checks" id="productChecks"></div>
+        <div class="row">
+          <div>
+            <label for="pValid">Gyldig til og med <span class="muted">(valgfritt)</span></label>
+            <input type="date" id="pValid" />
+          </div>
+        </div>
+        <div class="actions"><button class="primary" id="poolBtn">Opprett pool</button></div>
+      </div>
+    </div>
+
+    <!-- Revisjonslogg -->
+    <div class="card">
+      <h2>Revisjonslogg</h2>
+      <p class="hint">Siste 40 hendelser. Loggen kan bare skrives til, ikke endres.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tid</th><th>Aktør</th><th>Handling</th><th>Detaljer</th></tr></thead>
+          <tbody id="auditBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+const FUNKSJONER = [
+  ["tts", "Opplesing"],
+  ["ordbok", "Ordbok"],
+  ["stavekontroll", "Stavekontroll"],
+  ["prediksjon", "Ordforslag"],
+  ["skriveekko", "Skriveekko"],
+];
+const PRODUKTER = [
+  ["edge-extension", "Nettleserutvidelse"],
+  ["win-desktop", "Windows-app"],
+];
+
+const $ = (id) => document.getElementById(id);
+const KEY = "ordlyd_admin_token";
+let token = sessionStorage.getItem(KEY) || "";
+let data = null;
+let valgtPool = null;
+let sisteImport = null;
+
+/* ---------- Hjelpere ---------- */
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function melding(el, text, kind = "ok") {
+  el.className = `banner ${kind}`;
+  el.textContent = text;
+  if (kind === "ok" && text) setTimeout(() => { if (el.textContent === text) el.textContent = ""; }, 6000);
+}
+
+function dato(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const idag = new Date();
+  const sammeDag = d.toDateString() === idag.toDateString();
+  return sammeDag
+    ? `i dag ${d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" })}`
+    : d.toLocaleDateString("nb-NO", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+async function api(path, { method = "GET", body } = {}) {
+  const res = await fetch(path, {
+    method,
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(body ? { "content-type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  let json = null;
+  try { json = await res.json(); } catch { /* tomt svar */ }
+  if (res.status === 401) throw new Error("Admin-nøkkelen ble avvist.");
+  if (!res.ok) throw new Error(json?.feil || `Serveren svarte ${res.status}.`);
+  return json;
+}
+
+/* ---------- Innlogging ---------- */
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kandidat = $("token").value.trim();
+  if (!kandidat) return melding($("loginMsg"), "Skriv inn admin-nøkkelen.", "err");
+  $("loginBtn").disabled = true;
+  const forrige = token;
+  token = kandidat;
+  try {
+    await lastData();
+    sessionStorage.setItem(KEY, token);
+    $("login").classList.add("hidden");
+    $("panel").classList.remove("hidden");
+    $("token").value = "";
+  } catch (err) {
+    token = forrige;
+    melding($("loginMsg"), err.message, "err");
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+});
+
+$("logoutBtn").addEventListener("click", () => {
+  sessionStorage.removeItem(KEY);
+  token = "";
+  $("panel").classList.add("hidden");
+  $("login").classList.remove("hidden");
+});
+
+$("reloadBtn").addEventListener("click", () => lastData().catch((e) => melding($("msg"), e.message, "err")));
+
+/* ---------- Last og tegn ---------- */
+async function lastData() {
+  data = await api("/api/v1/admin/overview");
+  tegnStats();
+  tegnFlagged();
+  tegnTenants();
+  tegnAudit();
+  fyllSkjema();
+  const h = await fetch("/api/health").then((r) => r.json()).catch(() => null);
+  $("serverState").innerHTML = h?.ok
+    ? `<span class="chip ok">server ok</span>`
+    : `<span class="chip crit">server feiler</span>`;
+  $("envLabel").textContent = `Lisensadministrasjon · nøkkel ${h?.sjekker?.signingKey ?? "ukjent"}`;
+}
+
+function tegnStats() {
+  const kunder = data.kunder.length;
+  const pooler = data.kunder.reduce((n, t) => n + t.pools.length, 0);
+  const lisenser = data.kunder.reduce((n, t) => n + t.pools.reduce((m, p) => m + p.lisenser, 0), 0);
+  const aktive = data.kunder.reduce((n, t) => n + t.pools.reduce((m, p) => m + p.aktive, 0), 0);
+  const maskiner = data.kunder.reduce((n, t) => n + t.pools.reduce((m, p) => m + p.installasjoner, 0), 0);
+  $("stats").innerHTML = [
+    ["Kunder", kunder], ["Pooler", pooler], ["Lisenser", lisenser],
+    ["Aktive", aktive], ["Maskiner", maskiner], ["Til vurdering", data.flaggede.length],
+  ].map(([k, v]) => `<div><span class="v">${v}</span><span class="k">${k}</span></div>`).join("");
+}
+
+function tegnFlagged() {
+  const card = $("flaggedCard");
+  if (!data.flaggede.length) { card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  $("flaggedHint").textContent =
+    `Over ${data.terskler.installasjoner} maskiner eller ${data.terskler.nett7d} ulike nett siste uke. ` +
+    `Ingenting stenges automatisk — vurder hver av dem.`;
+  $("flaggedBody").innerHTML = data.flaggede.map((r) => `
+    <tr>
+      <td class="mono">${esc(r.epost)}</td>
+      <td>${esc(r.kunde)}</td>
+      <td>${esc(r.pool)}</td>
+      <td class="num">${r.installasjoner}</td>
+      <td class="num">${r.nett7d}</td>
+      <td><button class="small danger" data-steng="${esc(r.id)}">Steng</button></td>
+    </tr>`).join("");
+}
+
+function tegnTenants() {
+  if (!data.kunder.length) {
+    $("tenants").innerHTML = `<p class="muted">Ingen kunder ennå. Opprett den første nedenfor.</p>`;
+    return;
+  }
+  $("tenants").innerHTML = data.kunder.map((t) => `
+    <div class="tenantcard" style="padding:.9rem 0;border-top:1px solid var(--line-soft)">
+      <h3>${esc(t.name)} ${t.status !== "aktiv" ? `<span class="chip warn">${esc(t.status)}</span>` : ""}</h3>
+      <div class="slug">${esc(t.slug)}${t.validTo ? ` · gyldig til ${esc(t.validTo)}` : ""}</div>
+      ${t.pools.length === 0
+        ? `<p class="muted" style="margin:.5rem 0 0;font-size:.85rem">Ingen pool ennå.</p>`
+        : t.pools.map((p) => `
+          <div class="poolrow">
+            <div>
+              <span class="poolname">${esc(p.poolName)}</span>
+              ${p.poolStatus !== "aktiv" ? `<span class="chip warn">${esc(p.poolStatus)}</span>` : ""}
+              <div class="muted" style="font-size:.8rem">
+                ${p.lisenser} lisenser · ${p.aktive} aktive · ${p.installasjoner} maskiner
+              </div>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="small" data-vis="${esc(p.poolId)}" data-navn="${esc(t.name)} — ${esc(p.poolName)}">Vis lisenser</button>
+              <button class="small" data-imp="${esc(p.poolId)}" data-navn="${esc(t.name)} — ${esc(p.poolName)}">Importer</button>
+            </div>
+          </div>`).join("")}
+    </div>`).join("");
+}
+
+function tegnAudit() {
+  $("auditBody").innerHTML = data.logg.length
+    ? data.logg.map((r) => `
+      <tr>
+        <td class="mono">${esc(dato(r.tid))}</td>
+        <td>${esc(r.aktoer)}</td>
+        <td>${esc(r.handling)}</td>
+        <td class="mono muted">${esc(JSON.stringify(r.detaljer ?? {}))}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="4" class="muted">Ingen hendelser ennå.</td></tr>`;
+}
+
+function fyllSkjema() {
+  $("pTenant").innerHTML = data.kunder.map((t) => `<option value="${esc(t.tenantId)}">${esc(t.name)}</option>`).join("")
+    || `<option value="">Opprett en kunde først</option>`;
+  if (!$("featureChecks").children.length) {
+    $("featureChecks").innerHTML = FUNKSJONER.map(([v, l]) =>
+      `<label><input type="checkbox" class="feat" value="${v}" checked /> ${l}</label>`).join("");
+    $("productChecks").innerHTML = PRODUKTER.map(([v, l], i) =>
+      `<label><input type="checkbox" class="prod" value="${v}" ${i === 0 ? "checked" : ""} /> ${l}</label>`).join("");
+  }
+}
+
+/* ---------- Klikk i tabeller og lister ---------- */
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+
+  if (btn.dataset.vis) {
+    valgtPool = btn.dataset.vis;
+    await visLisenser(btn.dataset.navn);
+  }
+  if (btn.dataset.imp) {
+    valgtPool = btn.dataset.imp;
+    $("importTitle").textContent = `Importer til ${btn.dataset.navn}`;
+    $("importCard").classList.remove("hidden");
+    $("importResult").classList.add("hidden");
+    $("emails").value = "";
+    oppdaterAntall();
+    $("importCard").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  if (btn.dataset.steng || btn.dataset.aapne) {
+    const entryId = btn.dataset.steng || btn.dataset.aapne;
+    const status = btn.dataset.steng ? "stengt" : "aktiv";
+    btn.disabled = true;
+    try {
+      const r = await api("/api/v1/admin/status", { method: "POST", body: { entryId, status } });
+      melding($("msg"), `${r.maskertEpost} er ${status === "stengt" ? "stengt" : "gjenåpnet"}. Virker ved neste fornyelse.`, "ok");
+      await lastData();
+      if (valgtPool) await visLisenser($("entriesTitle").dataset.navn);
+    } catch (err) {
+      melding($("msg"), err.message, "err");
+      btn.disabled = false;
+    }
+  }
+});
+
+async function visLisenser(navn) {
+  const r = await api(`/api/v1/admin/entries?poolId=${encodeURIComponent(valgtPool)}`);
+  $("entriesTitle").textContent = `Lisenser — ${navn}`;
+  $("entriesTitle").dataset.navn = navn;
+  $("entriesCard").classList.remove("hidden");
+  $("entriesBody").innerHTML = r.lisenser.length
+    ? r.lisenser.map((l) => `
+      <tr>
+        <td class="mono">${esc(l.epost)}</td>
+        <td>${l.status === "aktiv" ? `<span class="chip ok">aktiv</span>` : `<span class="chip crit">stengt</span>`}</td>
+        <td>${esc(dato(l.sistBrukt))}</td>
+        <td class="num">${l.installasjoner}</td>
+        <td class="num">${l.nett7d}</td>
+        <td>${l.status === "aktiv"
+          ? `<button class="small danger" data-steng="${esc(l.id)}">Steng</button>`
+          : `<button class="small" data-aapne="${esc(l.id)}">Gjenåpne</button>`}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="6" class="muted">Ingen lisenser i denne poolen ennå.</td></tr>`;
+}
+
+/* ---------- Import ---------- */
+function parseEmails(raw) {
+  return [...new Set(raw.split(/[\s,;]+/).map((s) => s.trim().toLowerCase()).filter((s) => s.includes("@")))];
+}
+function oppdaterAntall() {
+  const n = parseEmails($("emails").value).length;
+  $("emailCount").textContent = n ? `${n} adresser funnet` : "";
+}
+$("emails").addEventListener("input", oppdaterAntall);
+$("importCancel").addEventListener("click", () => $("importCard").classList.add("hidden"));
+
+$("importBtn").addEventListener("click", async () => {
+  const emails = parseEmails($("emails").value);
+  if (!emails.length) return melding($("msg"), "Fant ingen e-postadresser i teksten.", "err");
+  if (emails.length > 5000) return melding($("msg"), "Maks 5000 adresser per import — del opp listen.", "err");
+  $("importBtn").disabled = true;
+  try {
+    const r = await api("/api/v1/admin/import", { method: "POST", body: { poolId: valgtPool, emails } });
+    sisteImport = r.lisenser;
+    $("importResult").classList.remove("hidden");
+    $("importSummary").textContent =
+      `${r.antallImportert} importert` + (r.antallHoppetOver ? `, ${r.antallHoppetOver} hoppet over (duplikat eller ugyldig)` : "");
+    $("importBody").innerHTML = r.lisenser.map((l) =>
+      `<tr><td class="mono">${esc(l.email)}</td><td class="mono"><strong>${esc(l.code.slice(0, 3))} ${esc(l.code.slice(3))}</strong></td></tr>`).join("");
+    await lastData();
+  } catch (err) {
+    melding($("msg"), err.message, "err");
+  } finally {
+    $("importBtn").disabled = false;
+  }
+});
+
+$("downloadBtn").addEventListener("click", () => {
+  if (!sisteImport?.length) return;
+  const rows = [["epost", "lisenskode"], ...sisteImport.map((l) => [l.email, l.code])];
+  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ordlyd-lisenser-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ---------- Opprett kunde og pool ---------- */
+$("tenantBtn").addEventListener("click", async () => {
+  const name = $("tName").value.trim();
+  let slug = $("tSlug").value.trim().toLowerCase();
+  if (!name) return melding($("msg"), "Kunden må ha et navn.", "err");
+  if (!slug) {
+    slug = name.toLowerCase()
+      .replace(/[æå]/g, "a").replace(/ø/g, "o")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+  }
+  $("tenantBtn").disabled = true;
+  try {
+    await api("/api/v1/admin/tenant", {
+      method: "POST",
+      body: { slug, name, ...($("tValid").value ? { validTo: $("tValid").value } : {}) },
+    });
+    melding($("msg"), `Kunden «${name}» er opprettet.`, "ok");
+    $("tName").value = ""; $("tSlug").value = ""; $("tValid").value = "";
+    await lastData();
+  } catch (err) {
+    melding($("msg"), err.message, "err");
+  } finally {
+    $("tenantBtn").disabled = false;
+  }
+});
+
+$("poolBtn").addEventListener("click", async () => {
+  const tenantId = $("pTenant").value;
+  const name = $("pName").value.trim();
+  const features = [...document.querySelectorAll(".feat:checked")].map((c) => c.value);
+  const products = [...document.querySelectorAll(".prod:checked")].map((c) => c.value);
+  if (!tenantId) return melding($("msg"), "Opprett en kunde først.", "err");
+  if (!name) return melding($("msg"), "Poolen må ha et navn.", "err");
+  if (!features.length) return melding($("msg"), "Velg minst én funksjon.", "err");
+  if (!products.length) return melding($("msg"), "Velg minst ett produkt.", "err");
+  $("poolBtn").disabled = true;
+  try {
+    await api("/api/v1/admin/pool", {
+      method: "POST",
+      body: { tenantId, name, features, products, ...($("pValid").value ? { validTo: $("pValid").value } : {}) },
+    });
+    melding($("msg"), `Poolen «${name}» er opprettet.`, "ok");
+    $("pName").value = ""; $("pValid").value = "";
+    await lastData();
+  } catch (err) {
+    melding($("msg"), err.message, "err");
+  } finally {
+    $("poolBtn").disabled = false;
+  }
+});
+
+/* ---------- Oppstart: gjenopprett økt ---------- */
+if (token) {
+  lastData()
+    .then(() => { $("login").classList.add("hidden"); $("panel").classList.remove("hidden"); })
+    .catch(() => { sessionStorage.removeItem(KEY); token = ""; });
+}
+</script>
+</body>
+</html>

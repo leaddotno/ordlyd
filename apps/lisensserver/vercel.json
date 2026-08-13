@@ -21,6 +21,19 @@
         { "key": "referrer-policy", "value": "no-referrer" },
         { "key": "strict-transport-security", "value": "max-age=31536000; includeSubDomains" }
       ]
+    },
+    {
+      "source": "/admin/(.*)",
+      "headers": [
+        { "key": "x-content-type-options", "value": "nosniff" },
+        { "key": "referrer-policy", "value": "no-referrer" },
+        { "key": "x-robots-tag", "value": "noindex, nofollow" },
+        { "key": "strict-transport-security", "value": "max-age=31536000; includeSubDomains" },
+        {
+          "key": "content-security-policy",
+          "value": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
+        }
+      ]
     }
   ]
 }

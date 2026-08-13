@@ -155,8 +155,38 @@ const badRefresh = await call("/api/v1/license/refresh", {
 report("fornyelse med feil hemmelighet avvises med 403", badRefresh.status === 403, badRefresh.json);
 
 // 9. Stenging krever admin-token
-const noAuth = await call("/api/v1/admin/close", { method: "POST", body: { entryId: "x" } });
+const noAuth = await call("/api/v1/admin/status", { method: "POST", body: { entryId: "x", status: "stengt" } });
 report("stenging uten admin-token avvises med 401", noAuth.status === 401, noAuth.json);
+
+// 10. Admin-endepunktene panelet bruker
+const oversikt = await call("/api/v1/admin/overview", { token: TOKEN });
+report(
+  "oversikt gir kunder, flaggede og revisjonslogg",
+  oversikt.status === 200 && Array.isArray(oversikt.json?.kunder) && Array.isArray(oversikt.json?.flaggede) && Array.isArray(oversikt.json?.logg),
+  oversikt.json,
+);
+
+const lisenser = await call(`/api/v1/admin/entries?poolId=${POOL}`, { token: TOKEN });
+report(
+  "lisenslisten viser maskert e-post og aldri koden",
+  lisenser.status === 200 &&
+    Array.isArray(lisenser.json?.lisenser) &&
+    lisenser.json.lisenser.length >= 2 &&
+    lisenser.json.lisenser.every((l: any) => l.epost.includes("***") && !("code" in l)),
+  lisenser.json?.lisenser?.slice(0, 2),
+);
+
+const ugyldigPool = await call("/api/v1/admin/entries?poolId=ikke-en-uuid", { token: TOKEN });
+report("ugyldig poolId avvises med 400", ugyldigPool.status === 400, ugyldigPool.json);
+
+// 11. Selve panelet skal være tilgjengelig
+const panel = await fetch(`${BASE}/admin/`, { redirect: "follow" });
+const panelHtml = panel.ok ? await panel.text() : "";
+report(
+  "superadmin-panelet svarer og er merket noindex",
+  panel.ok && panelHtml.includes("Ordlyd — superadmin") && panelHtml.includes("noindex"),
+  { status: panel.status },
+);
 
 console.log(
   failed === 0

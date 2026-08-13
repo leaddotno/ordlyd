@@ -12,6 +12,7 @@ export interface DecodedRequest {
   method: string;
   headers: Record<string, string | string[] | undefined>;
   body: Record<string, unknown>;
+  query: Record<string, string>;
   ip: string;
 }
 
@@ -49,10 +50,15 @@ export function vercelHandler(allowedMethod: "GET" | "POST", handler: Handler) {
     try {
       const forwarded = req.headers["x-forwarded-for"];
       const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim() || "0.0.0.0";
+      const query: Record<string, string> = {};
+      for (const [k, v] of Object.entries(req.query ?? {})) {
+        query[k] = Array.isArray(v) ? v[0] : String(v);
+      }
       const result = await handler({
         method: req.method ?? allowedMethod,
         headers: req.headers as Record<string, string | string[] | undefined>,
         body: parseBody(req.body),
+        query,
         ip,
       });
       for (const [k, v] of Object.entries(result.headers ?? {})) res.setHeader(k, v);
