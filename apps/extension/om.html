@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Om Ordlyd</title>
+    <style>
+      /* Samme palett som popup, men egen side: innholdet her er for tungt
+         for 288 px, og siden skal kunne gjenbrukes av PC-appen. */
+      :root {
+        --bg: #f8fafc; --card: #ffffff; --fg: #1a2330; --muted: #5a6b7d;
+        --line: #e2e8f0; --accent: #2563eb; --accent-fg: #ffffff;
+        --hover: #f1f5f9;
+        --ok: #1c6647; --ok-bg: #dcebe3;
+        --warn: #8a5f08; --warn-bg: #f2e8d2;
+        --crit: #97302a; --crit-bg: #f2dedc;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not(.light) {
+          --bg: #161b22; --card: #1c2128; --fg: #e6edf3; --muted: #a3aeb9;
+          --line: #3d444d; --accent: #4493f8; --accent-fg: #0d1117;
+          --hover: #262c36;
+          --ok: #6fc79b; --ok-bg: #143024;
+          --warn: #d9ad55; --warn-bg: #33280f;
+          --crit: #e8938c; --crit-bg: #371917;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        font: 15px/1.6 system-ui, -apple-system, sans-serif;
+        margin: 0; padding: 0 20px 80px;
+        background: var(--bg); color: var(--fg);
+      }
+      .col { max-width: 44rem; margin: 0 auto; }
+      header { padding: 40px 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+      h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em; }
+      header .under { color: var(--muted); margin: 0; }
+      h2 { font-size: 17px; margin: 32px 0 10px; }
+      p { margin: 0 0 12px; }
+      .muted { color: var(--muted); }
+      .card {
+        background: var(--card); border: 1px solid var(--line);
+        border-radius: 10px; padding: 16px 18px; margin-bottom: 16px;
+      }
+      dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 0; }
+      dt { color: var(--muted); font-size: 13px; }
+      dd { margin: 0; font-weight: 600; }
+      .badge {
+        font: 600 10px/1 ui-monospace, Consolas, monospace; letter-spacing: .08em;
+        text-transform: uppercase; padding: 3px 6px; border-radius: 4px;
+      }
+      .badge.aktiv { background: var(--ok-bg); color: var(--ok); }
+      .badge.varsel { background: var(--warn-bg); color: var(--warn); }
+      .badge.degradert { background: var(--crit-bg); color: var(--crit); }
+      table { border-collapse: collapse; width: 100%; font-size: 14px; }
+      th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+      tr:last-child td { border-bottom: none; }
+      .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+      .btn {
+        font: 600 14px/1 system-ui, sans-serif; padding: 10px 16px; cursor: pointer;
+        border-radius: 8px; border: 1px solid var(--accent);
+        background: var(--accent); color: var(--accent-fg);
+      }
+      .btn.sekundaer { background: var(--card); color: inherit; border-color: var(--line); }
+      .btn:disabled { opacity: .6; cursor: default; }
+      .rad { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+      .melding { border-radius: 8px; padding: 10px 14px; margin-top: 14px; font-size: 14px; }
+      .melding.ok { background: var(--ok-bg); color: var(--ok); }
+      .melding.warn { background: var(--warn-bg); color: var(--warn); }
+      .melding:empty { display: none; }
+      code {
+        font-family: ui-monospace, Consolas, monospace; font-size: .88em;
+        background: var(--hover); padding: .12em .38em; border-radius: 4px;
+      }
+      .hidden { display: none !important; }
+      a { color: var(--accent); }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="col">
+      <header>
+        <h1>🔊 Om Ordlyd</h1>
+        <p class="under">Lese- og skrivestøtte som kjører på din egen maskin.</p>
+      </header>
+
+      <!-- ============ Din lisens ============ -->
+      <h2>Din lisens</h2>
+      <div class="card" id="lisensKort">
+        <p class="muted" id="lisensLaster">Henter lisensinformasjon …</p>
+        <dl id="lisensDl" class="hidden">
+          <dt>Status</dt><dd><span class="badge" id="lStatus"></span></dd>
+          <dt>Lisenstype</dt><dd id="lType"></dd>
+          <dt>Gyldighet</dt><dd id="lGyldig"></dd>
+          <dt>Utstedt av</dt><dd id="lKunde"></dd>
+          <dt>Registrert på</dt><dd id="lEpost"></dd>
+          <dt>Sist bekreftet</dt><dd id="lBekreftet"></dd>
+        </dl>
+        <div class="melding" id="lVarsel"></div>
+      </div>
+
+      <!-- ============ Slik virker lisensen ============ -->
+      <h2>Slik virker lisensen</h2>
+      <div class="card">
+        <p>
+          Ordlyd sjekker lisensen din i bakgrunnen omtrent én gang i døgnet, når maskinen er
+          på nett. Du merker ingenting av det, og du trenger aldri logge inn på nytt.
+        </p>
+        <p>
+          Har du en <strong>løpende lisens</strong>, fornyes den av seg selv så lenge den er
+          aktiv. Det finnes ingen dato du må følge med på.
+        </p>
+        <p>
+          Er maskinen uten nett — på hytta, i et klasserom uten dekning, eller fordi serveren
+          vår er nede — fortsetter Ordlyd å virke i <strong>minst to måneder</strong>. Du
+          trenger ikke gjøre noe.
+        </p>
+        <p style="margin-bottom: 0">
+          Skulle det gå så lenge uten kontakt at lisensen ikke kan bekreftes, fortsetter
+          <strong>opplesingen å virke</strong>. Bare skrivehjelpen slås av, og du får beskjed
+          om hvem du kan kontakte. Ordlyd slutter aldri å lese for deg midt i en oppgave.
+        </p>
+      </div>
+
+      <!-- ============ Lisenstyper ============ -->
+      <h2>Lisenstyper</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Type</th><th>Hvem</th><th>Varighet</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Medlemslisens</strong></td>
+              <td>Deles ut av en forening til medlemmene, for eksempel Dysleksi Norge.</td>
+              <td>Løpende</td>
+            </tr>
+            <tr>
+              <td><strong>Skolelisens</strong></td>
+              <td>Kommune eller fylkeskommune gir tilgang til elever og ansatte.</td>
+              <td>Følger avtalen</td>
+            </tr>
+            <tr>
+              <td><strong>Prøvelisens</strong></td>
+              <td>For å prøve Ordlyd i en avgrenset periode før man bestemmer seg.</td>
+              <td>Tidsbegrenset</td>
+            </tr>
+            <tr>
+              <td><strong>Åpen lisens</strong></td>
+              <td>Fritt utdelt til enkeltpersoner med lese- og skrivevansker.</td>
+              <td>Løpende</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size: 14px; margin-top: 10px">
+        Alle typene gir de samme funksjonene med mindre noe annet er avtalt. Forskjellen
+        ligger i hvem som deler dem ut og hvor lenge de gjelder.
+      </p>
+
+      <!-- ============ Versjon ============ -->
+      <h2>Versjon og oppdatering</h2>
+      <div class="card">
+        <dl>
+          <dt>Installert versjon</dt><dd id="vInstallert">…</dd>
+          <dt>Nyeste versjon</dt><dd id="vNyeste">…</dd>
+        </dl>
+        <p class="muted" id="vMerknad" style="margin: 12px 0 0; font-size: 14px"></p>
+        <div class="rad">
+          <button class="btn sekundaer" id="sjekkOppdatering">Se etter oppdatering</button>
+          <button class="btn hidden" id="taIBruk">Ta i bruk nå</button>
+        </div>
+        <div class="melding" id="vMelding"></div>
+        <p class="muted" style="font-size: 13px; margin: 14px 0 0">
+          Nettleseren ser etter oppdateringer automatisk omtrent hver femte time, så du
+          trenger normalt ikke gjøre noe. Vil du sjekke manuelt, åpner du
+          <code>edge://extensions</code> og trykker <em>Oppdater</em> — nettleseren tillater
+          ikke at utvidelser åpner den siden for deg.
+          <button class="btn sekundaer" id="kopierAdresse" style="font-size: 12px; padding: 4px 8px; margin-left: 4px">Kopier adressen</button>
+        </p>
+      </div>
+
+      <!-- ============ Hjelp ============ -->
+      <h2>Hjelp</h2>
+      <div class="card">
+        <p style="margin-bottom: 0">
+          Virker ikke lisensen, eller har du mistet lisenskoden? Kontakt den som ga deg
+          koden — foreningen, skolen eller kommunen din. De kan lage en ny kode til deg.
+          En mistet kode kan ikke hentes fram igjen, av personvernhensyn: vi lagrer aldri
+          koden i lesbar form.
+        </p>
+      </div>
+    </div>
+    <script type="module" src="/src/om.ts"></script>
+  </body>
+</html>

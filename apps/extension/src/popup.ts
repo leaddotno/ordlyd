@@ -107,6 +107,87 @@ kode.addEventListener("input", () => {
   kode.value = sifre.length > 3 ? `${sifre.slice(0, 3)} ${sifre.slice(3)}` : sifre;
 });
 
+const PLAN_NAVN: Record<string, string> = {
+  medlem: "Medlemslisens",
+  skole: "Skolelisens",
+  prove: "Prøvelisens",
+  apen: "Åpen lisens",
+};
+
+const norskDato = (sek: number): string =>
+  new Date(sek * 1000).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
+
+/**
+ * Hva brukeren skal se. Kjernen i denne funksjonen er skillet mellom
+ * LISENSEN og KONTAKTEN med serveren:
+ *
+ *  - En løpende lisens har ingen sluttdato, og skal ikke ha nedtelling.
+ *    Den fornyes i det stille, og tallet «dager igjen» hører til
+ *    fornyingsklokka — ikke til noe brukeren må passe på.
+ *  - Nedtelling vises bare når det er noe å gjøre: når maskinen ikke har
+ *    nådd serveren på lenge, eller når lisensen faktisk har en sluttdato.
+ */
+function lisensTekst(s: LicenseState): { merke: string; klasse: string; linje: string; varsler: string[] } {
+  const type = s.lisenstype ? PLAN_NAVN[s.lisenstype] ?? null : null;
+  const varsler: string[] = [];
+
+  if (s.klokkeAvvik) {
+    varsler.push("Datoen på maskinen ser ut til å være feil. Alt virker, men sjekk klokka.");
+  }
+  if (s.sisteAvslag === "stengt") {
+    varsler.push("Lisensen er stengt av den som ga deg koden.");
+  }
+
+  if (s.status === "utgatt") {
+    return {
+      merke: "utløpt",
+      klasse: "degradert",
+      linje: s.lisensSlutt ? `Lisensen gikk ut ${norskDato(s.lisensSlutt)}` : "Lisensen har gått ut",
+      varsler: [
+        "Opplesing virker fortsatt. Skrivehjelpen er slått av. Kontakt den som ga deg lisenskoden for å forlenge.",
+        ...varsler,
+      ],
+    };
+  }
+
+  if (s.status === "degradert") {
+    return {
+      merke: "begrenset",
+      klasse: "degradert",
+      linje: "Har ikke nådd lisensserveren på lenge",
+      varsler: [
+        "Opplesing virker fortsatt, men skrivehjelpen er slått av. Koble maskinen til internett, eller trykk «Sjekk lisensen nå».",
+        ...varsler,
+      ],
+    };
+  }
+
+  if (s.status === "varsel") {
+    const dager = s.dagerTilKontaktfrist ?? 0;
+    return {
+      merke: "sjekk nett",
+      klasse: "varsel",
+      linje: type ?? "Lisensen er aktiv",
+      varsler: [
+        `Ordlyd har ikke nådd lisensserveren på en stund. Alt virker i ${dager} dager til. ` +
+          "Er maskinen på nett, ordner det seg av seg selv.",
+        ...varsler,
+      ],
+    };
+  }
+
+  // Aktiv. Her er poenget: ingen nedtelling med mindre lisensen faktisk
+  // har en sluttdato.
+  return {
+    merke: "aktiv",
+    klasse: "aktiv",
+    linje: s.lisensSlutt
+      ? `${type ?? "Lisensen"} · gyldig til ${norskDato(s.lisensSlutt)}`
+      : `${type ?? "Lisensen"} · løpende, fornyes automatisk`,
+    varsler,
+  };
+}
+
 function visLisens(s: LicenseState): void {
   const ulisensiert = s.status === "ulisensiert";
   loginCard.classList.toggle("hidden", !ulisensiert);
@@ -124,26 +205,11 @@ function visLisens(s: LicenseState): void {
     return;
   }
 
-  licBadge.className = `badge ${s.status}`;
-  licBadge.textContent = s.status === "aktiv" ? "aktiv" : s.status === "varsel" ? "utløper snart" : "utløpt";
-  licInfo.textContent = [s.epostMaskert, s.dagerIgjen !== null ? `${s.dagerIgjen} dager igjen` : null]
-    .filter(Boolean)
-    .join(" · ");
-
-  const varsler: string[] = [];
-  if (s.status === "varsel") {
-    varsler.push("Lisensen fornyes automatisk når maskinen er på nett. Skjer det ikke, kontakt den som ga deg koden.");
-  }
-  if (s.status === "degradert") {
-    varsler.push("Opplesing virker fortsatt, men skrivehjelpen er slått av. Kontakt den som ga deg lisenskoden.");
-  }
-  if (s.sisteAvslag === "stengt") {
-    varsler.push("Serveren har stengt denne lisensen.");
-  }
-  if (s.klokkeAvvik) {
-    varsler.push("Datoen på maskinen ser ut til å være feil. Alt virker, men sjekk klokka.");
-  }
-  licVarsel.textContent = varsler.join(" ");
+  const t = lisensTekst(s);
+  licBadge.className = `badge ${t.klasse}`;
+  licBadge.textContent = t.merke;
+  licInfo.textContent = [s.epostMaskert, t.linje].filter(Boolean).join(" · ");
+  licVarsel.textContent = t.varsler.join(" ");
   status.textContent = "Marker tekst på en nettside og trykk «Les opp».";
 }
 
@@ -198,6 +264,12 @@ sjekkBtn.addEventListener("click", async () => {
     sjekkBtn.disabled = false;
     sjekkBtn.textContent = opprinnelig;
   }
+});
+
+$<HTMLButtonElement>("omBtn").addEventListener("click", () => {
+  // Egen fane: «Om»-innholdet er for mye for en 360 px bred popup, og
+  // siden kan gjenbrukes av PC-appen senere.
+  void chrome.tabs.create({ url: chrome.runtime.getURL("om.html") });
 });
 
 loggUtBtn.addEventListener("click", async () => {

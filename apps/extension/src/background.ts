@@ -24,6 +24,21 @@ function planleggFornyelse(): void {
 chrome.runtime.onInstalled.addListener(planleggFornyelse);
 chrome.runtime.onStartup.addListener(planleggFornyelse);
 
+/* ---------- Oppdateringer ---------- */
+
+const VENTER_NOKKEL = "ordlyd_oppdatering_venter";
+
+/**
+ * Nettleseren laster ned oppdateringer selv, men utsetter å ta dem i bruk
+ * så lenge utvidelsen er i gang. Vi husker at det har skjedd, slik at «Om
+ * Ordlyd» kan tilby å ta den i bruk med én gang i stedet for at brukeren
+ * må vente på neste omstart av nettleseren.
+ */
+chrome.runtime.onUpdateAvailable.addListener((detaljer) => {
+  void chrome.storage.local.set({ [VENTER_NOKKEL]: detaljer.version });
+  console.info("[Ordlyd SW] oppdatering klar:", detaljer.version);
+});
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== FORNY_ALARM) return;
   void (async () => {
@@ -136,6 +151,42 @@ chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => 
         invalidateLicenseCache();
         response = { ok: true };
         break;
+      }
+      case "ss-version-info": {
+        const klient = await getLicenseClient();
+        const lagret = await chrome.storage.local.get(VENTER_NOKKEL);
+        const info = await klient.versionInfo();
+        response = {
+          installert: chrome.runtime.getManifest().version,
+          nyeste: info.nyeste,
+          minste: info.minste,
+          merknad: info.merknad,
+          venterPaaOmstart: (lagret[VENTER_NOKKEL] as string | undefined) ?? null,
+        };
+        break;
+      }
+      case "ss-check-update": {
+        try {
+          const r = await chrome.runtime.requestUpdateCheck();
+          if (r.status === "update_available") {
+            await chrome.storage.local.set({ [VENTER_NOKKEL]: r.version });
+          }
+          response = { status: r.status, versjon: r.version ?? null };
+        } catch (err) {
+          // Skjer bl.a. for en utvidelse lastet inn manuelt uten
+          // oppdateringsadresse — helt normalt under utvikling.
+          console.info("[Ordlyd SW] oppdateringssjekk utilgjengelig:", err);
+          response = { status: "utilgjengelig", versjon: null };
+        }
+        break;
+      }
+      case "ss-apply-update": {
+        // reload() tar i bruk en nedlastet oppdatering umiddelbart. Alt
+        // etter dette punktet kjøres ikke — service workeren starter på nytt.
+        await chrome.storage.local.remove(VENTER_NOKKEL);
+        sendResponse({ ok: true });
+        chrome.runtime.reload();
+        return;
       }
       case "ss-license-refresh": {
         try {

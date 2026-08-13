@@ -18,12 +18,16 @@ export interface Tenant {
   validTo: number | null;
 }
 
+export type LicensePlan = "medlem" | "skole" | "prove" | "apen";
+
 export interface LicensePool {
   id: string;
   tenantId: string;
   name: string;
   status: "aktiv" | "stengt";
   validTo: number | null;
+  /** Lisenstype — følger med i kvitteringen og forklares i «Om Ordlyd». */
+  plan: LicensePlan;
   /** {"edge-extension": {"features": ["tts", …]}} — kopieres inn i kvitteringen */
   products: Record<string, { features: string[] }>;
 }

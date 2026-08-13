@@ -16,6 +16,7 @@ export default defineConfig({
         background: "src/background.ts",
         offscreen: "offscreen.html",
         popup: "popup.html",
+        om: "om.html",
       },
       output: {
         entryFileNames: "[name].js",

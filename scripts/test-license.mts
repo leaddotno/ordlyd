@@ -108,6 +108,7 @@ await db.createPool({
   name: "Medlemmer 2026",
   status: "aktiv",
   validTo: null,
+  plan: "medlem",
   products: { "edge-extension": { features: ["tts", "ordbok", "stavekontroll", "prediksjon"] } },
 });
 
@@ -126,6 +127,8 @@ if (good.ok) {
   const vr = await verifyReceipt(good.receipt, bothKeys, NOW);
   check("innloggingskvittering verifiserer og bærer produktene", vr.ok && vr.payload?.products["edge-extension"].features.includes("tts") === true);
   check("kvitteringen varer 100 dager", vr.payload?.exp === NOW + RECEIPT_TTL_SEC);
+  check("løpende lisens: licenseValidTo er null, ikke en dato", vr.payload?.licenseValidTo === null, JSON.stringify(vr.payload?.licenseValidTo));
+  check("lisenstypen følger med i kvitteringen", vr.payload?.plan === "medlem", String(vr.payload?.plan));
 
   const r1 = await refresh(db, P, keys, { installId: good.installId, installSecret: good.installSecret, product: "edge-extension", ip: "78.9.9.9", nowSec: NOW + 86_400 }, );
   check("fornyelse med installasjonshemmelighet", r1.ok);
@@ -143,6 +146,28 @@ if (good.ok) {
   await closeEntry(db, entryId, "kode spredd på nettet");
   const r3 = await refresh(db, P, keys, { installId: good.installId, installSecret: good.installSecret, product: "edge-extension", ip: "78.9.9.9", nowSec: NOW + 2 * 86_400 });
   check("stengt konto avvises ved fornyelse", !r3.ok && !r3.ok && r3.reason === "stengt");
+}
+
+// Sluttdato: den strengeste av kundens og poolens dato skal vinne
+{
+  const db2 = new MemoryDb();
+  let i2 = 0;
+  const nyId = () => `x-${++i2}`;
+  const kundeSlutt = NOW + 400 * 86_400;
+  const poolSlutt = NOW + 200 * 86_400;
+  await db2.createTenant({ id: "t2", slug: "fylket", name: "Fylket", status: "aktiv", validTo: kundeSlutt });
+  await db2.createPool({
+    id: "p2", tenantId: "t2", name: "Elever", status: "aktiv", validTo: poolSlutt, plan: "skole",
+    products: { "edge-extension": { features: ["tts", "ordbok"] } },
+  });
+  const imp2 = await importEntries(db2, P, "p2", ["elev@fylket.no"], nyId);
+  const inn = await login(db2, P, keys, {
+    email: "elev@fylket.no", code: imp2.imported[0].code,
+    product: "edge-extension", ip: "1.2.3.4", nowSec: NOW,
+  }, nyId);
+  const v = inn.ok ? await verifyReceipt(inn.receipt, bothKeys, NOW) : null;
+  check("sluttdato: den strengeste av kunde og pool vinner", v?.payload?.licenseValidTo === poolSlutt, String(v?.payload?.licenseValidTo));
+  check("skolelisens får riktig lisenstype", v?.payload?.plan === "skole", String(v?.payload?.plan));
 }
 
 // Ratebegrensning: bruk opp vinduet med feil koder — så avvises selv riktig kode

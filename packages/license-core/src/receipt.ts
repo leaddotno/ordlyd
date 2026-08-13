@@ -36,6 +36,15 @@ export interface ReceiptPayload {
   softExp: number;
   exp: number;
   serverTime: number;
+  /**
+   * Når LISENSEN slutter å gjelde — ikke når kvitteringen utløper.
+   * `null` eller fraværende betyr løpende lisens uten sluttdato, som er
+   * det vanlige. Å blande disse to datoene er nettopp feilen som gjorde at
+   * en løpende lisens tidligere så ut som den gikk ut om 100 dager.
+   */
+  licenseValidTo?: number | null;
+  /** Lisenstype: medlem | skole | prove | apen. Styrer teksten i «Om Ordlyd». */
+  plan?: string;
   minVersion?: Record<string, string>;
   endpointsVer?: number;
   revoked?: string[];

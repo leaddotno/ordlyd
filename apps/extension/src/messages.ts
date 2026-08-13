@@ -118,6 +118,40 @@ export interface LicenseRefreshRequest {
   type: "ss-license-refresh";
 }
 
+/* ---------- Versjon og oppdatering: «Om Ordlyd» ↔ service worker ---------- */
+
+/** Installert versjon, nyeste fra serveren, og om en oppdatering venter. */
+export interface VersionInfoRequest {
+  type: "ss-version-info";
+}
+
+export interface VersionInfoResponse {
+  installert: string;
+  nyeste: string | null;
+  minste: string | null;
+  merknad: string | null;
+  /** Satt når nettleseren har lastet ned en oppdatering som venter på omstart. */
+  venterPaaOmstart: string | null;
+}
+
+/**
+ * Ber nettleseren se etter oppdatering nå. `chrome.runtime.requestUpdateCheck`
+ * finnes bare i service workeren, derfor går dette via melding.
+ */
+export interface CheckUpdateRequest {
+  type: "ss-check-update";
+}
+
+export interface CheckUpdateResponse {
+  status: "update_available" | "no_update" | "throttled" | "utilgjengelig";
+  versjon: string | null;
+}
+
+/** Tar i bruk en nedlastet oppdatering ved å laste utvidelsen på nytt. */
+export interface ApplyUpdateRequest {
+  type: "ss-apply-update";
+}
+
 export type AnyMessage =
   | SpeakRequest
   | StopRequest
@@ -135,4 +169,7 @@ export type AnyMessage =
   | LicenseStateRequest
   | LicenseLoginRequest
   | LicenseLogoutRequest
-  | LicenseRefreshRequest;
+  | LicenseRefreshRequest
+  | VersionInfoRequest
+  | CheckUpdateRequest
+  | ApplyUpdateRequest;

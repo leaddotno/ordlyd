@@ -78,13 +78,28 @@ export interface LicenseClientConfig {
   timeoutMs?: number;
 }
 
-export type LicenseStatus = "ulisensiert" | "aktiv" | "varsel" | "degradert";
+/**
+ * `varsel` og `degradert` handler om KONTAKT med serveren, `utgatt` om
+ * lisensens egen sluttdato. Det er to forskjellige ting, og å vise dem som
+ * ett var nettopp feilen: en løpende lisens så ut som den gikk ut om 100
+ * dager, når sannheten var «maskinen har ikke vært på nett en stund».
+ */
+export type LicenseStatus = "ulisensiert" | "aktiv" | "varsel" | "degradert" | "utgatt";
 
 export interface LicenseState {
   status: LicenseStatus;
   /** Funksjonene brukeren faktisk har lov til å bruke nå. */
   funksjoner: string[];
-  dagerIgjen: number | null;
+  /**
+   * Dager til kvitteringen må fornyes — altså hvor lenge maskinen kan være
+   * uten kontakt. Dette er IKKE lisensens levetid, og skal bare vises når
+   * fristen faktisk nærmer seg.
+   */
+  dagerTilKontaktfrist: number | null;
+  /** Når lisensen slutter å gjelde. `null` = løpende, som er det vanlige. */
+  lisensSlutt: number | null;
+  /** medlem | skole | prove | apen — eller null i eldre kvitteringer. */
+  lisenstype: string | null;
   epostMaskert: string | null;
   kunde: string | null;
   /** Systemklokka ser ut til å ha gått bakover. Informativt — sperrer ikke. */
@@ -100,7 +115,9 @@ export type LoginResult = { ok: true } | { ok: false; feil: string };
 const TOM_TILSTAND: LicenseState = {
   status: "ulisensiert",
   funksjoner: [],
-  dagerIgjen: null,
+  dagerTilKontaktfrist: null,
+  lisensSlutt: null,
+  lisenstype: null,
   epostMaskert: null,
   kunde: null,
   klokkeAvvik: false,
@@ -160,15 +177,31 @@ export class LicenseClient {
 
     const p: ReceiptPayload = v.payload;
     const fraKvittering = p.products?.[this.cfg.product]?.features ?? [];
-    const utlopt = v.state === "utlopt";
-    const status: LicenseStatus = utlopt ? "degradert" : v.state === "varsel" ? "varsel" : "aktiv";
+
+    const lisensSlutt = p.licenseValidTo ?? null;
+    // Lisensens egen sluttdato er passert. Kvitteringen kan fortsatt være
+    // gyldig i uker, men vi later ikke som om lisensen lever — og vi kutter
+    // heller ikke opplesingen: samme avveining som ved manglende kontakt.
+    const utgatt = lisensSlutt !== null && naa > lisensSlutt;
+    const utenKontakt = v.state === "utlopt";
+    const begrenset = utgatt || utenKontakt;
+
+    const status: LicenseStatus = utgatt
+      ? "utgatt"
+      : utenKontakt
+        ? "degradert"
+        : v.state === "varsel"
+          ? "varsel"
+          : "aktiv";
 
     return {
       status,
-      funksjoner: utlopt
+      funksjoner: begrenset
         ? fraKvittering.filter((f) => (DEGRADERTE_FUNKSJONER as readonly string[]).includes(f))
         : fraKvittering,
-      dagerIgjen: Math.max(0, Math.ceil((p.exp - naa) / 86_400)),
+      dagerTilKontaktfrist: Math.max(0, Math.ceil((p.exp - naa) / 86_400)),
+      lisensSlutt,
+      lisenstype: p.plan ?? null,
       epostMaskert: stored.epostMaskert,
       kunde: p.tenant,
       klokkeAvvik,
@@ -176,6 +209,31 @@ export class LicenseClient {
       sisteAvslag: stored.sisteAvslag,
       feil: null,
     };
+  }
+
+  /**
+   * Versjonsinformasjon fra serveren, til «Om Ordlyd». Bruker samme
+   * adresseliste med reserveadresser som resten av klienten.
+   */
+  async versionInfo(): Promise<{ nyeste: string | null; minste: string | null; merknad: string | null }> {
+    for (const base of this.cfg.baseUrls) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), this.cfg.timeoutMs ?? 15_000);
+      try {
+        const res = await this.fetch(
+          `${base}/api/v1/version?product=${encodeURIComponent(this.cfg.product)}`,
+          { signal: ctrl.signal },
+        );
+        if (!res.ok) continue;
+        const j: any = await res.json();
+        return { nyeste: j?.nyeste ?? null, minste: j?.minste ?? null, merknad: j?.merknad ?? null };
+      } catch {
+        /* prøv neste adresse */
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    return { nyeste: null, minste: null, merknad: null };
   }
 
   async hasFeature(navn: string): Promise<boolean> {

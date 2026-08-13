@@ -93,8 +93,8 @@ check("innlogging mot ekte server lykkes", ok.ok, ok);
 
 const s = await klient.state();
 check(
-  `produksjonskvittering verifiseres mot pinnet nøkkel (${TRUSTED_KEYS[0].kid}) — ${s.dagerIgjen} dager`,
-  s.status === "aktiv" && s.dagerIgjen !== null && s.dagerIgjen >= 99,
+  `produksjonskvittering verifiseres mot pinnet nøkkel (${TRUSTED_KEYS[0].kid}) — ${s.dagerTilKontaktfrist} dager`,
+  s.status === "aktiv" && s.dagerTilKontaktfrist !== null && s.dagerTilKontaktfrist >= 99,
   s,
 );
 check("alle fem funksjoner er tillatt", s.funksjoner.length === 5, s.funksjoner);

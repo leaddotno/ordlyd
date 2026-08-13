@@ -61,7 +61,7 @@ export class PostgresDb implements Db {
 
   async getPool(id: string): Promise<LicensePool | null> {
     const [row] = await this.sql`
-      select id, tenant_id, name, status, valid_to, products
+      select id, tenant_id, name, status, valid_to, products, plan
       from license_pools where id = ${id}`;
     if (!row) return null;
     return {
@@ -71,6 +71,7 @@ export class PostgresDb implements Db {
       status: row.status,
       validTo: dateToInclusiveSec(row.valid_to),
       products: row.products ?? {},
+      plan: row.plan ?? "apen",
     };
   }
 
@@ -83,10 +84,10 @@ export class PostgresDb implements Db {
 
   async createPool(p: LicensePool): Promise<void> {
     await this.sql`
-      insert into license_pools (id, tenant_id, name, status, valid_to, products)
+      insert into license_pools (id, tenant_id, name, status, valid_to, products, plan)
       values (${p.id}, ${p.tenantId}, ${p.name}, ${p.status},
               ${p.validTo === null ? null : secToDate(p.validTo)},
-              ${this.sql.json(p.products)})`;
+              ${this.sql.json(p.products)}, ${p.plan})`;
   }
 
   async createEntry(e: PoolEntry): Promise<void> {

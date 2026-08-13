@@ -293,6 +293,17 @@
             <input type="text" id="pName" placeholder="Medlemmer 2026" />
           </div>
         </div>
+        <div class="row">
+          <div>
+            <label for="pPlan">Lisenstype</label>
+            <select id="pPlan">
+              <option value="medlem">Medlemslisens — via forening</option>
+              <option value="skole">Skolelisens — kommune eller fylke</option>
+              <option value="prove">Prøvelisens — tidsbegrenset</option>
+              <option value="apen" selected>Åpen lisens — fritt utdelt</option>
+            </select>
+          </div>
+        </div>
         <label>Funksjoner</label>
         <div class="checks" id="featureChecks"></div>
         <label>Produkter</label>
@@ -333,6 +344,12 @@ const PRODUKTER = [
   ["edge-extension", "Nettleserutvidelse"],
   ["win-desktop", "Windows-app"],
 ];
+const PLAN_NAVN = {
+  medlem: "Medlemslisens",
+  skole: "Skolelisens",
+  prove: "Prøvelisens",
+  apen: "Åpen lisens",
+};
 
 const $ = (id) => document.getElementById(id);
 const KEY = "ordlyd_admin_token";
@@ -469,6 +486,10 @@ function tegnTenants() {
             <div>
               <span class="poolname">${esc(p.poolName)}</span>
               ${p.poolStatus !== "aktiv" ? `<span class="chip warn">${esc(p.poolStatus)}</span>` : ""}
+              <div class="muted" style="font-size:.8rem">
+                ${esc(PLAN_NAVN[p.plan ?? "apen"] ?? p.plan ?? "")}
+                ${p.gyldigTil ? `· gyldig til ${esc(p.gyldigTil)}` : "· løpende"}
+              </div>
               <div class="muted" style="font-size:.8rem">
                 ${p.lisenser} lisenser · ${p.aktive} aktive · ${p.installasjoner} maskiner
               </div>
@@ -641,7 +662,11 @@ $("poolBtn").addEventListener("click", async () => {
   try {
     await api("/api/v1/admin/pool", {
       method: "POST",
-      body: { tenantId, name, features, products, ...($("pValid").value ? { validTo: $("pValid").value } : {}) },
+      body: {
+        tenantId, name, features, products,
+        plan: $("pPlan").value,
+        ...($("pValid").value ? { validTo: $("pValid").value } : {}),
+      },
     });
     melding($("msg"), `Poolen «${name}» er opprettet.`, "ok");
     $("pName").value = ""; $("pValid").value = "";

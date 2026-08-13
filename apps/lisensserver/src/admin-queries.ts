@@ -20,6 +20,8 @@ export interface PoolSummary {
   poolId: string | null;
   poolName: string | null;
   poolStatus: string | null;
+  plan: string | null;
+  gyldigTil: string | null;
   lisenser: number;
   aktive: number;
   installasjoner: number;
@@ -39,6 +41,7 @@ export async function overview(sql: Sql): Promise<TenantSummary[]> {
     select
       t.id as tenant_id, t.slug, t.name, t.status, t.valid_to,
       p.id as pool_id, p.name as pool_name, p.status as pool_status,
+      p.plan as pool_plan, p.valid_to as pool_valid_to,
       coalesce((select count(*) from pool_entries e where e.pool_id = p.id), 0)::int as lisenser,
       coalesce((select count(*) from pool_entries e where e.pool_id = p.id and e.status = 'aktiv'), 0)::int as aktive,
       coalesce((select count(*) from installs i
@@ -67,6 +70,8 @@ export async function overview(sql: Sql): Promise<TenantSummary[]> {
         poolId: r.pool_id,
         poolName: r.pool_name,
         poolStatus: r.pool_status,
+        plan: r.pool_plan ?? null,
+        gyldigTil: r.pool_valid_to ? String(r.pool_valid_to).slice(0, 10) : null,
         lisenser: r.lisenser,
         aktive: r.aktive,
         installasjoner: r.installasjoner,

@@ -23,7 +23,7 @@ import {
   type SigningKeyPair,
   type ReceiptPayload,
 } from "@ordlyd/license-core";
-import type { Db, LicensePool, PoolEntry } from "./types.js";
+import type { Db, LicensePool, PoolEntry, Tenant } from "./types.js";
 
 export const ISSUER = "https://lisens.ordlyd.no";
 
@@ -112,12 +112,22 @@ async function findActivePoolAndTenant(
   return pool;
 }
 
+/**
+ * Når slutter lisensen å gjelde? Den strengeste av kundens og poolens
+ * sluttdato. Null betyr løpende — det vanlige, og det som gjør at klienten
+ * kan slutte å vise en nedtelling som ikke betyr noe.
+ */
+function licenseValidTo(tenant: Tenant, pool: LicensePool): number | null {
+  const datoer = [tenant.validTo, pool.validTo].filter((v): v is number => v !== null);
+  return datoer.length ? Math.min(...datoer) : null;
+}
+
 async function issueReceipt(
   db: Db,
   keys: SigningKeyPair,
   entry: PoolEntry,
   pool: LicensePool,
-  tenantSlug: string,
+  tenant: Tenant,
   installId: string,
   nowSec: number,
   config: ServerConfig,
@@ -127,13 +137,15 @@ async function issueReceipt(
     kid: keys.kid,
     iss: ISSUER,
     sub: `code:${entry.emailHash}`,
-    tenant: tenantSlug,
+    tenant: tenant.slug,
     install: installId,
     products: pool.products,
     iat: nowSec,
     softExp: nowSec + RECEIPT_SOFT_TTL_SEC,
     exp: nowSec + RECEIPT_TTL_SEC,
     serverTime: nowSec,
+    licenseValidTo: licenseValidTo(tenant, pool),
+    plan: pool.plan,
     ...(config.minVersion ? { minVersion: config.minVersion } : {}),
     ...(config.endpointsVer !== undefined ? { endpointsVer: config.endpointsVer } : {}),
     ...(config.revoked?.length ? { revoked: config.revoked } : {}),
@@ -209,7 +221,7 @@ export async function login(
   await db.recordNet(entry.id, dayOf(input.nowSec), netHash);
   await db.audit("system", "login", { entry: entry.id, install: installId, product: input.product });
 
-  const receipt = await issueReceipt(db, keys, entry, pool, tenant!.slug, installId, input.nowSec, config);
+  const receipt = await issueReceipt(db, keys, entry, pool, tenant!, installId, input.nowSec, config);
   return { ok: true, receipt, installId, installSecret };
 }
 
@@ -256,7 +268,7 @@ export async function refresh(
   await db.touchEntry(entry.id, input.nowSec);
   await db.recordNet(entry.id, dayOf(input.nowSec), await hashNet(pepper, input.ip));
 
-  const receipt = await issueReceipt(db, keys, entry, pool, tenant!.slug, install.id, input.nowSec, config);
+  const receipt = await issueReceipt(db, keys, entry, pool, tenant!, install.id, input.nowSec, config);
   return { ok: true, receipt };
 }
 

@@ -44,14 +44,28 @@ class MinneLager implements LicenseStorage {
   async clear() { this.value = null; }
 }
 
-async function lagKvittering(iat: number, features = ALLE, kid = "sk-test"): Promise<string> {
+async function lagKvittering(
+  iat: number,
+  features = ALLE,
+  kid = "sk-test",
+  ekstra: Partial<ReceiptPayload> = {},
+): Promise<string> {
   const payload: ReceiptPayload = {
     v: 1, kid, iss: "https://lisens.ordlyd.no",
     sub: "code:abc", tenant: "dysleksi-norge", install: "inst-1",
     products: { "edge-extension": { features } },
     iat, softExp: iat + RECEIPT_SOFT_TTL_SEC, exp: iat + RECEIPT_TTL_SEC, serverTime: iat,
+    ...ekstra,
   };
   return signReceipt(payload, kid === "sk-test" ? keys : await generateSigningKeys(kid));
+}
+
+/** Lagret lisens med en gitt kvittering, brukt av flere tester. */
+function lagretMed(receipt: string, tid: number): StoredLicense {
+  return {
+    receipt, installId: "i1", installSecret: "s1", epostMaskert: "k***@eksempel.no",
+    highWaterSec: tid, sisteForsokSec: tid, sisteSuksessSec: tid, sisteAvslag: null,
+  };
 }
 
 /** Bygger en klient med kontrollert tid og et skriptet serversvar. */
@@ -106,7 +120,7 @@ console.log("\n— Innlogging —");
   check("innlogging lykkes", r.ok, r);
   const s = await k.state();
   check("status er aktiv med alle funksjoner", s.status === "aktiv" && s.funksjoner.length === 5, s);
-  check("dager igjen er 100", s.dagerIgjen === 100, s.dagerIgjen);
+  check("dager igjen er 100", s.dagerTilKontaktfrist === 100, s.dagerTilKontaktfrist);
   check("e-post lagres maskert, ikke i klartekst", s.epostMaskert === "k***@eksempel.no" && JSON.stringify(lager.value).includes("kari@eksempel.no") === false, s.epostMaskert);
   check("kundenavn hentes fra kvitteringen", s.kunde === "dysleksi-norge");
 }
@@ -169,6 +183,48 @@ console.log("\n— Livsløp over 100 dager —");
   check("hasFeature følger degradert modus", (await k.hasFeature("tts")) && !(await k.hasFeature("stavekontroll")));
 }
 
+/* ---------- Lisensens egen sluttdato vs. kontakt med serveren ---------- */
+console.log("\n— Løpende lisens kontra lisens med sluttdato —");
+{
+  // Løpende lisens: ingen sluttdato i kvitteringen
+  const lager = new MinneLager();
+  lager.value = lagretMed(await lagKvittering(NOW0, ALLE, "sk-test", { licenseValidTo: null, plan: "medlem" }), NOW0);
+  const k = lagKlient({ lager, tid: () => NOW0 + 5 * 86_400 });
+  const s = await k.state();
+  check("løpende lisens har ingen sluttdato å vise", s.lisensSlutt === null, s);
+  check("lisenstypen følger med i kvitteringen", s.lisenstype === "medlem", s.lisenstype);
+  check("løpende lisens er aktiv med alle funksjoner", s.status === "aktiv" && s.funksjoner.length === 5, s);
+}
+{
+  // Eldre kvittering uten de nye feltene skal tolkes som løpende
+  const lager = new MinneLager();
+  lager.value = lagretMed(await lagKvittering(NOW0), NOW0);
+  const k = lagKlient({ lager, tid: () => NOW0 + 86_400 });
+  const s = await k.state();
+  check("kvittering uten de nye feltene tolkes som løpende", s.lisensSlutt === null && s.lisenstype === null && s.status === "aktiv", s);
+}
+{
+  // Lisens med sluttdato fram i tid
+  const slutt = NOW0 + 30 * 86_400;
+  const lager = new MinneLager();
+  lager.value = lagretMed(await lagKvittering(NOW0, ALLE, "sk-test", { licenseValidTo: slutt, plan: "skole" }), NOW0);
+  const k = lagKlient({ lager, tid: () => NOW0 + 10 * 86_400 });
+  const s = await k.state();
+  check("sluttdato fram i tid: aktiv, og datoen er tilgjengelig", s.status === "aktiv" && s.lisensSlutt === slutt, s);
+}
+{
+  // Sluttdato passert, men kvitteringen fortsatt gyldig i ukevis
+  const slutt = NOW0 + 10 * 86_400;
+  const lager = new MinneLager();
+  lager.value = lagretMed(await lagKvittering(NOW0, ALLE, "sk-test", { licenseValidTo: slutt, plan: "prove" }), NOW0);
+  const k = lagKlient({ lager, tid: () => NOW0 + 20 * 86_400 });
+  const s = await k.state();
+  check("passert sluttdato gir status «utgatt», ikke «degradert»", s.status === "utgatt", s);
+  check("utgått lisens beholder opplesing", s.funksjoner.includes("tts"), s.funksjoner);
+  check("utgått lisens slår av skrivehjelpen", !s.funksjoner.includes("prediksjon"), s.funksjoner);
+  check("kontaktfristen er fortsatt langt fram — det er lisensen som er ute", (s.dagerTilKontaktfrist ?? 0) > 70, s.dagerTilKontaktfrist);
+}
+
 /* ---------- Klokkejuks ---------- */
 console.log("\n— Klokka —");
 {
@@ -186,7 +242,7 @@ console.log("\n— Klokka —");
   const s = await k.state();
   check("klokke skrudd tilbake flagges", s.klokkeAvvik, s);
   check("…men utestenger ikke — funksjonene virker", s.status === "aktiv" && s.funksjoner.length === 5, s);
-  check("…og gir ikke ekstra levetid (regnes fra høyvannsmerket)", s.dagerIgjen === 50, s.dagerIgjen);
+  check("…og gir ikke ekstra levetid (regnes fra høyvannsmerket)", s.dagerTilKontaktfrist === 50, s.dagerTilKontaktfrist);
 
   // Liten avvik innenfor slakken skal ikke flagges
   tid = NOW0 + 50 * 86_400 - (CLOCK_SLACK_SEC - 3600);
@@ -217,7 +273,7 @@ console.log("\n— Fornyelse —");
   nyKvittering = await lagKvittering(tid);
   check("fornyelse lykkes", await k.refresh());
   const s = await k.state();
-  check("glidende utløp: 100 nye dager fra fornyelsen", s.dagerIgjen === 100, s.dagerIgjen);
+  check("glidende utløp: 100 nye dager fra fornyelsen", s.dagerTilKontaktfrist === 100, s.dagerTilKontaktfrist);
   check("høyvannsmerket flyttet fram", lager.value!.highWaterSec === tid, lager.value!.highWaterSec);
 }
 

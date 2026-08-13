@@ -12,6 +12,7 @@ import { requireAdmin } from "../../../src/admin-auth.js";
 
 export const KJENTE_FUNKSJONER = ["tts", "ordbok", "stavekontroll", "prediksjon", "skriveekko"];
 export const KJENTE_PRODUKTER = ["edge-extension", "win-desktop"];
+export const KJENTE_PLANER = ["medlem", "skole", "prove", "apen"] as const;
 
 export default vercelHandler("POST", async (req) => {
   const denied = requireAdmin(req.headers);
@@ -38,6 +39,11 @@ export default vercelHandler("POST", async (req) => {
     validTo = Math.floor(ms / 1000);
   }
 
+  const plan = (requireString(req.body, "plan") ?? "apen") as (typeof KJENTE_PLANER)[number];
+  if (!KJENTE_PLANER.includes(plan)) {
+    return badRequest(`ukjent lisenstype «${plan}» — velg blant ${KJENTE_PLANER.join(", ")}`);
+  }
+
   const db = getDb();
   const tenant = await db.getTenant(tenantId);
   if (!tenant) return badRequest("ukjent kunde");
@@ -46,7 +52,7 @@ export default vercelHandler("POST", async (req) => {
   for (const p of valgteProdukter as string[]) products[p] = { features: features as string[] };
 
   const id = newId();
-  await db.createPool({ id, tenantId, name, status: "aktiv", validTo, products });
-  await db.audit("superadmin", "opprett-pool", { pool: id, tenant: tenantId, products });
-  return ok({ poolId: id, name, products });
+  await db.createPool({ id, tenantId, name, status: "aktiv", validTo, products, plan });
+  await db.audit("superadmin", "opprett-pool", { pool: id, tenant: tenantId, plan });
+  return ok({ poolId: id, name, products, plan });
 });
