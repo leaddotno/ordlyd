@@ -1,0 +1,477 @@
+<title>Ordlyd — kom i gang med lisensserveren</title>
+<style>
+  :root {
+    --ground:      #eef1f1;
+    --surface:     #fafbfb;
+    --surface-2:   #e6ebeb;
+    --line:        #cdd6d6;
+    --line-soft:   #dde4e4;
+    --text:        #142124;
+    --text-soft:   #4a5b5f;
+    --text-faint:  #6d7f83;
+    --petrol:      #0e3d43;
+    --brass:       #8a6412;
+    --ok:          #1c6647;
+    --ok-bg:       #dcebe3;
+    --warn:        #8a5f08;
+    --warn-bg:     #f2e8d2;
+    --crit:        #97302a;
+    --crit-bg:     #f2dedc;
+    --code-bg:     #e8eded;
+    --code-text:   #142124;
+    --shadow:      0 1px 2px rgba(16,32,36,.06), 0 8px 24px -16px rgba(16,32,36,.28);
+
+    --serif: Constantia, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0b1215;
+      --surface:     #111c20;
+      --surface-2:   #17252a;
+      --line:        #2b3d42;
+      --line-soft:   #223236;
+      --text:        #dde7e8;
+      --text-soft:   #a3b4b7;
+      --text-faint:  #7d9094;
+      --petrol:      #7fc6cc;
+      --brass:       #d4a648;
+      --ok:          #6fc79b;
+      --ok-bg:       #143024;
+      --warn:        #d9ad55;
+      --warn-bg:     #33280f;
+      --crit:        #e8938c;
+      --crit-bg:     #371917;
+      --code-bg:     #16242a;
+      --code-text:   #dde7e8;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0b1215;
+    --surface:     #111c20;
+    --surface-2:   #17252a;
+    --line:        #2b3d42;
+    --line-soft:   #223236;
+    --text:        #dde7e8;
+    --text-soft:   #a3b4b7;
+    --text-faint:  #7d9094;
+    --petrol:      #7fc6cc;
+    --brass:       #d4a648;
+    --ok:          #6fc79b;
+    --ok-bg:       #143024;
+    --warn:        #d9ad55;
+    --warn-bg:     #33280f;
+    --crit:        #e8938c;
+    --crit-bg:     #371917;
+    --code-bg:     #16242a;
+    --code-text:   #dde7e8;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .col { max-width: 70ch; margin: 0 auto; }
+
+  header {
+    padding: 4rem 0 2rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin: 0 0 1.1rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 2.9rem);
+    line-height: 1.12;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: 1.18rem;
+    line-height: 1.55;
+    color: var(--text-soft);
+    margin: 0 0 1.75rem;
+    text-wrap: pretty;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.5rem;
+    font-family: var(--mono); font-size: .74rem; color: var(--text-faint);
+    padding-top: 1.1rem; border-top: 1px solid var(--line);
+  }
+
+  /* ---- Fremdriftsoversikt ---- */
+  .progress {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1.2rem 1.4rem;
+    margin: 2rem 0 0;
+    box-shadow: var(--shadow);
+  }
+  .progress h2 {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint); font-weight: 400;
+    margin: 0 0 .9rem; border: 0; padding: 0; display: block;
+  }
+  .progress ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .45rem; }
+  .progress li { display: flex; gap: .7rem; align-items: baseline; font-size: .92rem; margin: 0; }
+  .progress .mark { font-family: var(--mono); font-size: .8rem; flex: none; min-width: 1.4rem; }
+  .progress .done { color: var(--ok); }
+  .progress .todo { color: var(--brass); }
+  .progress a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
+  .progress a:hover { border-bottom-color: var(--petrol); }
+
+  /* ---- Steg ---- */
+  section.step { padding-top: 3rem; }
+  section.step > h2 {
+    font-family: var(--serif);
+    font-size: 1.6rem; font-weight: 600; line-height: 1.2;
+    letter-spacing: -.01em; text-wrap: balance;
+    margin: 0 0 .3rem;
+    display: flex; gap: .75rem; align-items: baseline;
+  }
+  section.step > h2 .n {
+    font-family: var(--mono); font-size: .95rem; font-weight: 400;
+    color: var(--brass); flex: none;
+  }
+  .where {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-faint);
+    margin: 0 0 1.1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--line-soft);
+  }
+  h3 {
+    font-size: 1rem; font-weight: 650; margin: 1.9rem 0 .5rem;
+  }
+  p { margin: 0 0 1rem; text-wrap: pretty; }
+  ol.actions { margin: 0 0 1.2rem; padding-left: 1.4rem; }
+  ol.actions > li { margin-bottom: .7rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .4rem; }
+  strong { font-weight: 650; }
+  a { color: var(--petrol); text-underline-offset: .15em; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; border-radius: 2px; }
+
+  code {
+    font-family: var(--mono); font-size: .84em;
+    background: var(--code-bg); color: var(--code-text);
+    padding: .1em .35em; border-radius: 3px;
+    overflow-wrap: break-word;
+  }
+  pre {
+    font-family: var(--mono); font-size: .79rem; line-height: 1.6;
+    background: var(--code-bg); color: var(--code-text);
+    border: 1px solid var(--line-soft); border-radius: 5px;
+    padding: .95rem 1.05rem; overflow-x: auto; margin: 0 0 1.1rem;
+  }
+  pre code { background: none; padding: 0; font-size: 1em; }
+  .prelabel {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-faint); margin: 0 0 .35rem;
+  }
+
+  .tablewrap {
+    overflow-x: auto; margin: 0 0 1.3rem;
+    border: 1px solid var(--line); border-radius: 5px; background: var(--surface);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 32rem; }
+  th, td { text-align: left; padding: .62rem .8rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: .67rem; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--text-faint); font-weight: 400;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .note {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--brass); border-radius: 4px;
+    padding: 1rem 1.2rem; margin: 0 0 1.2rem; box-shadow: var(--shadow);
+  }
+  .note .tag {
+    font-family: var(--mono); font-size: .67rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--brass); display: block; margin-bottom: .45rem;
+  }
+  .note.danger { border-left-color: var(--crit); }
+  .note.danger .tag { color: var(--crit); }
+  .note.good { border-left-color: var(--ok); }
+  .note.good .tag { color: var(--ok); }
+  .note p:last-child, .note ul:last-child { margin-bottom: 0; }
+
+  .expect {
+    font-family: var(--mono); font-size: .76rem;
+    background: var(--ok-bg); color: var(--ok);
+    border-radius: 4px; padding: .6rem .85rem; margin: 0 0 1.1rem;
+    display: block; overflow-x: auto; white-space: pre-wrap;
+  }
+
+  details {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; padding: .75rem 1.05rem; margin: 0 0 1.1rem;
+  }
+  summary { cursor: pointer; font-weight: 600; font-size: .93rem; }
+  details[open] summary { margin-bottom: .7rem; }
+
+  footer {
+    max-width: 70ch; margin: 4rem auto 0; padding-top: 1.4rem;
+    border-top: 1px solid var(--line); font-size: .82rem; color: var(--text-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="col">
+
+  <header>
+    <p class="eyebrow">Ordlyd · oppsett · 13. august 2026</p>
+    <h1>Kom i gang med lisensserveren</h1>
+    <p class="standfirst">Åtte steg fra der vi står nå til en lisensserver som utsteder ekte kvitteringer. Hvert steg har en forventet utskrift, så du ser med en gang om det gikk bra — og siste steg kjører hele kjeden automatisk.</p>
+    <div class="meta">
+      <span>Repo: leaddotno/ordlyd</span>
+      <span>Vercel: Frankfurt (fra1)</span>
+      <span>Supabase: eu-central-1</span>
+    </div>
+
+    <div class="progress">
+      <h2>Hvor vi står</h2>
+      <ol>
+        <li><span class="mark done">✓</span><span>Git-repo koblet, synk verifisert i begge retninger</span></li>
+        <li><span class="mark done">✓</span><span>Prosjektet omdøpt til Ordlyd og pushet</span></li>
+        <li><span class="mark done">✓</span><span>Lisenskjerne og API-lag skrevet, 50 tester grønne</span></li>
+        <li><span class="mark todo">1</span><a href="#s1">Bekreft at Vercel bygger fra pushen</a></li>
+        <li><span class="mark todo">2</span><a href="#s2">Kjør databasemigrasjonen i Supabase</a></li>
+        <li><span class="mark todo">3</span><a href="#s3">Hent tilkoblingsstrengen</a></li>
+        <li><span class="mark todo">4</span><a href="#s4">Generer de fire hemmelighetene</a></li>
+        <li><span class="mark todo">5</span><a href="#s5">Legg dem inn i Vercel og redeploy</a></li>
+        <li><span class="mark todo">6</span><a href="#s6">Røyktest: <code>/api/health</code></a></li>
+        <li><span class="mark todo">7</span><a href="#s7">Opprett en testkunde</a></li>
+        <li><span class="mark todo">8</span><a href="#s8">Kjør ende-til-ende-testen</a></li>
+      </ol>
+    </div>
+  </header>
+
+  <section class="step" id="s0">
+    <h2><span class="n">✓</span> Git-synken virker allerede</h2>
+    <p class="where">Ingenting å gjøre — bare til orientering</p>
+    <p>Repoet er koblet til <code>https://github.com/leaddotno/ordlyd</code>, og <code>main</code> sporer <code>origin/main</code>. Jeg pushet navnebyttet herfra for å bekrefte at det virker:</p>
+    <pre><code>72d506f..fc7f011  main -&gt; main</code></pre>
+    <p>Fra nå av committer og pusher jeg som en del av arbeidet. Vil du selv sjekke at vi er i takt:</p>
+    <p class="prelabel">i prosjektmappen</p>
+    <pre><code>git status -sb</code></pre>
+    <span class="expect">## main...origin/main</span>
+    <p>Står det <code>[ahead 1]</code> eller <code>[behind 1]</code> bak den linja, er det noe som ikke er pushet eller hentet. Ellers er alt i takt.</p>
+  </section>
+
+  <section class="step" id="s1">
+    <h2><span class="n">1</span> Bekreft at Vercel bygger fra pushen</h2>
+    <p class="where">vercel.com → prosjektet → Deployments</p>
+    <p>Pushen min skal ha utløst en deploy automatisk. Åpne Deployments-listen og se etter «Navnebytte: prosjektet heter Ordlyd».</p>
+    <p>Sjekk samtidig at disse to innstillingene er riktige under <strong>Settings → Build and Deployment</strong>:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Innstilling</th><th>Verdi</th></tr></thead>
+        <tbody>
+          <tr><td>Root Directory</td><td><code>apps/lisensserver</code></td></tr>
+          <tr><td>Framework Preset</td><td>Other</td></tr>
+          <tr><td>Build Command</td><td>tom — det finnes ikke noe byggetrinn, bare serverless-funksjoner</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <span class="tag">Hvis bygget feiler her</span>
+      <p>Den mest sannsynlige årsaken er at Vercel ikke finner arbeidsområdet: prosjektet er et pnpm-monorepo, og <code>@ordlyd/license-core</code> ligger utenfor <code>apps/lisensserver</code>. Skru på <strong>«Include files outside the root directory»</strong> under samme innstillingsside. Send meg feilmeldingen om den fortsatt står — det er en kjent, løsbar sak.</p>
+    </div>
+    <p>Deployen kommer til å <strong>svare 503 på <code>/api/health</code> foreløpig</strong>, og det er meningen: hemmelighetene er ikke lagt inn ennå. Det er steg 5.</p>
+  </section>
+
+  <section class="step" id="s2">
+    <h2><span class="n">2</span> Kjør databasemigrasjonen</h2>
+    <p class="where">supabase.com → prosjektet → SQL Editor</p>
+    <ol class="actions">
+      <li>Åpne filen <code>apps/lisensserver/supabase/migrations/0001_init.sql</code> i repoet.</li>
+      <li>Kopier <strong>hele</strong> innholdet.</li>
+      <li>Lim inn i SQL Editor og trykk <strong>Run</strong>.</li>
+    </ol>
+    <p>Kjør deretter denne kontrollen i samme editor:</p>
+    <pre><code>select table_name, row_security
+from information_schema.tables t
+join pg_class c on c.relname = t.table_name
+where table_schema = 'public' and table_type = 'BASE TABLE'
+order by table_name;</code></pre>
+    <p>Du skal få <strong>12 tabeller</strong>, alle med radsikkerhet på:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Tabell</th><th>Hva den holder</th></tr></thead>
+        <tbody>
+          <tr><td><code>tenants</code></td><td>Kunder: Dysleksi Norge, en kommune, en fylkeskommune</td></tr>
+          <tr><td><code>identity_providers</code></td><td>Hvilke påloggingsveier kunden har (kode nå, Feide senere)</td></tr>
+          <tr><td><code>license_pools</code></td><td>Lisenspool med produkter og funksjoner</td></tr>
+          <tr><td><code>pool_rules</code></td><td>Regelbaserte pooler — tas i bruk med Feide</td></tr>
+          <tr><td><code>pool_entries</code></td><td><strong>Lisensene.</strong> E-posthash, kodehash, maskert e-post, status</td></tr>
+          <tr><td><code>deny_entries</code></td><td>Eksplisitt utestenging som slår alle regler</td></tr>
+          <tr><td><code>installs</code></td><td>Én rad per maskin som har logget inn</td></tr>
+          <tr><td><code>usage_nets</code></td><td>Pseudonymiserte nettnøkler for misbruksdeteksjon</td></tr>
+          <tr><td><code>receipts</code></td><td>Revisjonsspor over utstedte kvitteringer</td></tr>
+          <tr><td><code>signing_keys</code></td><td>Offentlige nøkler med status, for rotasjon</td></tr>
+          <tr><td><code>login_attempts</code></td><td>Ratebegrensning. Ryddes automatisk hvert døgn</td></tr>
+          <tr><td><code>audit_log</code></td><td>Hvem gjorde hva. Bare innsetting, ingen endring</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note good">
+      <span class="tag">Hva du IKKE finner i basen</span>
+      <p>Ingen e-postadresser i klartekst, ingen lisenskoder, ingen IP-adresser, ingen navn eller klasser. Bare hasher og aggregerte tall. Det er derfor en databaselekkasje ikke blir en lesbar medlemsliste — og det er hele grunnen til at pepperet i steg 4 bor hos Vercel og ikke her.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s3">
+    <h2><span class="n">3</span> Hent tilkoblingsstrengen</h2>
+    <p class="where">Supabase → Project Settings → Database → Connection string</p>
+    <p>Velg fanen <strong>Transaction pooler</strong>. Strengen ser omtrent slik ut:</p>
+    <pre><code>postgresql://postgres.abcdefghijklm:[PASSORD]@aws-0-eu-central-1.pooler.supabase.com:6543/postgres</code></pre>
+    <p>Bytt <code>[PASSORD]</code> med databasepassordet ditt. Dette blir <code>DATABASE_URL</code> i neste steg.</p>
+    <div class="note danger">
+      <span class="tag">Port 6543 — ikke 5432</span>
+      <p>Dette er den ene detaljen som gir de vondeste feilene senere. Serverless-funksjoner åpner og lukker tilkoblinger hele tiden, så de <em>må</em> gå gjennom pooleren på <strong>6543</strong>. Koden er allerede tilpasset denne modusen med <code>prepare: false</code>, fordi transaksjonsmodus ikke støtter forberedte spørringer. Bruker du 5432 direkte, virker det i testen din og feiler sporadisk i drift — bare når to funksjonsinstanser er våkne samtidig.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s4">
+    <h2><span class="n">4</span> Generer de fire hemmelighetene</h2>
+    <p class="where">Din maskin, i prosjektmappen</p>
+    <p>Signeringsnøklene først. Dette er nøklene klientene skal stole på:</p>
+    <pre><code>pnpm exec tsx scripts/generate-signing-keys.mts</code></pre>
+    <p>Utskriften har to deler. Den <strong>private</strong> (første blokk) blir <code>SIGNING_KEYS_JWK</code> hos Vercel. Den <strong>offentlige</strong> (andre blokk) skal senere pinnes inn i utvidelsen — lagre den et sted du finner den igjen, men den er ikke hemmelig.</p>
+    <p>Så de tre tilfeldige verdiene:</p>
+    <pre><code>openssl rand -base64 32</code></pre>
+    <p>Kjør den tre ganger og bruk svarene som <code>LICENSE_PEPPER</code>, <code>ADMIN_TOKEN</code> og <code>CRON_SECRET</code>. Har du ikke openssl i PowerShell, virker dette:</p>
+    <pre><code>node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"</code></pre>
+    <div class="note danger">
+      <span class="tag">Pepperet kan aldri byttes</span>
+      <p><code>LICENSE_PEPPER</code> er nøkkelen alle e-post- og kodehasher er laget med. Bytter du den, blir <em>hver eksisterende lisens</em> ugyldig samtidig, og ingen kan logge inn før alle koder er delt ut på nytt. Ta en kopi et trygt sted nå — i en passordhvelv, ikke i repoet.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s5">
+    <h2><span class="n">5</span> Legg dem inn i Vercel og redeploy</h2>
+    <p class="where">Vercel → Settings → Environment Variables</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Variabel</th><th>Verdi</th></tr></thead>
+        <tbody>
+          <tr><td><code>DATABASE_URL</code></td><td>Strengen fra steg 3, port 6543</td></tr>
+          <tr><td><code>LICENSE_PEPPER</code></td><td>Tilfeldig verdi fra steg 4</td></tr>
+          <tr><td><code>SIGNING_KEYS_JWK</code></td><td>Hele den private JSON-blokken, på én linje</td></tr>
+          <tr><td><code>ADMIN_TOKEN</code></td><td>Tilfeldig verdi fra steg 4</td></tr>
+          <tr><td><code>CRON_SECRET</code></td><td>Tilfeldig verdi fra steg 4</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Sett alle fem for <strong>Production</strong> (og gjerne Preview, så testdeployer virker).</p>
+    <div class="note danger">
+      <span class="tag">Miljøvariabler slår ikke inn av seg selv</span>
+      <p>Vercel leser dem inn ved <em>bygging</em>, ikke ved hver forespørsel. Etter at du har lagt dem inn må du gå til <strong>Deployments → siste deploy → ⋯ → Redeploy</strong>. Uten det fortsetter <code>/api/health</code> å melde at hemmelighetene mangler, selv om de står i listen.</p>
+    </div>
+  </section>
+
+  <section class="step" id="s6">
+    <h2><span class="n">6</span> Røyktest</h2>
+    <p class="where">Nettleser eller terminal</p>
+    <p>Åpne <code>https://&lt;prosjektet&gt;.vercel.app/api/health</code>. Du skal se:</p>
+    <span class="expect">{"ok":true,"tid":1786…,"sjekker":{"database":"ok","signingKey":"sk-2026-08","pepper":"satt"}}</span>
+    <p>Får du <code>503</code>, sier <code>sjekker</code>-objektet presist hvilken av de tre som mangler — det er derfor endepunktet svarer detaljert i stedet for bare «feil»:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Melding</th><th>Årsak</th></tr></thead>
+        <tbody>
+          <tr><td><code>"database":"feil: …"</code></td><td><code>DATABASE_URL</code> mangler, feil passord, eller port 5432 i stedet for 6543</td></tr>
+          <tr><td><code>"signingKey":"feil: …"</code></td><td><code>SIGNING_KEYS_JWK</code> mangler eller er ikke gyldig JSON (pass på at hele blokken kom med)</td></tr>
+          <tr><td><code>"pepper":"MANGLER"</code></td><td><code>LICENSE_PEPPER</code> ikke satt — eller du har ikke redeployet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="step" id="s7">
+    <h2><span class="n">7</span> Opprett en testkunde</h2>
+    <p class="where">Supabase → SQL Editor</p>
+    <p>Ende-til-ende-testen trenger en pool å importere lisenser til. Kjør <code>apps/lisensserver/supabase/seed-testkunde.sql</code> i SQL Editor. Den lager kunden «TEST — kan slettes» med én pool, og skriver ut pool-IDen:</p>
+    <span class="expect">pool_id                               | kunde       | pool
+3f1c…-…-…                             | test-kunde  | Testpool</span>
+    <p>Kopier <code>pool_id</code> — den trengs i neste steg.</p>
+  </section>
+
+  <section class="step" id="s8">
+    <h2><span class="n">8</span> Kjør ende-til-ende-testen</h2>
+    <p class="where">Din maskin, i prosjektmappen</p>
+    <p>Dette er steget som beviser at alt henger sammen. Testen importerer lisenser mot den <em>live</em> serveren, logger inn, henter serverens offentlige nøkkel, verifiserer kvitteringens signatur lokalt, fornyer, og sjekker at feil legitimasjon avvises.</p>
+    <p class="prelabel">PowerShell</p>
+    <pre><code>$env:ORDLYD_BASE_URL = "https://&lt;prosjektet&gt;.vercel.app"
+$env:ORDLYD_ADMIN_TOKEN = "&lt;ADMIN_TOKEN&gt;"
+$env:ORDLYD_TEST_POOL_ID = "&lt;pool_id&gt;"
+pnpm exec tsx scripts/smoke-lisensserver.mts</code></pre>
+    <span class="expect">✓ 1. helsesjekk: database, signeringsnøkkel og pepper på plass
+✓ 2. offentlig nøkkelsett kan hentes
+✓ 3. import av 2 lisenser gir 2 koder i engangs-eksporten
+✓ 4. feil kode avvises med 401
+✓ 5. riktig kode gir kvittering, installId og installSecret
+✓ 6. kvitteringens signatur er gyldig (via ed25519) og varer 100 dager
+✓ 7. kvitteringen bærer produktrettighetene fra poolen
+✓ 8. fornyelse gir ny kvittering
+✓ 9. fornyelse med feil hemmelighet avvises med 403
+✓ 10. stenging uten admin-token avvises med 401
+
+ALLE 10 STEG OK — lisensserveren fungerer ende til ende.</span>
+    <p>Steg 6 er det viktigste i hele oppsettet: der verifiserer <em>din</em> maskin en signatur laget av serveren, med bare den offentlige nøkkelen. Det er nøyaktig samme kode utvidelsen kommer til å kjøre offline — og beviset på at en elev kan bruke Ordlyd i 100 dager uten å nå serveren.</p>
+    <h3>Rydd opp etterpå</h3>
+    <pre><code>delete from tenants where slug = 'test-kunde';</code></pre>
+    <p>Sletting kaskaderer til pool, lisenser, installasjoner og kvitteringer.</p>
+  </section>
+
+  <section class="step" id="etter">
+    <h2><span class="n">→</span> Når alle åtte er grønne</h2>
+    <p class="where">Da er backend i drift, og dette står igjen</p>
+    <p>Slik importerer du en ekte medlemsliste. Opprett kunde og pool i SQL Editor (samme mønster som testkunden, med riktig navn), og send så listen:</p>
+    <pre><code>curl -X POST https://&lt;prosjektet&gt;.vercel.app/api/v1/admin/import \
+  -H "Authorization: Bearer &lt;ADMIN_TOKEN&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"poolId":"&lt;pool_id&gt;","emails":["medlem1@eksempel.no","medlem2@eksempel.no"]}'</code></pre>
+    <p>Svaret inneholder e-post og kode for hver lisens. <strong>Det er engangs-eksporten</strong> — serveren beholder bare hasher, så listen kan ikke hentes ut igjen. Lagre den trygt og gi den til foreningen, som deler ut kodene til medlemmene sine. Maks 5000 adresser per kall.</p>
+    <h3>Rekkefølgen videre</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Neste</th><th>Hva</th><th>Hvorfor nå</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Superadmin-panel</strong></td><td>Nettside for kunder, pooler, import og stenging — i stedet for SQL og curl</td><td>Gjør at du kan drifte det uten meg</td></tr>
+          <tr><td><strong>Lisens i utvidelsen (L2)</strong></td><td>Innloggingsskjerm i popup, offline-verifisering, døgnlig fornying, degradert modus</td><td>Serveren er klar; nå skal klienten bruke den</td></tr>
+          <tr><td><strong>Domenene (L0)</strong></td><td>Tre domener hos tre registrarer</td><td>Fortsatt mest tidskritisk: de låses i utvidelsens manifest ved første butikkutgivelse</td></tr>
+          <tr><td><strong>Stemmen til CDN (L4)</strong></td><td>63 MB ut av pakken</td><td>Forutsetningen for at oppdateringer blir små nok å rulle ut jevnlig</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Si ifra når de åtte stegene er grønne — eller lim inn feilmeldingen om noe stopper. Da tar vi superadmin-panelet eller lisensen i utvidelsen som neste bolk.</p>
+  </section>
+
+  <footer>
+    <p>Ordlyd, 13. august 2026. Hele arkitekturen med failover-matrise og nødplan ligger i det andre notatet, «Lisensserver for Ordlyd». Teknisk referanse for endepunkter og miljøvariabler: <code>apps/lisensserver/README.md</code> i repoet.</p>
+  </footer>
+
+</div>
