@@ -310,13 +310,21 @@
       <li>Kopier <strong>hele</strong> innholdet.</li>
       <li>Lim inn i SQL Editor og trykk <strong>Run</strong>.</li>
     </ol>
-    <p>Kjør deretter denne kontrollen i samme editor:</p>
-    <pre><code>select table_name, row_security
-from information_schema.tables t
-join pg_class c on c.relname = t.table_name
-where table_schema = 'public' and table_type = 'BASE TABLE'
-order by table_name;</code></pre>
-    <p>Du skal få <strong>12 tabeller</strong>, alle med radsikkerhet på:</p>
+    <p>Kjør deretter denne kontrollen i samme editor. Radsikkerhetsflagget bor på <code>pg_class.relrowsecurity</code> — ikke i <code>information_schema</code>:</p>
+    <pre><code>select c.relname as tabell, c.relrowsecurity as rls_pa
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r'
+order by c.relname;</code></pre>
+    <p>Du skal få <strong>12 rader, alle med <code>rls_pa = true</code></strong>. Vil du bare ha bekreftelsen i ett tall:</p>
+    <pre><code>select count(*) as tabeller,
+       count(*) filter (where c.relrowsecurity) as med_rls
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r';</code></pre>
+    <span class="expect">tabeller | med_rls
+      12 |      12</span>
+    <p>Dette er tabellene:</p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Tabell</th><th>Hva den holder</th></tr></thead>
