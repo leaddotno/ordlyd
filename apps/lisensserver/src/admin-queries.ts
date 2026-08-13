@@ -41,7 +41,8 @@ export async function overview(sql: Sql): Promise<TenantSummary[]> {
     select
       t.id as tenant_id, t.slug, t.name, t.status, t.valid_to,
       p.id as pool_id, p.name as pool_name, p.status as pool_status,
-      p.plan as pool_plan, p.valid_to as pool_valid_to,
+      -- to_jsonb i stedet for p.plan: tåler at migrasjonen ennå ikke er kjørt
+      to_jsonb(p) ->> 'plan' as pool_plan, p.valid_to as pool_valid_to,
       coalesce((select count(*) from pool_entries e where e.pool_id = p.id), 0)::int as lisenser,
       coalesce((select count(*) from pool_entries e where e.pool_id = p.id and e.status = 'aktiv'), 0)::int as aktive,
       coalesce((select count(*) from installs i

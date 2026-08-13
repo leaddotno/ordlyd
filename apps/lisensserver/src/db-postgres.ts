@@ -60,9 +60,14 @@ export class PostgresDb implements Db {
   }
 
   async getPool(id: string): Promise<LicensePool | null> {
+    // `to_jsonb(p) ->> 'plan'` i stedet for `p.plan`: kodeutrulling og
+    // databasemigrasjon skjer ikke samtidig på Vercel, og en spørring som
+    // navngir en kolonne som ennå ikke finnes feiler med 500. Denne formen
+    // gir NULL i stedet, så serveren virker både før og etter migrasjonen.
     const [row] = await this.sql`
-      select id, tenant_id, name, status, valid_to, products, plan
-      from license_pools where id = ${id}`;
+      select p.id, p.tenant_id, p.name, p.status, p.valid_to, p.products,
+             to_jsonb(p) ->> 'plan' as plan
+      from license_pools p where p.id = ${id}`;
     if (!row) return null;
     return {
       id: row.id,
@@ -84,10 +89,18 @@ export class PostgresDb implements Db {
 
   async createPool(p: LicensePool): Promise<void> {
     await this.sql`
-      insert into license_pools (id, tenant_id, name, status, valid_to, products, plan)
+      insert into license_pools (id, tenant_id, name, status, valid_to, products)
       values (${p.id}, ${p.tenantId}, ${p.name}, ${p.status},
               ${p.validTo === null ? null : secToDate(p.validTo)},
-              ${this.sql.json(p.products)}, ${p.plan})`;
+              ${this.sql.json(p.products)})`;
+    // Lisenstypen settes i et eget steg, slik at oppretting av pool virker
+    // også hvis migrasjon 0002 ennå ikke er kjørt. Feiler den, er poolen
+    // likevel opprettet med standardtypen.
+    try {
+      await this.sql`update license_pools set plan = ${p.plan} where id = ${p.id}`;
+    } catch {
+      console.warn("[lisensserver] kunne ikke sette lisenstype — er migrasjon 0002 kjørt?");
+    }
   }
 
   async createEntry(e: PoolEntry): Promise<void> {
