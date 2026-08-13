@@ -15,3 +15,7 @@ apps/*/public/dict/
 .vercel/
 *.jwk.json
 lisenser-*.csv
+# Butikkpakker og signeringsnøkkel for utvidelsen
+ordlyd-*.zip
+ordlyd-*.crx
+*.pem

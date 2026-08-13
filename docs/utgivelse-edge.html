@@ -1,0 +1,334 @@
+<title>Ordlyd — utgivelse i Edge Add-ons</title>
+<style>
+  :root {
+    --ground: #eef1f1; --surface: #fafbfb; --surface-2: #e6ebeb;
+    --line: #cdd6d6; --line-soft: #dde4e4;
+    --text: #142124; --text-soft: #4a5b5f; --text-faint: #6d7f83;
+    --petrol: #0e3d43; --brass: #8a6412;
+    --ok: #1c6647; --ok-bg: #dcebe3;
+    --warn: #8a5f08; --warn-bg: #f2e8d2;
+    --crit: #97302a; --crit-bg: #f2dedc;
+    --code-bg: #e8eded; --code-text: #142124;
+    --shadow: 0 1px 2px rgba(16,32,36,.06), 0 8px 24px -18px rgba(16,32,36,.3);
+    --serif: Constantia, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1215; --surface: #111c20; --surface-2: #17252a;
+      --line: #2b3d42; --line-soft: #223236;
+      --text: #dde7e8; --text-soft: #a3b4b7; --text-faint: #7d9094;
+      --petrol: #7fc6cc; --brass: #d4a648;
+      --ok: #6fc79b; --ok-bg: #143024;
+      --warn: #d9ad55; --warn-bg: #33280f;
+      --crit: #e8938c; --crit-bg: #371917;
+      --code-bg: #16242a; --code-text: #dde7e8;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0b1215; --surface: #111c20; --surface-2: #17252a;
+    --line: #2b3d42; --line-soft: #223236;
+    --text: #dde7e8; --text-soft: #a3b4b7; --text-faint: #7d9094;
+    --petrol: #7fc6cc; --brass: #d4a648;
+    --ok: #6fc79b; --ok-bg: #143024;
+    --warn: #d9ad55; --warn-bg: #33280f;
+    --crit: #e8938c; --crit-bg: #371917;
+    --code-bg: #16242a; --code-text: #dde7e8;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.7);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--text);
+    font-family: var(--sans); font-size: 17px; line-height: 1.65;
+    margin: 0; padding: 0 1.25rem 6rem; -webkit-font-smoothing: antialiased;
+  }
+  .col { max-width: 70ch; margin: 0 auto; }
+  header { padding: 4rem 0 2rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--brass); margin: 0 0 1.1rem;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.12;
+    letter-spacing: -.015em; text-wrap: balance; margin: 0 0 .9rem;
+  }
+  .standfirst {
+    font-family: var(--serif); font-size: 1.16rem; line-height: 1.55;
+    color: var(--text-soft); margin: 0 0 1.5rem; text-wrap: pretty;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.5rem;
+    font-family: var(--mono); font-size: .74rem; color: var(--text-faint);
+    padding-top: 1.1rem; border-top: 1px solid var(--line);
+  }
+  section { padding-top: 2.75rem; }
+  section > h2 {
+    font-family: var(--serif); font-size: 1.55rem; font-weight: 600;
+    line-height: 1.2; letter-spacing: -.01em; text-wrap: balance;
+    margin: 0 0 .3rem; display: flex; gap: .7rem; align-items: baseline;
+  }
+  section > h2 .n {
+    font-family: var(--mono); font-size: .92rem; font-weight: 400;
+    color: var(--brass); flex: none;
+  }
+  .where {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-faint);
+    margin: 0 0 1.1rem; padding-bottom: .9rem; border-bottom: 1px solid var(--line-soft);
+  }
+  h3 { font-size: 1rem; font-weight: 650; margin: 1.8rem 0 .5rem; }
+  p { margin: 0 0 1rem; text-wrap: pretty; }
+  ol.actions { margin: 0 0 1.2rem; padding-left: 1.4rem; }
+  ol.actions > li { margin-bottom: .7rem; }
+  ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .4rem; }
+  strong { font-weight: 650; }
+  a { color: var(--petrol); text-underline-offset: .15em; }
+  a:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; border-radius: 2px; }
+  code {
+    font-family: var(--mono); font-size: .84em;
+    background: var(--code-bg); color: var(--code-text);
+    padding: .1em .35em; border-radius: 3px; overflow-wrap: break-word;
+  }
+  pre {
+    font-family: var(--mono); font-size: .79rem; line-height: 1.6;
+    background: var(--code-bg); color: var(--code-text);
+    border: 1px solid var(--line-soft); border-radius: 5px;
+    padding: .95rem 1.05rem; overflow-x: auto; margin: 0 0 1.1rem;
+  }
+  pre code { background: none; padding: 0; font-size: 1em; }
+  .tablewrap {
+    overflow-x: auto; margin: 0 0 1.3rem;
+    border: 1px solid var(--line); border-radius: 5px; background: var(--surface);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: .87rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-faint); font-weight: 400;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  .note {
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--brass); border-radius: 4px;
+    padding: 1rem 1.2rem; margin: 0 0 1.2rem; box-shadow: var(--shadow);
+  }
+  .note .tag {
+    font-family: var(--mono); font-size: .67rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--brass); display: block; margin-bottom: .45rem;
+  }
+  .note.danger { border-left-color: var(--crit); }
+  .note.danger .tag { color: var(--crit); }
+  .note.good { border-left-color: var(--ok); }
+  .note.good .tag { color: var(--ok); }
+  .note p:last-child, .note ul:last-child { margin-bottom: 0; }
+  .expect {
+    font-family: var(--mono); font-size: .76rem;
+    background: var(--ok-bg); color: var(--ok);
+    border-radius: 4px; padding: .6rem .85rem; margin: 0 0 1.1rem;
+    display: block; overflow-x: auto; white-space: pre-wrap;
+  }
+  .felt { font-family: var(--mono); font-size: .8rem; }
+  footer {
+    max-width: 70ch; margin: 4rem auto 0; padding-top: 1.4rem;
+    border-top: 1px solid var(--line); font-size: .82rem; color: var(--text-faint);
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="col">
+  <header>
+    <p class="eyebrow">Ordlyd · utgivelse · 13. august 2026</p>
+    <h1>Utgivelse i Edge Add-ons</h1>
+    <p class="standfirst">Pakka er bygget og verifisert. Det som står igjen er en konto hos Microsoft, noen tekster og bilder til butikksiden — og én avgjørelse om størrelse du bør ta med åpne øyne.</p>
+    <div class="meta">
+      <span>Pakke: ordlyd-1.0.0.zip</span>
+      <span>111 MB komprimert</span>
+      <span>1047 filer</span>
+    </div>
+  </header>
+
+  <section id="status">
+    <h2><span class="n">✓</span> Dette er gjort</h2>
+    <p class="where">Ingenting å gjøre — bare til orientering</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Krav</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Ikoner i 16, 32, 48 og 128 px</td><td>Generert og lagt i manifestet</td></tr>
+          <tr><td>Versjonsnummer</td><td><code>1.0.0</code></td></tr>
+          <tr><td>Beskrivelse under 132 tegn</td><td>93 tegn</td></tr>
+          <tr><td>Hjemmesideadresse</td><td><code>https://ordlyd.no</code></td></tr>
+          <tr><td>Tilganger strammet inn</td><td>Bare de tre lisensadressene, ikke alle nettsteder</td></tr>
+          <tr><td>ZIP med manifest i rota</td><td>Verifisert utpakket: 1047 filer, stemmemodellen bit-identisk</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Lag pakka på nytt når som helst med én kommando. Den nekter å pakke hvis et ikon mangler eller beskrivelsen er for lang, så feilen kommer før innsendingen — ikke etter:</p>
+    <pre><code>pnpm --filter @ordlyd/extension package</code></pre>
+  </section>
+
+  <section id="storrelse">
+    <h2><span class="n">1</span> Avgjørelsen om størrelse</h2>
+    <p class="where">Les dette før du sender inn</p>
+    <p>Pakka er <strong>111 MB</strong>. Det er stemmemodellen (61 MB), ordboka (71 MB ukomprimert) og WASM-kjøretiden (38 MB) som utgjør nesten alt. Microsoft <em>oppgir ingen størrelsesgrense</em> for Edge Add-ons noe sted i dokumentasjonen, så vi vet ikke hvor taket er.</p>
+    <p>To reelle konsekvenser: hver elev laster ned 111 MB ved installasjon, og vi kan ikke love at oppdateringer blir små. Chromium støtter differansoppdateringer for butikkinstallerte utvidelser, men om Edge Add-ons faktisk leverer dem, har jeg ikke klart å bekrefte.</p>
+
+    <div class="note">
+      <span class="tag">Min anbefaling: send inn nå likevel</span>
+      <p>Gjennomgangen tar <strong>opptil sju arbeidsdager</strong>, og den klokka bør begynne å gå. Imens flytter vi stemme og ordbok til CDN (L4 i planen), som tar pakka ned til noen få megabyte. Da blir <strong>L4 til versjon 1.1.0 — og utgivelsen av den er selve oppdateringstesten du vil ha</strong>. Ett arbeid, to formål, og en uke spart.</p>
+      <p>Blir 1.0.0 avvist på størrelse, har vi lært hvor grensen faktisk ligger. Det er informasjon vi ikke kan få på noe annet vis, og prisen er én uke.</p>
+    </div>
+    <p>Vil du heller ha en liten pakke fra første stund, gjør vi L4 først og sender inn om en dag eller to. Det er en fullt forsvarlig vurdering — bare si hva du foretrekker.</p>
+  </section>
+
+  <section id="konto">
+    <h2><span class="n">2</span> Utviklerkonto</h2>
+    <p class="where">partner.microsoft.com</p>
+    <ol class="actions">
+      <li>Gå til <a href="https://partner.microsoft.com/dashboard/microsoftedge/public/login">Partner Center for Microsoft Edge</a> og logg inn med en Microsoft-konto.</li>
+      <li>Registrer deg som utvikler. For Edge-utvidelser er dette <strong>gratis</strong> — ingen registreringsavgift, i motsetning til Chrome Web Store.</li>
+      <li>Vurder om utgiver skal være deg personlig eller Telemark fylkeskommune. Utgivernavnet vises på butikksiden og er tungt å endre senere. Skal fylket eie produktet, bør kontoen opprettes på en fylkeskommunal konto fra starten.</li>
+    </ol>
+    <div class="note danger">
+      <span class="tag">Avklar dette før du registrerer</span>
+      <p>Utgiveridentiteten følger utvidelsen. Registrerer du på en privat konto og fylket senere skal overta, må utvidelsen flyttes mellom kontoer — en prosess som i praksis betyr ny publisering og at brukere må installere på nytt. Ta én samtale om eierskap først.</p>
+    </div>
+  </section>
+
+  <section id="listing">
+    <h2><span class="n">3</span> Butikksiden</h2>
+    <p class="where">Partner Center → Extensions → New extension</p>
+    <p>Last opp <code>ordlyd-1.0.0.zip</code>, og fyll ut feltene. Her er forslag du kan bruke som de er:</p>
+
+    <h3>Kortbeskrivelse</h3>
+    <pre><code>Marker tekst og få den opplest med norsk stemme. All talesyntese kjører
+lokalt i nettleseren.</code></pre>
+
+    <h3>Fullstendig beskrivelse</h3>
+    <pre><code>Ordlyd er lese- og skrivestøtte for deg som har lese- og skrivevansker.
+
+LES OPP TEKST
+Marker tekst på en nettside og få den lest opp med norsk stemme, med
+ordet som leses uthevet mens du følger med.
+
+SKRIVEHJELP
+Ordforslag mens du skriver, dysleksitilpasset stavekontroll som forstår
+lydnære feilstavinger, og skriveekko som leser opp bokstaven, ordet eller
+setningen du skriver.
+
+ORDBOK
+Bokmålsordboka og Nynorskordboka innebygd. Slå opp et ord uten å forlate
+siden du er på.
+
+ALT SKJER PÅ DIN EGEN MASKIN
+Talesyntesen, ordboka og stavekontrollen kjører lokalt i nettleseren.
+Teksten du leser og skriver forlater aldri maskinen din, og Ordlyd
+fungerer uten internett.
+
+Ordlyd krever en lisenskode. Den får du av foreningen, skolen eller
+kommunen din.
+
+Ordbokinnhold: Bokmålsordboka og Nynorskordboka,
+© Universitetet i Bergen og Språkrådet.
+Stemme: Piper med norsk talesyntesemodell.</code></pre>
+
+    <h3>Kategori og språk</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Felt</th><th>Verdi</th></tr></thead>
+        <tbody>
+          <tr><td class="felt">Category</td><td>Accessibility</td></tr>
+          <tr><td class="felt">Language</td><td>Norsk (bokmål) — legg gjerne til engelsk senere</td></tr>
+          <tr><td class="felt">Privacy policy URL</td><td><code>https://ordlyd.no/personvern</code> — <strong>må finnes før innsending</strong></td></tr>
+          <tr><td class="felt">Support / contact</td><td>En e-postadresse du følger med på</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Bilder du må lage</h3>
+    <ul>
+      <li><strong>Butikklogo 300×300 px</strong> — kan være merket vårt på petrolfarget flate</li>
+      <li><strong>Minst ett skjermbilde, 1280×800 eller 640×480</strong> — anbefalt: en nettside med tekst markert og gul uthevingsfarge synlig, popup-en åpen ved siden av</li>
+      <li>Valgfritt: promoteringsflis 440×280</li>
+    </ul>
+    <p>Skjermbildene er det folk faktisk ser i søkeresultatet. Ett godt bilde som viser opplesing i bruk gjør mer enn tre uskarpe.</p>
+
+    <div class="note">
+      <span class="tag">Spørsmålet om ekstern kode</span>
+      <p>Partner Center spør om utvidelsen bruker ekstern kode. Svar <strong>nei</strong> for 1.0.0 — alt ligger i pakka. Når L4 flytter stemmemodellen til CDN, er svaret fortsatt nei: ONNX-vekter er <em>data</em>, ikke kode. Reglene om ekstern kode gjelder JavaScript og WebAssembly, og WASM-en blir liggende i pakka. Nevn nedlastingen i «Notes for certification» så gjennomgangen ikke stopper på det.</p>
+    </div>
+  </section>
+
+  <section id="personvern">
+    <h2><span class="n">4</span> Personvernerklæring</h2>
+    <p class="where">Må publiseres på ordlyd.no før innsending</p>
+    <p>Butikken krever en lenke til personvernerklæring, og siden Ordlyd behandler e-postadresser er den ikke valgfri. Innholdet kan være kort, men må dekke dette:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Punkt</th><th>Hva som er sant for Ordlyd</th></tr></thead>
+        <tbody>
+          <tr><td>Hva lagres</td><td>E-postadresse og lisenskode, begge som pepret hash. Installasjonens tilfeldige ID, produkt og versjon.</td></tr>
+          <tr><td>Hva lagres <em>ikke</em></td><td>Teksten du leser eller skriver. Den forlater aldri maskinen. Ingen rå IP-adresser.</td></tr>
+          <tr><td>Misbruksdeteksjon</td><td>Pseudonymiserte nettnøkler i aggregerte døgntall, slettet etter 30 dager.</td></tr>
+          <tr><td>Innstillinger</td><td>Lagres lokalt i nettleseren, sendes ikke til oss.</td></tr>
+          <tr><td>Hvor</td><td>Vercel og Supabase, EU-region (Frankfurt).</td></tr>
+          <tr><td>Rettigheter</td><td>Kontaktpunkt for innsyn og sletting.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Dette er de samme opplysningene som skal inn i DPIA-støttepakka i L5, så teksten kan gjenbrukes begge steder.</p>
+  </section>
+
+  <section id="oppdatering">
+    <h2><span class="n">5</span> Oppdateringstesten</h2>
+    <p class="where">Det du spurte om — og en ærlig begrensning</p>
+    <p>Knappen «Se etter oppdatering» i <strong>Om Ordlyd</strong> kaller nettleserens egen oppdateringssjekk. Den virker bare for utvidelser som er <em>installert fra butikken</em>. En utvidelse du har lastet inn manuelt fra <code>dist</code>-mappa har ingen oppdateringsadresse, og da svarer knappen:</p>
+    <span class="expect">Denne installasjonen kan ikke sjekke oppdateringer automatisk — det skjer
+når utvidelsen er lastet inn manuelt under utvikling.</span>
+    <p>Det er ikke en feil. Koden håndterer tilfellet med vilje, slik at du får en forklaring i stedet for en knapp som ikke gjør noe.</p>
+
+    <h3>Slik testes den for ekte</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Steg</th><th>Hva skjer</th><th>Tid</th></tr></thead>
+        <tbody>
+          <tr><td>1. Publiser 1.0.0</td><td>Gjennomgang hos Microsoft</td><td>Opptil 7 arbeidsdager</td></tr>
+          <tr><td>2. Installer fra butikken</td><td>Nå har utvidelsen en oppdateringsadresse</td><td>Minutter</td></tr>
+          <tr><td>3. Publiser 1.1.0 (L4)</td><td>Ny gjennomgang</td><td>Opptil 7 arbeidsdager</td></tr>
+          <tr><td>4. Trykk «Se etter oppdatering»</td><td>Skal melde at 1.1.0 er klar, og «Ta i bruk nå» skal bytte versjon umiddelbart</td><td>Sekunder</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Nettleseren ser etter oppdateringer av seg selv omtrent hver femte time, så en elev som aldri trykker på knappen får den nye versjonen likevel — vanligvis samme dag.</p>
+
+    <div class="note good">
+      <span class="tag">Vi kan teste hele kjeden før butikken, hvis du vil</span>
+      <p>Alternativet er å hoste en <code>.crx</code> og en oppdateringsfil selv, og installere via nettleserpolicy. Da kjøres <em>nøyaktig samme kodesti</em> — oppdateringssjekk, nedlasting, «Ta i bruk nå» — uten å vente på to gjennomganger.</p>
+      <p>Det gir en bonus: vi får samtidig svar på et spørsmål som har stått åpent siden arkitekturarbeidet. Tre av Microsofts egne dokumenter motsier hverandre om hvorvidt utvidelser utenfor butikken kan tvangsinstalleres på rene Entra-tilknyttede maskiner — altså skolemaskinene i Telemark. Testen avgjør det.</p>
+      <p>Det krever administratorrettigheter på maskinen for å skrive en policy-nøkkel i registeret, så det må gjøres av deg eller fylkets IT. Si ifra, så bygger jeg oppsettet.</p>
+    </div>
+  </section>
+
+  <section id="videre">
+    <h2><span class="n">→</span> Rekkefølgen jeg foreslår</h2>
+    <p class="where">Fra i dag til en fungerende oppdateringskanal</p>
+    <ol class="actions">
+      <li><strong>Avklar eierskap</strong> til utgiverkontoen — deg eller fylket. Blokkerer registreringen.</li>
+      <li><strong>Publiser personvernerklæringen</strong> på ordlyd.no. Blokkerer innsendingen.</li>
+      <li><strong>Lag butikklogo og ett skjermbilde.</strong></li>
+      <li><strong>Send inn 1.0.0.</strong> Klokka begynner å gå.</li>
+      <li><strong>Vi gjør L4</strong> mens gjennomgangen pågår: stemme og ordbok til CDN, pakka ned til noen få megabyte.</li>
+      <li><strong>Publiser 1.1.0.</strong> Dette er oppdateringstesten.</li>
+    </ol>
+    <p>Punkt 1 til 3 er dine. Punkt 5 er min. Si ifra når du vil at jeg skal starte på L4 — den kan begynne umiddelbart og er uavhengig av butikken.</p>
+  </section>
+
+  <footer>
+    <p>Ordlyd, 13. august 2026. Pakka lages med <code>pnpm --filter @ordlyd/extension package</code>. Arkitekturen ligger i «Lisensserver for Ordlyd», oppsettet i «Kom i gang med lisensserveren». Punktene om størrelsesgrense og differansoppdateringer er der Microsofts dokumentasjon er taus — de er markert som usikre med vilje.</p>
+  </footer>
+</div>
