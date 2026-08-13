@@ -13,6 +13,7 @@ export class MemoryDb implements Db {
   denied = new Set<string>();
   attempts = new Map<string, number[]>();
   nets = new Map<string, Set<string>>(); // `${entryId}|${day}` → netHash-sett
+  receipts: Array<{ entryId: string; installId: string; kid: string; issuedAt: number; expiresAt: number }> = [];
   auditLog: Array<{ actor: string; action: string; details: Record<string, unknown> }> = [];
 
   async getTenant(id: string) {
@@ -83,6 +84,16 @@ export class MemoryDb implements Db {
   }
   async distinctNets(entryId: string, day: string) {
     return this.nets.get(`${entryId}|${day}`)?.size ?? 0;
+  }
+
+  async recordReceipt(r: {
+    entryId: string;
+    installId: string;
+    kid: string;
+    issuedAt: number;
+    expiresAt: number;
+  }) {
+    this.receipts.push(r);
   }
 
   async audit(actor: string, action: string, details: Record<string, unknown>) {

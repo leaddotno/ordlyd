@@ -138,6 +138,7 @@ if (good.ok) {
 
   const entryId = [...db.entries.values()].find((e) => e.emailMasked === "k***@eksempel.no")!.id;
   check("misbruksteller: 2 ulike nett registrert", (await db.distinctNets(entryId, "2026-08-12")) + (await db.distinctNets(entryId, "2026-08-13")) === 2);
+  check("revisjonsspor: 2 kvitteringer loggført (innlogging + fornyelse)", db.receipts.filter((r) => r.entryId === entryId).length === 2, `${db.receipts.length}`);
 
   await closeEntry(db, entryId, "kode spredd på nettet");
   const r3 = await refresh(db, P, keys, { installId: good.installId, installSecret: good.installSecret, product: "edge-extension", ip: "78.9.9.9", nowSec: NOW + 2 * 86_400 });

@@ -74,5 +74,14 @@ export interface Db {
   recordNet(entryId: string, day: string, netHash: string): Promise<void>;
   distinctNets(entryId: string, day: string): Promise<number>;
 
+  /** Revisjonsspor over utstedte kvitteringer (grunnlag for tilbakekalling). */
+  recordReceipt(r: {
+    entryId: string;
+    installId: string;
+    kid: string;
+    issuedAt: number;
+    expiresAt: number;
+  }): Promise<void>;
+
   audit(actor: string, action: string, details: Record<string, unknown>): Promise<void>;
 }

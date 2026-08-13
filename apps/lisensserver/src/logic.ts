@@ -113,6 +113,7 @@ async function findActivePoolAndTenant(
 }
 
 async function issueReceipt(
+  db: Db,
   keys: SigningKeyPair,
   entry: PoolEntry,
   pool: LicensePool,
@@ -137,6 +138,13 @@ async function issueReceipt(
     ...(config.endpointsVer !== undefined ? { endpointsVer: config.endpointsVer } : {}),
     ...(config.revoked?.length ? { revoked: config.revoked } : {}),
   };
+  await db.recordReceipt({
+    entryId: entry.id,
+    installId,
+    kid: keys.kid,
+    issuedAt: payload.iat,
+    expiresAt: payload.exp,
+  });
   return signReceipt(payload, keys);
 }
 
@@ -201,7 +209,7 @@ export async function login(
   await db.recordNet(entry.id, dayOf(input.nowSec), netHash);
   await db.audit("system", "login", { entry: entry.id, install: installId, product: input.product });
 
-  const receipt = await issueReceipt(keys, entry, pool, tenant!.slug, installId, input.nowSec, config);
+  const receipt = await issueReceipt(db, keys, entry, pool, tenant!.slug, installId, input.nowSec, config);
   return { ok: true, receipt, installId, installSecret };
 }
 
@@ -248,7 +256,7 @@ export async function refresh(
   await db.touchEntry(entry.id, input.nowSec);
   await db.recordNet(entry.id, dayOf(input.nowSec), await hashNet(pepper, input.ip));
 
-  const receipt = await issueReceipt(keys, entry, pool, tenant!.slug, install.id, input.nowSec, config);
+  const receipt = await issueReceipt(db, keys, entry, pool, tenant!.slug, install.id, input.nowSec, config);
   return { ok: true, receipt };
 }
 

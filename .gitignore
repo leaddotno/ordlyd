@@ -11,3 +11,7 @@ apps/*/public/dict/
 .DS_Store
 .env
 .env.*
+# Vercel-kobling og lokale hemmeligheter
+.vercel/
+*.jwk.json
+lisenser-*.csv
