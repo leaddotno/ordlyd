@@ -457,19 +457,32 @@ ALLE 10 STEG OK — lisensserveren fungerer ende til ende.</span>
   <section class="step" id="etter">
     <h2><span class="n">→</span> Når alle åtte er grønne</h2>
     <p class="where">Da er backend i drift, og dette står igjen</p>
-    <p>Slik importerer du en ekte medlemsliste. Opprett kunde og pool i SQL Editor (samme mønster som testkunden, med riktig navn), og send så listen:</p>
-    <pre><code>curl -X POST https://&lt;prosjektet&gt;.vercel.app/api/v1/admin/import \
-  -H "Authorization: Bearer &lt;ADMIN_TOKEN&gt;" \
-  -H "Content-Type: application/json" \
-  -d '{"poolId":"&lt;pool_id&gt;","emails":["medlem1@eksempel.no","medlem2@eksempel.no"]}'</code></pre>
-    <p>Svaret inneholder e-post og kode for hver lisens. <strong>Det er engangs-eksporten</strong> — serveren beholder bare hasher, så listen kan ikke hentes ut igjen. Lagre den trygt og gi den til foreningen, som deler ut kodene til medlemmene sine. Maks 5000 adresser per kall.</p>
+    <div class="note good">
+      <span class="tag">Superadmin-panelet er på plass</span>
+      <p>Du trenger ikke SQL Editor eller curl for daglig drift lenger. Åpne <strong><code>/admin/</code></strong> på samme adresse som serveren, lim inn <code>ADMIN_TOKEN</code>, og du har alt i nettleseren: opprett kunder og pooler, importer medlemslister, last ned engangs-eksporten som CSV, se hvilke lisenser som brukes på uvanlig mange maskiner, og steng eller gjenåpne konto med én knapp.</p>
+    </div>
+
+    <h3>Slik importerer du en ekte medlemsliste</h3>
+    <ol class="actions">
+      <li>Åpne <code>/admin/</code> og logg inn.</li>
+      <li><strong>Ny kunde</strong> — skriv navnet (kortnavn genereres automatisk), trykk Opprett.</li>
+      <li><strong>Ny lisenspool</strong> — velg kunden, gi poolen et navn, kryss av hvilke funksjoner lisensene skal gi, trykk Opprett.</li>
+      <li>Trykk <strong>Importer</strong> ved poolen, lim inn adressene (én per linje), trykk <strong>Importer og generer koder</strong>.</li>
+      <li>Trykk <strong>Last ned CSV</strong>.</li>
+    </ol>
+    <div class="note danger">
+      <span class="tag">CSV-en kan ikke hentes ut på nytt</span>
+      <p>Serveren lagrer bare hasher av koden, aldri koden selv. Last ned filen med en gang og gi den til foreningen eller kommunen, som deler ut kodene til medlemmene sine. Mister noen koden sin, får de en ny — den gamle kan ikke gjenfinnes. Maks 5000 adresser per import.</p>
+    </div>
+    <p>Panelet viser aldri en lisenskode eller en e-postadresse i klartekst, bare maskerte adresser som <code>j***@domene.no</code> — ikke av forsiktighet, men fordi klartekst ikke finnes i databasen.</p>
+
     <h3>Rekkefølgen videre</h3>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Neste</th><th>Hva</th><th>Hvorfor nå</th></tr></thead>
         <tbody>
-          <tr><td><strong>Superadmin-panel</strong></td><td>Nettside for kunder, pooler, import og stenging — i stedet for SQL og curl</td><td>Gjør at du kan drifte det uten meg</td></tr>
-          <tr><td><strong>Lisens i utvidelsen (L2)</strong></td><td>Innloggingsskjerm i popup, offline-verifisering, døgnlig fornying, degradert modus</td><td>Serveren er klar; nå skal klienten bruke den</td></tr>
+          <tr><td><strong>Lisens i utvidelsen (L2)</strong></td><td>Innloggingsskjerm i popup, offline-verifisering, døgnlig fornying, degradert modus</td><td>Serveren og panelet er klare; nå skal klienten bruke dem</td></tr>
+          <tr><td><strong>Passkey i panelet</strong></td><td>Erstatter den delte <code>ADMIN_TOKEN</code>-nøkkelen med maskinvarepålogging</td><td>Én delt hemmelighet er greit for én person, ikke for et team</td></tr>
           <tr><td><strong>Domenene (L0)</strong></td><td>Tre domener hos tre registrarer</td><td>Fortsatt mest tidskritisk: de låses i utvidelsens manifest ved første butikkutgivelse</td></tr>
           <tr><td><strong>Stemmen til CDN (L4)</strong></td><td>63 MB ut av pakken</td><td>Forutsetningen for at oppdateringer blir små nok å rulle ut jevnlig</td></tr>
         </tbody>
