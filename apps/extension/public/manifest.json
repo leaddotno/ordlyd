@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "description": "Marker tekst og få den opplest med norsk stemme. All talesyntese kjører lokalt i nettleseren.",
   "minimum_chrome_version": "116",
-  "permissions": ["offscreen", "storage"],
+  "permissions": ["offscreen", "storage", "alarms"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",

@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "node ../../scripts/copy-assets.mjs",
+    "prebuild": "pnpm --filter @ordlyd/license-core build && node ../../scripts/copy-assets.mjs",
     "build": "vite build && vite build --config vite.content.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ordlyd/license-client": "workspace:*",
     "@ordlyd/tts": "workspace:*",
     "@ordlyd/writing": "workspace:*"
   },

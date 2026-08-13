@@ -5,14 +5,26 @@ for hele arkitekturen.
 
 ## Status
 
+Live: **https://ordlyd-demo.vercel.app** · panel: **/admin/**
+
 | Del | Status |
 |---|---|
-| `@ordlyd/license-core` — kvitteringsformat, hashing, kodegenerering | ✅ 30 tester grønne |
+| `@ordlyd/license-core` — kvitteringsformat, hashing, kodegenerering | ✅ 30 tester |
+| `@ordlyd/license-client` — tilstandsmaskin, offline-verifisering, fornying | ✅ 33 tester |
 | `src/logic.ts` — import, innlogging, fornyelse, stenging | ✅ testet mot MemoryDb |
-| `src/db-postgres.ts` — Postgres mot Supabase | ✅ skrevet, ikke kjørt mot ekte base ennå |
-| `api/` — Vercel-funksjoner | ✅ skrevet, venter på første deploy |
-| `supabase/migrations/0001_init.sql` | ✅ klar til å kjøres |
-| Superadmin-UI | ⬜ neste |
+| `src/db-postgres.ts` + `api/` | ✅ i drift, 14-stegs røyktest grønn |
+| Superadmin-panel (`public/admin/`) | ✅ i drift |
+| Lisens i utvidelsen (L2) | ✅ verifisert mot produksjon |
+| Passkey i stedet for `ADMIN_TOKEN` | ⬜ gjenstår |
+
+## Testkommandoer
+
+```bash
+pnpm exec tsx scripts/test-license.mts          # kjerne + serverlogikk (30)
+pnpm exec tsx scripts/test-license-client.mts    # klientens tilstandsmaskin (33)
+pnpm exec tsx scripts/smoke-lisensserver.mts     # live server, 14 steg
+pnpm exec tsx scripts/smoke-license-client.mts   # live klient mot server, 14 steg
+```
 
 ## Endepunkter
 
@@ -22,8 +34,12 @@ for hele arkitekturen.
 | GET | `/api/v1/keys` | Offentlig nøkkelsett (feilsøking — klienten pinner sine egne) |
 | POST | `/api/v1/login` | `{email, code, product, version?}` → `{receipt, installId, installSecret}` |
 | POST | `/api/v1/license/refresh` | `{installId, installSecret, product, version?}` → `{receipt}` |
-| POST | `/api/v1/admin/import` | Bearer `ADMIN_TOKEN`. `{poolId, emails[]}` → lisenser med koder i klartekst (**engangs-eksport**) |
-| POST | `/api/v1/admin/close` | Bearer `ADMIN_TOKEN`. `{entryId, reason?}` |
+| GET | `/api/v1/admin/overview` | Bearer `ADMIN_TOKEN`. Kunder, pooler, flaggede lisenser, revisjonslogg |
+| GET | `/api/v1/admin/entries?poolId=…` | Bearer. Lisensene i en pool (maskert e-post, aldri koden) |
+| POST | `/api/v1/admin/tenant` | Bearer. `{slug, name, validTo?}` |
+| POST | `/api/v1/admin/pool` | Bearer. `{tenantId, name, features[], products?, validTo?}` |
+| POST | `/api/v1/admin/import` | Bearer. `{poolId, emails[]}` → lisenser med koder i klartekst (**engangs-eksport**) |
+| POST | `/api/v1/admin/status` | Bearer. `{entryId, status: "aktiv"\|"stengt", reason?}` |
 | GET | `/api/cron/cleanup` | Vercel Cron, kl. 03:17 daglig. Sletter innloggingsforsøk (>1 døgn) og nettnøkler (>30 dager). |
 
 ## Oppsett

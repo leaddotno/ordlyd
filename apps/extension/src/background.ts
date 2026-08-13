@@ -4,8 +4,42 @@
  * (service workers har verken lyd eller DOM).
  */
 import type { AnyMessage, TtsEvent } from "./messages.js";
+import { getLicenseClient, licenseState, invalidateLicenseCache, harFunksjon } from "./license.js";
+import { FEATURE_FOR_MESSAGE } from "./license-config.js";
 
 const OFFSCREEN_URL = "offscreen.html";
+
+/* ---------- Lisens: døgnlig fornyelse i bakgrunnen ---------- */
+
+const FORNY_ALARM = "ordlyd-forny-lisens";
+
+/**
+ * chrome.alarms, ikke setTimeout: service workeren blir drept etter ~30 s
+ * uten aktivitet, og da forsvinner enhver timer med den. Alarmen overlever.
+ */
+function planleggFornyelse(): void {
+  chrome.alarms.create(FORNY_ALARM, { periodInMinutes: 240, delayInMinutes: 1 });
+}
+
+chrome.runtime.onInstalled.addListener(planleggFornyelse);
+chrome.runtime.onStartup.addListener(planleggFornyelse);
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== FORNY_ALARM) return;
+  void (async () => {
+    try {
+      const fornyet = await (await getLicenseClient()).refresh();
+      if (fornyet) {
+        invalidateLicenseCache();
+        console.info("[Ordlyd SW] lisensen er fornyet");
+      }
+    } catch (err) {
+      // Fornyelse som feiler er ufarlig: kvitteringen beholdes til den
+      // løper ut av seg selv. Vi prøver igjen ved neste alarm.
+      console.warn("[Ordlyd SW] fornyelse feilet:", err);
+    }
+  })();
+});
 let creatingOffscreen: Promise<void> | null = null;
 
 async function ensureOffscreen(): Promise<void> {
@@ -51,10 +85,68 @@ function sendEventToTab(tabId: number, event: TtsEvent): void {
   });
 }
 
+/**
+ * Tomt svar når funksjonen ikke er lisensiert. Formen må matche det
+ * avsenderen forventer, ellers får content scriptet en tolkningsfeil i
+ * stedet for «ingen forslag».
+ */
+function tomtSvar(type: string): unknown {
+  if (type === "ss-dict") return { bm: [], nn: [] };
+  return [];
+}
+
 chrome.runtime.onMessage.addListener((msg: AnyMessage, sender, sendResponse) => {
   (async () => {
     let response: unknown;
+
+    /* Lisensporten. Ligger her fordi ALLE funksjonsforespørsler går gjennom
+       service workeren — ett sted å håndheve, ett sted å endre. «ss-stop»
+       er med vilje utenfor: å stoppe lyd må alltid virke. */
+    const kreverFunksjon = FEATURE_FOR_MESSAGE[msg.type];
+    if (kreverFunksjon && !(await harFunksjon(kreverFunksjon))) {
+      if (msg.type === "ss-speak" && sender.tab?.id != null) {
+        const s = await licenseState();
+        sendEventToTab(sender.tab.id, {
+          kind: "error",
+          message:
+            s.status === "ulisensiert"
+              ? "Ordlyd er ikke aktivert. Åpne utvidelsen og logg inn med e-post og lisenskode."
+              : "Lisensen har løpt ut. Kontakt den som ga deg lisenskoden.",
+        });
+      }
+      sendResponse(tomtSvar(msg.type));
+      return;
+    }
+
     switch (msg.type) {
+      case "ss-license-state": {
+        response = await licenseState(true);
+        break;
+      }
+      case "ss-license-login": {
+        const klient = await getLicenseClient();
+        const r = await klient.login(msg.epost, msg.kode);
+        invalidateLicenseCache();
+        if (r.ok) planleggFornyelse();
+        response = r;
+        break;
+      }
+      case "ss-license-logout": {
+        await (await getLicenseClient()).logout();
+        invalidateLicenseCache();
+        response = { ok: true };
+        break;
+      }
+      case "ss-license-refresh": {
+        try {
+          const fornyet = await (await getLicenseClient()).refresh(true);
+          invalidateLicenseCache();
+          response = { ok: true, fornyet };
+        } catch {
+          response = { ok: false, fornyet: false };
+        }
+        break;
+      }
       case "ss-suggest": {
         try {
           await ensureOffscreen();

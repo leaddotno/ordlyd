@@ -1,4 +1,5 @@
 import { getSettings, saveSettings, type Settings, type Theme } from "./settings.js";
+import type { LicenseState } from "@ordlyd/license-client";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -82,3 +83,128 @@ for (const [btn, theme] of [
     save({ theme });
   });
 }
+
+/* ============================ Lisens ============================ */
+
+const loginCard = $<HTMLDivElement>("loginCard");
+const licCard = $<HTMLDivElement>("licCard");
+const masterCard = $<HTMLDivElement>("masterCard");
+const epost = $<HTMLInputElement>("epost");
+const kode = $<HTMLInputElement>("kode");
+const loginFeil = $<HTMLDivElement>("loginFeil");
+const loginBtn = $<HTMLButtonElement>("loginBtn");
+const licBadge = $<HTMLSpanElement>("licBadge");
+const licInfo = $<HTMLSpanElement>("licInfo");
+const licVarsel = $<HTMLDivElement>("licVarsel");
+const sjekkBtn = $<HTMLButtonElement>("sjekkBtn");
+const loggUtBtn = $<HTMLButtonElement>("loggUtBtn");
+
+const innstillingsseksjoner = () => [...document.querySelectorAll("details")] as HTMLDetailsElement[];
+
+/** Grupperer koden mens man skriver: «1234567» blir «123 4567». */
+kode.addEventListener("input", () => {
+  const sifre = kode.value.replace(/\D/g, "").slice(0, 7);
+  kode.value = sifre.length > 3 ? `${sifre.slice(0, 3)} ${sifre.slice(3)}` : sifre;
+});
+
+function visLisens(s: LicenseState): void {
+  const ulisensiert = s.status === "ulisensiert";
+  loginCard.classList.toggle("hidden", !ulisensiert);
+  licCard.classList.toggle("hidden", ulisensiert);
+
+  // Uten lisens er innstillingene meningsløse — skjul dem framfor å vise
+  // brytere som ikke gjør noe.
+  masterCard.classList.toggle("hidden", ulisensiert);
+  for (const d of innstillingsseksjoner()) d.classList.toggle("hidden", ulisensiert);
+
+  if (ulisensiert) {
+    status.textContent = s.feil
+      ? "Lisensen kunne ikke verifiseres. Logg inn på nytt."
+      : "Aktiver Ordlyd for å komme i gang.";
+    return;
+  }
+
+  licBadge.className = `badge ${s.status}`;
+  licBadge.textContent = s.status === "aktiv" ? "aktiv" : s.status === "varsel" ? "utløper snart" : "utløpt";
+  licInfo.textContent = [s.epostMaskert, s.dagerIgjen !== null ? `${s.dagerIgjen} dager igjen` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  const varsler: string[] = [];
+  if (s.status === "varsel") {
+    varsler.push("Lisensen fornyes automatisk når maskinen er på nett. Skjer det ikke, kontakt den som ga deg koden.");
+  }
+  if (s.status === "degradert") {
+    varsler.push("Opplesing virker fortsatt, men skrivehjelpen er slått av. Kontakt den som ga deg lisenskoden.");
+  }
+  if (s.sisteAvslag === "stengt") {
+    varsler.push("Serveren har stengt denne lisensen.");
+  }
+  if (s.klokkeAvvik) {
+    varsler.push("Datoen på maskinen ser ut til å være feil. Alt virker, men sjekk klokka.");
+  }
+  licVarsel.textContent = varsler.join(" ");
+  status.textContent = "Marker tekst på en nettside og trykk «Les opp».";
+}
+
+async function hentLisens(): Promise<void> {
+  try {
+    const s = (await chrome.runtime.sendMessage({ type: "ss-license-state" })) as LicenseState;
+    if (s) visLisens(s);
+  } catch (err) {
+    status.textContent = "Fikk ikke kontakt med utvidelsen. Prøv å laste den inn på nytt.";
+    console.error("[Ordlyd popup]", err);
+  }
+}
+
+loginBtn.addEventListener("click", async () => {
+  loginFeil.textContent = "";
+  const e = epost.value.trim();
+  const k = kode.value.replace(/\D/g, "");
+  if (!e.includes("@")) return void (loginFeil.textContent = "Skriv inn e-postadressen din.");
+  if (k.length !== 7) return void (loginFeil.textContent = "Lisenskoden er sju siffer.");
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Aktiverer …";
+  try {
+    const r = (await chrome.runtime.sendMessage({ type: "ss-license-login", epost: e, kode: k })) as
+      | { ok: true }
+      | { ok: false; feil: string };
+    if (r?.ok) {
+      kode.value = "";
+      await hentLisens();
+    } else {
+      loginFeil.textContent = r?.feil ?? "Aktiveringen mislyktes.";
+    }
+  } catch {
+    loginFeil.textContent = "Fikk ikke kontakt med utvidelsen.";
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Aktiver";
+  }
+});
+
+sjekkBtn.addEventListener("click", async () => {
+  sjekkBtn.disabled = true;
+  const opprinnelig = sjekkBtn.textContent;
+  sjekkBtn.textContent = "Sjekker …";
+  try {
+    const r = (await chrome.runtime.sendMessage({ type: "ss-license-refresh" })) as { fornyet: boolean };
+    await hentLisens();
+    licVarsel.textContent = r?.fornyet
+      ? "Lisensen er fornyet."
+      : licVarsel.textContent || "Fikk ikke ny kvittering nå. Den gamle gjelder fortsatt.";
+  } finally {
+    sjekkBtn.disabled = false;
+    sjekkBtn.textContent = opprinnelig;
+  }
+});
+
+loggUtBtn.addEventListener("click", async () => {
+  await chrome.runtime.sendMessage({ type: "ss-license-logout" });
+  epost.value = "";
+  kode.value = "";
+  await hentLisens();
+});
+
+void hentLisens();

@@ -81,12 +81,85 @@
         background: var(--accent); border-color: var(--accent); color: var(--accent-fg);
       }
       #status { margin-top: 6px; text-align: center; }
+
+      /* ---------- Lisens ---------- */
+      .lic { display: flex; flex-direction: column; gap: 8px; }
+      .lic label { font-weight: 600; font-size: 12px; }
+      .lic input[type="text"] {
+        width: 100%; font: 14px/1.3 system-ui, sans-serif; padding: 8px 10px;
+        border: 1px solid var(--line); border-radius: 8px;
+        background: var(--bg); color: inherit;
+      }
+      /* Koden er sifre: brede mellomrom og stor skrift gjør den lett å lese av
+         for en dyslektiker, og feltet viser den alltid — ingen prikker. */
+      .lic input#kode {
+        font: 600 18px/1.3 ui-monospace, Consolas, monospace;
+        letter-spacing: .18em; text-align: center;
+      }
+      .lic .feil { color: #b3261e; font-size: 12px; }
+      .lic .ok { color: #1c6647; font-size: 12px; }
+      @media (prefers-color-scheme: dark) {
+        .lic .feil { color: #f2b8b5; }
+        .lic .ok { color: #6fc79b; }
+      }
+      .btn {
+        font: 600 13px/1 system-ui, sans-serif; padding: 9px 14px; cursor: pointer;
+        border-radius: 8px; border: 1px solid var(--accent);
+        background: var(--accent); color: var(--accent-fg);
+      }
+      .btn.sekundaer { background: var(--card); color: inherit; border-color: var(--line); }
+      .btn:disabled { opacity: .6; cursor: default; }
+      .licstate { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .badge {
+        font: 600 10px/1 ui-monospace, Consolas, monospace; letter-spacing: .08em;
+        text-transform: uppercase; padding: 3px 6px; border-radius: 4px;
+      }
+      .badge.aktiv { background: #dcebe3; color: #1c6647; }
+      .badge.varsel { background: #f2e8d2; color: #8a5f08; }
+      .badge.degradert { background: #f2dedc; color: #97302a; }
+      @media (prefers-color-scheme: dark) {
+        .badge.aktiv { background: #143024; color: #6fc79b; }
+        .badge.varsel { background: #33280f; color: #d9ad55; }
+        .badge.degradert { background: #371917; color: #e8938c; }
+      }
+      .hidden { display: none !important; }
     </style>
   </head>
   <body>
     <h1>🔊 Ordlyd</h1>
 
-    <div class="master">
+    <!-- Innlogging: vises bare når utvidelsen ikke er aktivert -->
+    <div class="card lic hidden" id="loginCard">
+      <div><strong>Aktiver Ordlyd</strong></div>
+      <div class="muted" style="font-size: 12px">
+        Skriv inn e-posten din og lisenskoden du har fått. Du gjør dette bare én gang på denne maskinen.
+      </div>
+      <div>
+        <label for="epost">E-post</label>
+        <input type="text" id="epost" inputmode="email" autocomplete="username" spellcheck="false" placeholder="navn@skole.no" />
+      </div>
+      <div>
+        <label for="kode">Lisenskode</label>
+        <input type="text" id="kode" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" placeholder="123 4567" maxlength="9" />
+      </div>
+      <div id="loginFeil" class="feil"></div>
+      <button class="btn" id="loginBtn">Aktiver</button>
+    </div>
+
+    <!-- Lisensstatus: vises når aktivert -->
+    <div class="card lic hidden" id="licCard">
+      <div class="licstate">
+        <span class="badge" id="licBadge"></span>
+        <span class="muted" id="licInfo" style="font-size: 12px"></span>
+      </div>
+      <div id="licVarsel" class="muted" style="font-size: 12px"></div>
+      <div style="display: flex; gap: 6px">
+        <button class="btn sekundaer" id="sjekkBtn">Sjekk lisensen nå</button>
+        <button class="btn sekundaer" id="loggUtBtn">Logg ut</button>
+      </div>
+    </div>
+
+    <div class="master" id="masterCard">
       <label for="enabled"><strong>Aktivert</strong><br /><span class="muted">Slår av alt under</span></label>
       <label class="switch"><input type="checkbox" id="enabled" /><span class="slider"></span></label>
     </div>

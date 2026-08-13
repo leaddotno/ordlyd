@@ -96,6 +96,28 @@ export interface EventEnvelope {
   event: TtsEvent;
 }
 
+/* ---------- Lisens: popup ↔ service worker ---------- */
+
+/** Popup spør om tilstanden. Service workeren er eneste kilde til sannhet. */
+export interface LicenseStateRequest {
+  type: "ss-license-state";
+}
+
+export interface LicenseLoginRequest {
+  type: "ss-license-login";
+  epost: string;
+  kode: string;
+}
+
+export interface LicenseLogoutRequest {
+  type: "ss-license-logout";
+}
+
+/** «Sjekk nå»-knappen i popup — tvinger et fornyelsesforsøk. */
+export interface LicenseRefreshRequest {
+  type: "ss-license-refresh";
+}
+
 export type AnyMessage =
   | SpeakRequest
   | StopRequest
@@ -109,4 +131,8 @@ export type AnyMessage =
   | OffscreenSuggest
   | OffscreenCheck
   | OffscreenDict
-  | EventEnvelope;
+  | EventEnvelope
+  | LicenseStateRequest
+  | LicenseLoginRequest
+  | LicenseLogoutRequest
+  | LicenseRefreshRequest;
