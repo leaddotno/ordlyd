@@ -5,7 +5,11 @@
   "description": "Marker tekst og få den opplest med norsk stemme. All talesyntese kjører lokalt i nettleseren.",
   "minimum_chrome_version": "116",
   "permissions": ["offscreen", "storage", "alarms"],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": [
+    "https://lisens.ordlyd.no/*",
+    "https://lisens.ordlyd.lead.no/*",
+    "https://ordlyd-demo.vercel.app/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Ordlyd – innstillinger"

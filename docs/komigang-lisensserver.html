@@ -264,6 +264,7 @@
         <li><span class="mark todo">6</span><a href="#s6">Røyktest: <code>/api/health</code></a></li>
         <li><span class="mark todo">7</span><a href="#s7">Opprett en testkunde</a></li>
         <li><span class="mark todo">8</span><a href="#s8">Kjør ende-til-ende-testen</a></li>
+        <li><span class="mark todo">9</span><a href="#domener">Koble på egne domener</a></li>
       </ol>
     </div>
   </header>
@@ -454,6 +455,35 @@ ALLE 10 STEG OK — lisensserveren fungerer ende til ende.</span>
     <p>Sletting kaskaderer til pool, lisenser, installasjoner og kvitteringer.</p>
   </section>
 
+  <section class="step" id="domener">
+    <h2><span class="n">9</span> Egne domener</h2>
+    <p class="where">Vercel → Settings → Domains, og DNS-en til ordlyd.no</p>
+    <p>Adressene er avgjort: <code>lisens.ordlyd.no</code> for lisensserveren, <code>panel.ordlyd.no</code> for superadmin, og <code>lisens.ordlyd.lead.no</code> som reserve. Alle tre peker på <strong>samme Vercel-prosjekt</strong> — panelet bruker relative API-kall, så det virker uansett hvilket vertsnavn det åpnes på.</p>
+
+    <ol class="actions">
+      <li>I Vercel: <strong>Settings → Domains → Add</strong>. Legg inn <code>lisens.ordlyd.no</code>, så <code>panel.ordlyd.no</code>, så <code>lisens.ordlyd.lead.no</code>.</li>
+      <li>For hvert domene viser Vercel en <strong>CNAME-verdi</strong> du skal legge inn i DNS. Bruk den Vercel oppgir — den er prosjektspesifikk, så en verdi jeg gjettet på her kunne vært feil.</li>
+      <li>I DNS-en for <strong>ordlyd.no</strong>: legg inn CNAME for <code>lisens</code> og <code>panel</code>. Sett TTL lavt (300 s) mens du setter opp; hev til 3600 når det virker.</li>
+      <li>I DNS-en for <strong>lead.no</strong>: legg inn CNAME for <code>lisens.ordlyd</code>.</li>
+      <li>Vent på at Vercel utsteder TLS-sertifikater. Det skjer automatisk, vanligvis i løpet av minutter.</li>
+    </ol>
+
+    <p class="prelabel">verifiser</p>
+    <pre><code>curl https://lisens.ordlyd.no/api/health</code></pre>
+    <p>Og åpne <code>https://panel.ordlyd.no</code> — den skal sende deg rett til innloggingen i panelet.</p>
+
+    <div class="note">
+      <span class="tag">Hva reserveadressen faktisk beskytter mot</span>
+      <p><code>lisens.ordlyd.lead.no</code> ligger under et <em>annet domene</em>, så den redder oss om ordlyd.no får DNS-trøbbel, går ut på dato eller blir kapret. Den redder oss <strong>ikke</strong> om Vercel er nede, siden begge peker på samme prosjekt. Ekte backend-redundans krever den signerte endepunktslisten i L3, der klienten kan sendes til en helt annen leverandør. Verdt å vite, ikke verdt å utsette noe for.</p>
+    </div>
+
+    <div class="note good">
+      <span class="tag">Utvidelsen er allerede oppdatert</span>
+      <p>Klienten prøver <code>lisens.ordlyd.no</code> først, så <code>lisens.ordlyd.lead.no</code>, og til slutt <code>ordlyd-demo.vercel.app</code> som siste utvei. En adresse som ikke svarer feiler raskt, så den fungerer allerede i dag — den bare hopper over de to første til DNS-en er på plass.</p>
+      <p>Samtidig ble tilgangene strammet inn: utvidelsen ber nå bare om nettverkstilgang til disse tre adressene, i stedet for til alle nettsteder. Det er verdt noe når fylkets sikkerhetsfolk leser gjennom.</p>
+    </div>
+  </section>
+
   <section class="step" id="etter">
     <h2><span class="n">→</span> Når alle åtte er grønne</h2>
     <p class="where">Da er backend i drift, og dette står igjen</p>
@@ -483,7 +513,7 @@ ALLE 10 STEG OK — lisensserveren fungerer ende til ende.</span>
         <tbody>
           <tr><td><strong>Lisens i utvidelsen (L2)</strong></td><td>Innloggingsskjerm i popup, offline-verifisering, døgnlig fornying, degradert modus</td><td>Serveren og panelet er klare; nå skal klienten bruke dem</td></tr>
           <tr><td><strong>Passkey i panelet</strong></td><td>Erstatter den delte <code>ADMIN_TOKEN</code>-nøkkelen med maskinvarepålogging</td><td>Én delt hemmelighet er greit for én person, ikke for et team</td></tr>
-          <tr><td><strong>Domenene (L0)</strong></td><td>Tre domener hos tre registrarer</td><td>Fortsatt mest tidskritisk: de låses i utvidelsens manifest ved første butikkutgivelse</td></tr>
+          <tr><td><strong>Signert endepunktsliste (L3)</strong></td><td>Rotnøkkel offline, <code>endpoints.json</code> signert, nødprosedyre øvd</td><td>Gir ekte backend-redundans og gjør at klientene kan flyttes til en annen leverandør</td></tr>
           <tr><td><strong>Stemmen til CDN (L4)</strong></td><td>63 MB ut av pakken</td><td>Forutsetningen for at oppdateringer blir små nok å rulle ut jevnlig</td></tr>
         </tbody>
       </table>

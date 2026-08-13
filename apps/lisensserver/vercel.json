@@ -13,6 +13,14 @@
       "schedule": "17 3 * * *"
     }
   ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "panel.ordlyd.no" }],
+      "destination": "/admin/",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

@@ -525,10 +525,11 @@
       </div>
 
       <div class="decision">
-        <div class="dh"><span class="did">P4</span><span class="dt">Reservedomenene låses i første utgivelse</span></div>
-        <p>Nettleserutvidelser under Manifest V3 kan bare kontakte adresser som står i <code>host_permissions</code> i manifestet. Listen er frosset ved bygging. Skal vi kunne peke klientene mot et helt nytt domene i en krise, må <em>alle</em> kandidatdomenene stå i manifestet fra dag én — ellers er eneste vei ut en ny butikkinnsending med opptil sju arbeidsdagers behandlingstid, midt i hendelsen.</p>
-        <p>Konkret: registrer <strong>tre domener hos tre ulike registrarer med tre ulike DNS-leverandører</strong> nå, og list opp alle tre. Kostnaden er noen hundrelapper i året. Alternativet er å stå uten manøvreringsrom den dagen det gjelder.</p>
-        <p class="verdict">Anbefaling: beslutt domenenavnene før vi skriver den første linjen med lisenskode.</p>
+        <div class="dh"><span class="did">P4</span><span class="dt">Adressene er avgjort og låst i manifestet</span></div>
+        <p>Nettleserutvidelser under Manifest V3 kan bare kontakte adresser som står i <code>host_permissions</code>. Listen er frosset ved bygging, så en adresse vi ikke listet opp på forhånd kan vi ikke bytte til i en krise uten en ny butikkinnsending med opptil sju arbeidsdagers behandlingstid — midt i hendelsen.</p>
+        <p><strong>Avgjort 13. august 2026:</strong> <code>lisens.ordlyd.no</code> er hovedserver, <code>panel.ordlyd.no</code> er superadmin, og <code>lisens.ordlyd.lead.no</code> er reserve. Alle tre peker på samme Vercel-prosjekt. <code>ordlyd-demo.vercel.app</code> står som siste utvei i klienten.</p>
+        <p>Vær presis om hva reserven gjør: den ligger under et <em>annet domene</em>, så den redder oss om ordlyd.no får DNS-trøbbel, går ut på dato eller blir kapret. Den redder oss ikke om Vercel er nede. Ekte backend-redundans kommer med den signerte endepunktslisten i kapittel 7.</p>
+        <p class="verdict">Samtidig ble utvidelsens nettverkstilganger strammet inn fra «alle nettsteder» til bare disse tre adressene.</p>
       </div>
 
       <div class="decision">
@@ -753,9 +754,9 @@ flowchart TB
 flowchart TB
   R["Rotnøkkel — offline<br/>2 av 3 maskinvarenøkler"] -->|"signerer"| K["Endepunkts- og nøkkelliste<br/>endpoints.json"]
   R -.->|"kun offentlig del<br/>pinnet i klienten"| C["Klient"]
-  K --> E1["lisens.domene-1.no"]
-  K --> E2["reserve.domene-2.no"]
-  K --> E3["reserve.domene-3.no"]
+  K --> E1["lisens.ordlyd.no"]
+  K --> E2["lisens.ordlyd.lead.no"]
+  K --> E3["ordlyd-demo.vercel.app"]
   K -->|"godkjenner kid"| S["Signeringsnøkkel<br/>online hos Vercel"]
   S -->|"signerer"| T["Lisenskvitteringer"]
   C -->|"verifiserer kjeden lokalt"| T
@@ -991,14 +992,13 @@ flowchart TB
 
     <section id="neste">
       <h2><span class="num">13</span> Fire avgjørelser jeg trenger fra deg</h2>
-      <p class="lede">To av forrige rundes spørsmål er nå avgjort: Feide og Entra bygges som påbygg senere, og systemet feiler åpent. Disse fire gjenstår.</p>
+      <p class="lede">Feide og Entra bygges som påbygg senere, systemet feiler åpent, og domenene er valgt. Disse tre gjenstår.</p>
       <ol>
-        <li><strong>Domenenavn.</strong> Hvilke tre? De låses i utvidelsens manifest ved første utgivelse (P4), så dette er fortsatt den mest tidskritiske avgjørelsen i dokumentet.</li>
         <li><strong>Hvem deler ut kodene.</strong> Anbefaling: foreningen eller kommunen selv, via engangs-eksporten ved import. Alternativet er at vi sender e-post til hvert medlem — da må vi drifte utsending og havner i direkte kontakt med medlemsregisteret.</li>
         <li><strong>Klartekst eller hash i hvile.</strong> Anbefaling: e-post og kode lagres som pepret hash, med maskert visning i adminpanelet. Prisen er at kodelisten bare kan eksporteres i importøyeblikket — mistede koder erstattes med nye i stedet for å gjenfinnes.</li>
         <li><strong>Hvem vokter rotnøkkelen.</strong> Tre maskinvarenøkler trenger tre personer eller tre steder. Med 2-av-3 tåler dere å miste én.</li>
       </ol>
-      <p>Når domenene er valgt, kan L0 starte samme dag.</p>
+      <p>Lisensserveren, superadmin-panelet og lisensen i utvidelsen er bygget og verifisert mot produksjon. Det som står igjen av grunnmuren er kapittel 7 — rotnøkkelen offline og den signerte endepunktslisten.</p>
     </section>
 
   </main>

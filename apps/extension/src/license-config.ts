@@ -24,7 +24,24 @@ import type { PublicKeySet } from "@ordlyd/license-client";
 
 export const PRODUCT = "edge-extension";
 
-export const BASE_URLS = ["https://ordlyd-demo.vercel.app"];
+/**
+ * Forsøkes i rekkefølge. En adresse som ikke svarer (ukjent DNS-navn,
+ * nede) feiler raskt, og klienten går videre til neste.
+ *
+ * Merk hva denne listen faktisk beskytter mot: `lisens.ordlyd.lead.no`
+ * ligger under et ANNET domene, så den redder oss om ordlyd.no får
+ * DNS-trøbbel, går ut på dato eller blir kapret. Den redder oss ikke om
+ * Vercel er nede, siden begge peker på samme prosjekt. Ekte
+ * backend-redundans krever den signerte endepunktslisten i L3.
+ *
+ * `.vercel.app` står sist som absolutt siste utvei: den virker selv om
+ * begge egne domener svikter samtidig.
+ */
+export const BASE_URLS = [
+  "https://lisens.ordlyd.no",
+  "https://lisens.ordlyd.lead.no",
+  "https://ordlyd-demo.vercel.app",
+];
 
 export const TRUSTED_KEYS: PublicKeySet[] = [
   {
