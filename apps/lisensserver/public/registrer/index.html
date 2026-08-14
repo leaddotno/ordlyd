@@ -6,69 +6,117 @@
 <title>Få gratis lisens til Ordlyd</title>
 <meta name="description" content="Skriv inn e-postadressen din og få en gratis prøvelisens til Ordlyd tilsendt." />
 <style>
-  /* Utformet for målgruppen: stor skrift, god linjeavstand, ett felt, én
-     knapp. Ingen nedtrekksmenyer, ingen avkrysninger, ingen skjulte krav. */
+  /*
+   * Palett og former hentet fra www.ordlyd.no, slik at det kjennes som samme
+   * produkt å klikke seg hit: lys slate-bakgrunn, hvite kort med 16 px
+   * radius og tynn kant uten skygge, blå aksent, og overskrifter i vekt 400
+   * framfor fet — det er den lette tonen nettstedet har.
+   *
+   * Bevisst ingen mørk variant: nettstedet er et gjennomført lyst design, og
+   * en side som plutselig ble mørk ville brutt sammenhengen.
+   *
+   * Fontfamiliene er de samme som nettstedet oppgir. Merk at nettstedet i
+   * dag ikke LASTER Sora og Manrope (ingen @font-face), så begge faller
+   * tilbake på systemfonten. Fallbackkjeden her er valgt så den ligner mest
+   * mulig, og blir riktig av seg selv den dagen fontene lastes.
+   */
   :root {
-    --bg: #eef1f1; --kort: #ffffff; --tekst: #142124; --dempet: #4a5b5f;
-    --linje: #cdd6d6; --aksent: #2563eb; --aksent-tekst: #ffffff;
-    --ok: #1c6647; --ok-bg: #dcebe3;
-    --feil: #97302a; --feil-bg: #f2dedc;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0b1215; --kort: #111c20; --tekst: #dde7e8; --dempet: #a3b4b7;
-      --linje: #2b3d42; --aksent: #4493f8; --aksent-tekst: #06171a;
-      --ok: #6fc79b; --ok-bg: #143024;
-      --feil: #e8938c; --feil-bg: #371917;
-    }
+    --bg: #f8fafc;
+    --kort: #ffffff;
+    --tekst: #142034;
+    --dempet: #58687e;
+    --linje: #dbe2eb;
+    --aksent: #2463eb;
+    --aksent-tekst: #ffffff;
+    --ok: #15803d;
+    --ok-bg: #f0fdf4;
+    --ok-linje: #bbf7d0;
+    --feil: #b91c1c;
+    --feil-bg: #fef2f2;
+    --feil-linje: #fecaca;
+
+    --brodtekst: Manrope, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --overskrift: Sora, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 24px 16px 64px;
+    margin: 0; padding: 32px 16px 72px;
     background: var(--bg); color: var(--tekst);
-    font: 18px/1.65 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    font-family: var(--brodtekst); font-size: 17px; line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
   .kort {
     max-width: 34rem; margin: 0 auto; background: var(--kort);
-    border: 1px solid var(--linje); border-radius: 12px; padding: 32px;
+    border: 1px solid var(--linje); border-radius: 16px; padding: 32px;
   }
-  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 12px; letter-spacing: -.01em; }
+  h1 {
+    font-family: var(--overskrift); font-weight: 400;
+    font-size: 32px; line-height: 1.25; letter-spacing: -.01em;
+    margin: 0 0 14px;
+  }
+  h2 {
+    font-family: var(--overskrift); font-weight: 400;
+    font-size: 22px; line-height: 1.3; margin: 0 0 4px;
+  }
   p { margin: 0 0 16px; }
   .dempet { color: var(--dempet); }
-  label { display: block; font-weight: 650; font-size: 17px; margin: 24px 0 8px; }
+  .liten { font-size: 15px; }
+
+  label { display: block; font-weight: 600; font-size: 16px; margin: 26px 0 8px; }
   input[type="email"] {
-    width: 100%; font-family: inherit; font-size: 20px; line-height: 1.4; padding: 14px 16px;
-    border: 2px solid var(--linje); border-radius: 10px;
-    background: var(--bg); color: var(--tekst);
+    width: 100%; font-family: inherit; font-size: 20px; line-height: 1.4;
+    padding: 14px 16px; border: 1px solid var(--linje); border-radius: 10px;
+    background: var(--kort); color: var(--tekst);
   }
-  input[type="email"]:focus-visible { outline: 3px solid var(--aksent); outline-offset: 1px; border-color: var(--aksent); }
+  input[type="email"]::placeholder { color: var(--dempet); opacity: .8; }
+  input[type="email"]:focus-visible {
+    outline: 3px solid var(--aksent); outline-offset: 1px; border-color: var(--aksent);
+  }
   button {
-    width: 100%; margin-top: 18px; font-family: inherit; font-size: 19px; font-weight: 650;
-    line-height: 1; padding: 16px;
-    border: 0; border-radius: 10px; cursor: pointer;
+    width: 100%; margin-top: 20px;
+    font-family: inherit; font-size: 18px; font-weight: 600; line-height: 1;
+    padding: 17px; border: 0; border-radius: 10px; cursor: pointer;
     background: var(--aksent); color: var(--aksent-tekst);
   }
+  button:hover:not(:disabled) { background: #1d4fd8; }
   button:disabled { opacity: .6; cursor: default; }
   button:focus-visible { outline: 3px solid var(--tekst); outline-offset: 2px; }
-  .melding { margin-top: 20px; padding: 16px 18px; border-radius: 10px; font-size: 17px; }
-  .melding.ok { background: var(--ok-bg); color: var(--ok); }
-  .melding.feil { background: var(--feil-bg); color: var(--feil); }
+
+  .melding {
+    margin-top: 22px; padding: 16px 18px; border-radius: 12px;
+    font-size: 16px; border: 1px solid transparent;
+  }
+  .melding.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-linje); }
+  .melding.feil { background: var(--feil-bg); color: var(--feil); border-color: var(--feil-linje); }
   .melding:empty { display: none; }
-  .steg { margin: 28px 0 0; padding: 0; list-style: none; counter-reset: s; }
+
+  .steg { margin: 22px 0 0; padding: 0; list-style: none; counter-reset: s; }
   .steg li {
-    counter-increment: s; position: relative; padding-left: 40px; margin-bottom: 14px;
+    counter-increment: s; position: relative; padding-left: 42px; margin-bottom: 14px;
   }
   .steg li::before {
-    content: counter(s); position: absolute; left: 0; top: 1px;
+    content: counter(s); position: absolute; left: 0; top: 2px;
     width: 28px; height: 28px; border-radius: 50%;
     background: var(--bg); border: 1px solid var(--linje);
-    font-family: inherit; font-size: 15px; font-weight: 650; line-height: 28px;
+    font-family: inherit; font-size: 15px; font-weight: 600; line-height: 26px;
     text-align: center; color: var(--dempet);
   }
-  hr { border: 0; border-top: 1px solid var(--linje); margin: 32px 0 24px; }
+
+  /* Henvisningen til veiledningene skal være det tydeligste etter stegene. */
+  .veiledning {
+    display: block; margin-top: 20px; padding: 18px 20px;
+    background: var(--bg); border: 1px solid var(--linje); border-radius: 12px;
+    text-decoration: none; color: inherit;
+  }
+  .veiledning:hover { border-color: var(--aksent); }
+  .veiledning:focus-visible { outline: 3px solid var(--aksent); outline-offset: 2px; }
+  .veiledning strong { display: block; color: var(--aksent); font-size: 17px; font-weight: 600; }
+  .veiledning span { display: block; margin-top: 4px; font-size: 15px; color: var(--dempet); }
+
+  hr { border: 0; border-top: 1px solid var(--linje); margin: 34px 0 26px; }
   a { color: var(--aksent); }
-  .liten { font-size: 15px; }
+  .bunn { margin: 0; font-size: 15px; color: var(--dempet); }
+  .bunn a { color: var(--aksent); }
 </style>
 </head>
 <body>
@@ -97,18 +145,28 @@
 
     <hr />
 
-    <h2 style="font-size: 20px; margin: 0">Slik kommer du i gang</h2>
+    <h2>Slik kommer du i gang</h2>
     <ol class="steg">
       <li>Installer Ordlyd i nettleseren Microsoft Edge.</li>
       <li>Klikk Ordlyd-ikonet i verktøylinja.</li>
       <li>Skriv inn e-postadressen din og lisenskoden du får på e-post.</li>
     </ol>
-    <p class="dempet liten" style="margin-top: 20px">
+
+    <a class="veiledning" href="https://ordlyd.no/veiledninger">
+      <strong>Se veiledningene på ordlyd.no →</strong>
+      <span>Steg for steg for alle plattformer og bruksområder, med bilder.</span>
+    </a>
+
+    <p class="dempet liten" style="margin: 20px 0 0">
       Du gjør dette bare én gang på hver maskin. Har du mistet koden, kan du hente en
       ny her — skriv inn samme adresse på nytt.
     </p>
-    <p class="liten" style="margin-bottom: 0">
-      Veiledninger og mer informasjon: <a href="https://www.ordlyd.no/">ordlyd.no</a> ·
+
+    <hr />
+
+    <p class="bunn">
+      <a href="https://www.ordlyd.no/">ordlyd.no</a> ·
+      <a href="https://ordlyd.no/veiledninger">Veiledninger</a> ·
       <a href="https://www.ordlyd.no/personvern">Personvern</a>
     </p>
   </main>

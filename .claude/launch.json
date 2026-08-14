@@ -6,6 +6,17 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ordlyd/demo", "dev", "--port", "5173"],
       "port": 5173
+    },
+    {
+      "//": "Statiske sider fra lisensserveren (/registrer, /admin) uten å rulle ut. Låner vite fra demo-appen; roten er relativ til apps/demo, som er der --filter setter cwd.",
+      "name": "lisensserver-sider",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter", "@ordlyd/demo", "exec", "vite",
+        "../lisensserver/public",
+        "--port", "5174", "--strictPort"
+      ],
+      "port": 5174
     }
   ]
 }
