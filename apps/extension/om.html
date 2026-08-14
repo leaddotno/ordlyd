@@ -35,6 +35,8 @@
       header { padding: 40px 0 20px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
       h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em; }
       header .under { color: var(--muted); margin: 0; }
+      .logo { display: block; height: 44px; width: auto; max-width: 100%; margin: 0 0 14px; }
+      .nettsted { margin-top: 14px; font-size: 15px; }
       h2 { font-size: 17px; margin: 32px 0 10px; }
       p { margin: 0 0 12px; }
       .muted { color: var(--muted); }
@@ -81,8 +83,16 @@
   <body>
     <div class="col">
       <header>
-        <h1>🔊 Om Ordlyd</h1>
-        <p class="under">Lese- og skrivestøtte som kjører på din egen maskin.</p>
+        <h1 id="tittel"><img class="logo" id="logo" src="brand/logo.png" alt="Ordlyd" /></h1>
+        <p class="under">
+          Ordlyd leser tekst, bokstaver og ord, gir deg ordprediksjon og i tillegg innebygd
+          bokmåls- og nynorskordbok. Alt, inkludert talesyntesen, kjører lokalt i nettleseren.
+        </p>
+        <p class="nettsted">
+          <a href="https://www.ordlyd.no/" target="_blank" rel="noopener">
+            Veiledninger og mer informasjon på ordlyd.no →
+          </a>
+        </p>
       </header>
 
       <!-- ============ Din lisens ============ -->
@@ -182,11 +192,24 @@
       <!-- ============ Hjelp ============ -->
       <h2>Hjelp</h2>
       <div class="card">
-        <p style="margin-bottom: 0">
+        <p>
           Virker ikke lisensen, eller har du mistet lisenskoden? Kontakt den som ga deg
           koden — foreningen, skolen eller kommunen din. De kan lage en ny kode til deg.
           En mistet kode kan ikke hentes fram igjen, av personvernhensyn: vi lagrer aldri
           koden i lesbar form.
+        </p>
+        <p style="margin-bottom: 0">
+          Veiledninger, ofte stilte spørsmål og kontaktinformasjon finner du på
+          <a href="https://www.ordlyd.no/" target="_blank" rel="noopener">ordlyd.no</a>.
+        </p>
+      </div>
+
+      <h2>Kreditering</h2>
+      <div class="card">
+        <p style="margin-bottom: 0" class="muted">
+          Bokmålsordboka og Nynorskordboka: © Universitetet i Bergen og Språkrådet.<br />
+          Norsk ordbank: Språkbanken, CC-BY 4.0.<br />
+          Talesyntese: Piper.
         </p>
       </div>
     </div>

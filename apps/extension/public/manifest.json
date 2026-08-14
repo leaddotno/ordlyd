@@ -3,8 +3,8 @@
   "name": "Ordlyd",
   "short_name": "Ordlyd",
   "version": "1.0.0",
-  "description": "Marker tekst og få den opplest med norsk stemme. All talesyntese kjører lokalt i nettleseren.",
-  "homepage_url": "https://ordlyd.no",
+  "description": "Leser tekst, bokstaver og ord, gir ordprediksjon og har bokmåls- og nynorskordbok. Alt, inkludert talesyntesen, kjører lokalt.",
+  "homepage_url": "https://www.ordlyd.no/",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",

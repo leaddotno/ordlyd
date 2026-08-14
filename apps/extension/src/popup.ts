@@ -1,7 +1,10 @@
 import { getSettings, saveSettings, type Settings, type Theme } from "./settings.js";
+import { visLogoEllerTekst } from "./logo.js";
 import type { LicenseState } from "@ordlyd/license-client";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+visLogoEllerTekst("logo", "tittel", "🔊 Ordlyd");
 
 const enabled = $<HTMLInputElement>("enabled");
 const rate = $<HTMLInputElement>("rate");

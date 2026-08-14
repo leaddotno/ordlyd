@@ -1,6 +1,9 @@
 node_modules/
 dist/
 .vite/
+# Ikoner og logo genereres fra brand/ av scripts/build-icons.mjs
+apps/extension/public/icons/
+apps/extension/public/brand/
 # Store binærressurser hentes/kopieres av scripts/, sjekkes ikke inn
 assets/
 apps/*/public/voices/

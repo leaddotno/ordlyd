@@ -5,10 +5,13 @@
  * lisensen, og den eneste som kan spørre nettleseren om oppdateringer.
  */
 
+import { visLogoEllerTekst } from "./logo.js";
 import type { LicenseState } from "@ordlyd/license-client";
 import type { VersionInfoResponse, CheckUpdateResponse } from "./messages.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+visLogoEllerTekst("logo", "tittel", "🔊 Om Ordlyd");
 
 const PLAN_NAVN: Record<string, string> = {
   medlem: "Medlemslisens",

@@ -123,10 +123,17 @@
         .badge.degradert { background: #371917; color: #e8938c; }
       }
       .hidden { display: none !important; }
+
+      /* Logoen erstatter tekstoverskriften. Høyden er satt, bredden følger
+         med, så et ordmerke i annet format ikke sprenger popupen. */
+      .logo {
+        display: block; height: 30px; width: auto; max-width: 100%;
+        margin: 2px 0 12px;
+      }
     </style>
   </head>
   <body>
-    <h1>🔊 Ordlyd</h1>
+    <h1 id="tittel"><img class="logo" id="logo" src="brand/logo.png" alt="Ordlyd" /></h1>
 
     <!-- Innlogging: vises bare når utvidelsen ikke er aktivert -->
     <div class="card lic hidden" id="loginCard">

@@ -159,7 +159,10 @@
       <table>
         <thead><tr><th>Krav</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td>Ikoner i 16, 32, 48 og 128 px</td><td>Generert og lagt i manifestet</td></tr>
+          <tr><td>Ikoner i 16, 32, 48 og 128 px</td><td>Skaleres fra <code>brand/ikon.png</code> ved bygging, og lagt i manifestet</td></tr>
+          <tr><td>Butikklogo 300×300</td><td>Genereres fra samme kilde</td></tr>
+          <tr><td>Logo i panelet</td><td><code>brand/logo.png</code> vises i popup og «Om Ordlyd»</td></tr>
+          <tr><td>Lenke til ordlyd.no</td><td>Synlig to steder i «Om Ordlyd», og i manifestets <code>homepage_url</code></td></tr>
           <tr><td>Versjonsnummer</td><td><code>1.0.0</code></td></tr>
           <tr><td>Beskrivelse under 132 tegn</td><td>93 tegn</td></tr>
           <tr><td>Hjemmesideadresse</td><td><code>https://ordlyd.no</code></td></tr>
@@ -206,11 +209,17 @@
     <p>Last opp <code>ordlyd-1.0.0.zip</code>, og fyll ut feltene. Her er forslag du kan bruke som de er:</p>
 
     <h3>Kortbeskrivelse</h3>
-    <pre><code>Marker tekst og få den opplest med norsk stemme. All talesyntese kjører
-lokalt i nettleseren.</code></pre>
+    <p>Denne står også i manifestet, der grensen er 132 tegn. Versjonen under er 126:</p>
+    <pre><code>Leser tekst, bokstaver og ord, gir ordprediksjon og har bokmåls- og
+nynorskordbok. Alt, inkludert talesyntesen, kjører lokalt.</code></pre>
 
     <h3>Fullstendig beskrivelse</h3>
-    <pre><code>Ordlyd er lese- og skrivestøtte for deg som har lese- og skrivevansker.
+    <p>Her er det ingen 132-tegnsgrense, så den fulle formuleringen kan stå:</p>
+    <pre><code>Ordlyd leser tekst, bokstaver og ord, gir deg ordprediksjon og i tillegg
+innebygd bokmåls- og nynorskordbok. Alt, inkludert talesyntesen, kjører
+lokalt i nettleseren.
+
+Ordlyd er lese- og skrivestøtte for deg som har lese- og skrivevansker.
 
 LES OPP TEKST
 Marker tekst på en nettside og få den lest opp med norsk stemme, med
@@ -250,10 +259,10 @@ Stemme: Piper med norsk talesyntesemodell.</code></pre>
       </table>
     </div>
 
-    <h3>Bilder du må lage</h3>
+    <h3>Bilder</h3>
     <ul>
-      <li><strong>Butikklogo 300×300 px</strong> — kan være merket vårt på petrolfarget flate</li>
-      <li><strong>Minst ett skjermbilde, 1280×800 eller 640×480</strong> — anbefalt: en nettside med tekst markert og gul uthevingsfarge synlig, popup-en åpen ved siden av</li>
+      <li><strong>Butikklogo 300×300 px</strong> — genereres automatisk fra merkevareikonet, og ligger klar i <code>apps/extension/dist/brand/butikklogo-300.png</code></li>
+      <li><strong>Minst ett skjermbilde, 1280×800 eller 640×480</strong> — dette må du lage. Anbefalt: en nettside med tekst markert og gul uthevingsfarge synlig, popup-en åpen ved siden av</li>
       <li>Valgfritt: promoteringsflis 440×280</li>
     </ul>
     <p>Skjermbildene er det folk faktisk ser i søkeresultatet. Ett godt bilde som viser opplesing i bruk gjør mer enn tre uskarpe.</p>
