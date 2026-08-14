@@ -105,8 +105,10 @@ export class PostgresDb implements Db {
 
   async createEntry(e: PoolEntry): Promise<void> {
     await this.sql`
-      insert into pool_entries (id, pool_id, email_hash, email_masked, code_hash, status)
-      values (${e.id}, ${e.poolId}, ${e.emailHash}, ${e.emailMasked}, ${e.codeHash}, ${e.status})`;
+      insert into pool_entries
+        (id, pool_id, email_hash, email_masked, code_hash, status, valid_to, source)
+      values (${e.id}, ${e.poolId}, ${e.emailHash}, ${e.emailMasked}, ${e.codeHash}, ${e.status},
+              ${e.validTo === null ? null : secToDate(e.validTo)}, ${e.source})`;
   }
 
   private toEntry(row: Record<string, unknown>): PoolEntry {
@@ -118,21 +120,65 @@ export class PostgresDb implements Db {
       codeHash: row.code_hash as string,
       status: row.status as EntryStatus,
       lastUsedAt: tsToSec(row.last_used_at),
+      validTo: dateToInclusiveSec(row.valid_to),
+      source: (row.source as PoolEntry["source"]) ?? "import",
     };
   }
 
+  /*
+   * Kolonnelista står skrevet ut i begge spørringene framfor å deles.
+   * `to_jsonb(e) ->>` i stedet for `e.valid_to`: kodeutrulling og migrasjon
+   * skjer ikke samtidig på Vercel, og en spørring som navngir en kolonne som
+   * ennå ikke finnes gir 500. Denne formen gir NULL i stedet.
+   */
   async findEntriesByEmailHash(emailHash: string): Promise<PoolEntry[]> {
     const rows = await this.sql`
-      select id, pool_id, email_hash, email_masked, code_hash, status, last_used_at
-      from pool_entries where email_hash = ${emailHash}`;
+      select e.id, e.pool_id, e.email_hash, e.email_masked, e.code_hash, e.status, e.last_used_at,
+             (to_jsonb(e) ->> 'valid_to')::date as valid_to,
+             to_jsonb(e) ->> 'source' as source
+      from pool_entries e where e.email_hash = ${emailHash}`;
     return rows.map((r) => this.toEntry(r));
   }
 
   async getEntry(id: string): Promise<PoolEntry | null> {
     const [row] = await this.sql`
-      select id, pool_id, email_hash, email_masked, code_hash, status, last_used_at
-      from pool_entries where id = ${id}`;
+      select e.id, e.pool_id, e.email_hash, e.email_masked, e.code_hash, e.status, e.last_used_at,
+             (to_jsonb(e) ->> 'valid_to')::date as valid_to,
+             to_jsonb(e) ->> 'source' as source
+      from pool_entries e where e.id = ${id}`;
     return row ? this.toEntry(row) : null;
+  }
+
+  async moveEntry(id: string, newPoolId: string, newValidTo: number | null): Promise<void> {
+    // code_hash står med vilje IKKE i denne setningen. Brukerens kode og den
+    // installerte utvidelsen skal fortsette å virke gjennom flyttingen.
+    await this.sql`
+      update pool_entries
+      set pool_id = ${newPoolId},
+          valid_to = ${newValidTo === null ? null : secToDate(newValidTo)}
+      where id = ${id}`;
+  }
+
+  async setEntryCode(id: string, codeHash: string, validTo: number | null): Promise<void> {
+    await this.sql`
+      update pool_entries
+      set code_hash = ${codeHash},
+          valid_to = ${validTo === null ? null : secToDate(validTo)}
+      where id = ${id}`;
+  }
+
+  async getSettings(): Promise<Record<string, unknown>> {
+    const rows = await this.sql`select key, value from app_settings`;
+    const ut: Record<string, unknown> = {};
+    for (const r of rows) ut[r.key] = r.value;
+    return ut;
+  }
+
+  async setSetting(key: string, value: unknown): Promise<void> {
+    await this.sql`
+      insert into app_settings (key, value, updated_at)
+      values (${key}, ${this.sql.json(value as never)}, now())
+      on conflict (key) do update set value = excluded.value, updated_at = now()`;
   }
 
   async setEntryStatus(id: string, status: EntryStatus): Promise<void> {

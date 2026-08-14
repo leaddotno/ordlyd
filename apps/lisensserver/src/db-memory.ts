@@ -14,6 +14,11 @@ export class MemoryDb implements Db {
   attempts = new Map<string, number[]>();
   nets = new Map<string, Set<string>>(); // `${entryId}|${day}` → netHash-sett
   receipts: Array<{ entryId: string; installId: string; kid: string; issuedAt: number; expiresAt: number }> = [];
+  settings: Record<string, unknown> = {
+    registrering_apen: true,
+    prove_dager: 60,
+    prove_fornyelse_tillatt: true,
+  };
   auditLog: Array<{ actor: string; action: string; details: Record<string, unknown> }> = [];
 
   async getTenant(id: string) {
@@ -48,6 +53,31 @@ export class MemoryDb implements Db {
   }
   async isDenied(emailHash: string) {
     return this.denied.has(emailHash);
+  }
+
+  async moveEntry(id: string, newPoolId: string, newValidTo: number | null) {
+    const e = this.entries.get(id);
+    if (e) {
+      e.poolId = newPoolId;
+      e.validTo = newValidTo;
+      // codeHash med vilje urørt
+    }
+  }
+
+  async setEntryCode(id: string, codeHash: string, validTo: number | null) {
+    const e = this.entries.get(id);
+    if (e) {
+      e.codeHash = codeHash;
+      e.validTo = validTo;
+    }
+  }
+
+  async getSettings() {
+    return { ...this.settings };
+  }
+
+  async setSetting(key: string, value: unknown) {
+    this.settings[key] = value;
   }
 
   async createInstall(i: Install) {

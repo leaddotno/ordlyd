@@ -89,12 +89,18 @@ export interface EntryRow {
   sistBrukt: string | null;
   installasjoner: number;
   nett7d: number;
+  /** Sluttdato for denne ene lisensen. null = følger poolen. */
+  gyldigTil: string | null;
+  /** import | selvregistrert */
+  kilde: string;
 }
 
 export async function poolEntries(sql: Sql, poolId: string, limit = 500): Promise<EntryRow[]> {
   const rows = await sql`
     select
       e.id, e.email_masked, e.status, e.last_used_at,
+      (to_jsonb(e) ->> 'valid_to') as valid_to,
+      to_jsonb(e) ->> 'source' as source,
       coalesce((select count(*) from installs i where i.entry_id = e.id), 0)::int as installasjoner,
       coalesce((select count(distinct n.net_hash) from usage_nets n
                 where n.entry_id = e.id and n.day > current_date - 7), 0)::int as nett_7d
@@ -109,6 +115,8 @@ export async function poolEntries(sql: Sql, poolId: string, limit = 500): Promis
     sistBrukt: r.last_used_at ? new Date(r.last_used_at).toISOString() : null,
     installasjoner: r.installasjoner,
     nett7d: r.nett_7d,
+    gyldigTil: r.valid_to ? String(r.valid_to).slice(0, 10) : null,
+    kilde: r.source ?? "import",
   }));
 }
 

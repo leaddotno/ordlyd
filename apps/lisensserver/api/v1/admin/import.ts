@@ -32,9 +32,18 @@ export default vercelHandler("POST", async (req) => {
   const result = await importEntries(getDb(), getPepper(), poolId, emails as string[], newId);
   return ok({
     antallImportert: result.imported.length,
+    antallFlyttet: result.moved.length,
+    antallHosAnnenKunde: result.claimedElsewhere.length,
     antallHoppetOver: result.skipped.length,
     hoppetOver: result.skipped,
-    // Eneste gang kodene finnes i klartekst. Lagre dem trygt nå.
+    /**
+     * Flyttet fra prøvelisens. Disse har med vilje INGEN kode i svaret:
+     * brukeren beholder koden hun har, og utvidelsen fortsetter å virke.
+     */
+    flyttet: result.moved,
+    /** Krever et bevisst valg — se importEntries for hvorfor. */
+    hosAnnenKunde: result.claimedElsewhere,
+    // Eneste gang de nye kodene finnes i klartekst. Lagre dem trygt nå.
     lisenser: result.imported,
   });
 });

@@ -32,6 +32,8 @@ export interface LicensePool {
   products: Record<string, { features: string[] }>;
 }
 
+export type EntrySource = "import" | "selvregistrert";
+
 export interface PoolEntry {
   id: string;
   poolId: string;
@@ -40,6 +42,9 @@ export interface PoolEntry {
   codeHash: string;
   status: EntryStatus;
   lastUsedAt: number | null;
+  /** Sluttdato for denne ene lisensen. null = følger poolens og kundens datoer. */
+  validTo: number | null;
+  source: EntrySource;
 }
 
 export interface Install {
@@ -64,6 +69,20 @@ export interface Db {
   setEntryStatus(id: string, status: EntryStatus): Promise<void>;
   touchEntry(id: string, nowSec: number): Promise<void>;
   isDenied(emailHash: string): Promise<boolean>;
+
+  /**
+   * Flytter lisensen til en annen pool. **Kodehashen røres ikke** — det er
+   * hele poenget: brukerens kode og den installerte utvidelsen fortsetter å
+   * virke, og neste fornying plukker opp den nye poolens rettigheter.
+   */
+  moveEntry(id: string, newPoolId: string, newValidTo: number | null): Promise<void>;
+
+  /** Ny kode på en eksisterende lisens — brukes ved re-registrering. */
+  setEntryCode(id: string, codeHash: string, validTo: number | null): Promise<void>;
+
+  /** Innstillinger som endres i drift, uten ny utrulling. */
+  getSettings(): Promise<Record<string, unknown>>;
+  setSetting(key: string, value: unknown): Promise<void>;
 
   createInstall(i: Install): Promise<void>;
   getInstall(id: string): Promise<Install | null>;

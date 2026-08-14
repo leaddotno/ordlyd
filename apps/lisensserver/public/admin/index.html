@@ -205,6 +205,33 @@
       </div>
     </div>
 
+    <!-- Innstillinger for selvregistrering -->
+    <div class="card">
+      <h2>Selvregistrering</h2>
+      <p class="hint">
+        Styrer <code>lisens.ordlyd.no/registrer</code>. Endringer virker umiddelbart —
+        ingen ny utrulling.
+      </p>
+      <div class="row">
+        <div>
+          <label for="sDager">Prøveperiode, dager</label>
+          <input type="text" id="sDager" inputmode="numeric" style="max-width: 8rem" />
+        </div>
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="sApen" /> Registrering er åpen</label>
+        <label><input type="checkbox" id="sFornyelse" /> Utløpt prøve kan fornyes</label>
+      </div>
+      <p class="muted" style="font-size: .84rem">
+        Skrus fornyelse av, får ikke den som har brukt opp prøveperioden en ny — hun må få
+        lisens gjennom en forening, skole eller kommune.
+      </p>
+      <div class="actions">
+        <button class="primary" id="settingsBtn">Lagre innstillinger</button>
+        <span class="muted" id="settingsInfo" style="align-self: center; font-size: .82rem"></span>
+      </div>
+    </div>
+
     <!-- Kunder og pooler -->
     <div class="card">
       <h2>Kunder og lisenspooler</h2>
@@ -219,7 +246,7 @@
       <div class="tablewrap">
         <table>
           <thead><tr>
-            <th>E-post</th><th>Status</th><th>Sist brukt</th>
+            <th>E-post</th><th>Status</th><th>Kilde</th><th>Gyldig til</th><th>Sist brukt</th>
             <th class="num">Maskiner</th><th class="num">Nett (7 d)</th><th>Handling</th>
           </tr></thead>
           <tbody id="entriesBody"></tbody>
@@ -433,6 +460,7 @@ async function lastData() {
   tegnTenants();
   tegnAudit();
   fyllSkjema();
+  await lastInnstillinger().catch((e) => melding($("msg"), "Kunne ikke lese innstillinger: " + e.message, "err"));
   const h = await fetch("/api/health").then((r) => r.json()).catch(() => null);
   $("serverState").innerHTML = h?.ok
     ? `<span class="chip ok">server ok</span>`
@@ -565,18 +593,23 @@ async function visLisenser(navn) {
   $("entriesTitle").dataset.navn = navn;
   $("entriesCard").classList.remove("hidden");
   $("entriesBody").innerHTML = r.lisenser.length
-    ? r.lisenser.map((l) => `
+    ? r.lisenser.map((l) => {
+        const utlopt = l.gyldigTil && l.gyldigTil < new Date().toISOString().slice(0, 10);
+        return `
       <tr>
         <td class="mono">${esc(l.epost)}</td>
         <td>${l.status === "aktiv" ? `<span class="chip ok">aktiv</span>` : `<span class="chip crit">stengt</span>`}</td>
+        <td>${l.kilde === "selvregistrert" ? `<span class="chip warn">selvreg.</span>` : `<span class="muted">import</span>`}</td>
+        <td>${l.gyldigTil ? `<span class="${utlopt ? "" : "muted"}">${esc(l.gyldigTil)}${utlopt ? " ⚠" : ""}</span>` : `<span class="muted">løpende</span>`}</td>
         <td>${esc(dato(l.sistBrukt))}</td>
         <td class="num">${l.installasjoner}</td>
         <td class="num">${l.nett7d}</td>
         <td>${l.status === "aktiv"
           ? `<button class="small danger" data-steng="${esc(l.id)}">Steng</button>`
           : `<button class="small" data-aapne="${esc(l.id)}">Gjenåpne</button>`}</td>
-      </tr>`).join("")
-    : `<tr><td colspan="6" class="muted">Ingen lisenser i denne poolen ennå.</td></tr>`;
+      </tr>`;
+      }).join("")
+    : `<tr><td colspan="8" class="muted">Ingen lisenser i denne poolen ennå.</td></tr>`;
 }
 
 /* ---------- Import ---------- */
@@ -599,15 +632,64 @@ $("importBtn").addEventListener("click", async () => {
     const r = await api("/api/v1/admin/import", { method: "POST", body: { poolId: valgtPool, emails } });
     sisteImport = r.lisenser;
     $("importResult").classList.remove("hidden");
-    $("importSummary").textContent =
-      `${r.antallImportert} importert` + (r.antallHoppetOver ? `, ${r.antallHoppetOver} hoppet over (duplikat eller ugyldig)` : "");
-    $("importBody").innerHTML = r.lisenser.map((l) =>
+
+    const deler = [`${r.antallImportert} nye`];
+    if (r.antallFlyttet) deler.push(`${r.antallFlyttet} flyttet fra prøvelisens`);
+    if (r.antallHosAnnenKunde) deler.push(`${r.antallHosAnnenKunde} ligger hos annen kunde`);
+    if (r.antallHoppetOver) deler.push(`${r.antallHoppetOver} hoppet over`);
+    $("importSummary").textContent = deler.join(", ");
+
+    // Flyttede lisenser har med vilje ingen kode: brukeren beholder sin.
+    const flyttetRader = (r.flyttet ?? []).map((f) =>
+      `<tr><td class="mono">${esc(f.email)}</td><td class="muted">flyttet fra ${esc(f.fraPool)} — beholder sin kode</td></tr>`).join("");
+    const opptattRader = (r.hosAnnenKunde ?? []).map((f) =>
+      `<tr><td class="mono">${esc(f.email)}</td><td class="muted">ligger hos ${esc(f.hosKunde)} — ikke flyttet</td></tr>`).join("");
+    const nyeRader = r.lisenser.map((l) =>
       `<tr><td class="mono">${esc(l.email)}</td><td class="mono"><strong>${esc(l.code.slice(0, 3))} ${esc(l.code.slice(3))}</strong></td></tr>`).join("");
+
+    $("importBody").innerHTML = nyeRader + flyttetRader + opptattRader;
     await lastData();
   } catch (err) {
     melding($("msg"), err.message, "err");
   } finally {
     $("importBtn").disabled = false;
+  }
+});
+
+/* ---------- Innstillinger for selvregistrering ---------- */
+
+async function lastInnstillinger() {
+  const s = await api("/api/v1/admin/settings", { method: "POST", body: {} });
+  $("sDager").value = String(s.tolket.proveDager);
+  $("sApen").checked = s.tolket.registreringApen;
+  $("sFornyelse").checked = s.tolket.proveFornyelseTillatt;
+  $("settingsInfo").textContent = s.tolket.provePoolId
+    ? ""
+    : "⚠ Prøvepoolen er ikke satt — kjør migrasjon 0003";
+}
+
+$("settingsBtn").addEventListener("click", async () => {
+  const btn = $("settingsBtn");
+  const dager = Number($("sDager").value.replace(/\D/g, ""));
+  if (!Number.isInteger(dager) || dager < 1 || dager > 3650) {
+    return melding($("msg"), "Prøveperioden må være mellom 1 og 3650 dager.", "err");
+  }
+  btn.disabled = true;
+  try {
+    await api("/api/v1/admin/settings", {
+      method: "POST",
+      body: {
+        prove_dager: dager,
+        registrering_apen: $("sApen").checked,
+        prove_fornyelse_tillatt: $("sFornyelse").checked,
+      },
+    });
+    melding($("msg"), "Innstillingene er lagret og virker umiddelbart.", "ok");
+    await lastInnstillinger();
+  } catch (err) {
+    melding($("msg"), err.message, "err");
+  } finally {
+    btn.disabled = false;
   }
 });
 

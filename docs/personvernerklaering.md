@@ -13,7 +13,8 @@
 - Vi lagrer **ikke** navn, alder, klasse, diagnose, nettleserhistorikk eller hva du
   bruker Ordlyd til.
 - Innstillingene dine ligger **bare i din egen nettleser**.
-- Alt lagres i **EU (Frankfurt)**.
+- Lisensopplysningene lagres i **EU (Frankfurt)**. Selve e-postutsendingen går
+  gjennom en leverandør i **USA** — se punkt 6.
 
 Resten av dokumentet forklarer dette presist.
 
@@ -74,6 +75,8 @@ Ordlyd krever en lisenskode. For å administrere lisenser behandler vi følgende
 | Opplysning | Hvordan den lagres | Hvorfor |
 |---|---|---|
 | E-postadressen din | Som **pepret hash** — en ikke-reverserbar kode laget med en hemmelig nøkkel som lagres et annet sted enn databasen | For å kjenne igjen deg ved innlogging og fornying |
+| Prøveperiodens sluttdato | I klartekst, hvis du har en tidsbegrenset lisens | For å vite når lisensen går ut |
+| Om du registrerte deg selv | I klartekst: «import» eller «selvregistrert» | For å skille lisenser vi har fått fra en organisasjon fra dem folk har hentet selv |
 | Maskert e-postadresse, f.eks. `j***@skole.no` | I klartekst | For at du og den som administrerer lisensen skal kunne se hvilken konto det gjelder, uten at hele adressen ligger lagret |
 | Lisenskoden din | Som **pepret hash** | For å kontrollere at koden er riktig |
 | Lisensens status og når den sist ble brukt | I klartekst | For å kunne stenge misbrukte lisenser og se om en lisens er i bruk |
@@ -129,11 +132,32 @@ automatisk** — et menneske vurderer den først.
 
 ---
 
+### 3.5 Hvis du registrerer deg selv
+
+Henter du en gratis prøvelisens på `lisens.ordlyd.no/registrer`, skjer dette:
+
+- Du oppgir e-postadressen din. Vi lagrer den som hash og som maskert visning,
+  akkurat som beskrevet over — ikke i lesbar form.
+- Vi sender lisenskoden til adressen. Da går adressen gjennom Resend (punkt 6).
+- Vi lagrer når prøveperioden går ut, og at lisensen ble hentet av deg selv.
+
+Skriver du inn en adresse du ikke eier, får du ingenting: koden går til
+innboksen, ikke til skjermen. Vi begrenser også hvor mange ganger samme adresse
+kan registreres, slik at tjenesten ikke kan brukes til å sende uønsket e-post.
+
+**Svaret på siden er alltid det samme,** enten adressen finnes hos oss eller
+ikke. Det er med vilje: et svar som avslørte hvem som er registrert, ville i
+praksis avslørt hvem som har lese- og skrivevansker.
+
+Blir du senere lagt inn av skolen, kommunen eller en forening, flyttes lisensen
+din dit automatisk — du beholder koden din, og prøveperioden slutter å gjelde.
+
 ## 4. Hvorfor vi behandler opplysningene, og med hvilket grunnlag
 
 | Formål | Behandlingsgrunnlag |
 |---|---|
 | Gi deg tilgang til programvaren du har fått lisens til, og fornye lisensen automatisk | Oppfylle avtalen med deg, personvernforordningen artikkel 6 nr. 1 bokstav b |
+| Sende deg lisenskoden når du selv ber om den | Oppfylle avtalen med deg, artikkel 6 nr. 1 bokstav b |
 | Hindre gjetting av lisenskoder og oppdage koder som spres på nettet | Berettiget interesse i å beskytte tjenesten, artikkel 6 nr. 1 bokstav f |
 | Kunne dokumentere hvem som har gjort hva med lisenser | Berettiget interesse i etterprøvbar drift, artikkel 6 nr. 1 bokstav f |
 | Kundeforholdet med skoler, kommuner og foreninger | Oppfylle avtalen, artikkel 6 nr. 1 bokstav b. Der en offentlig skoleeier er ansvarlig, er grunnlaget deres utøvelse av offentlig myndighet, bokstav e |
@@ -169,10 +193,19 @@ Vi bruker disse underleverandørene:
 |---|---|---|
 | Vercel Inc. | Drift av lisensserveren | EU — Frankfurt, Tyskland |
 | Supabase Inc. | Database | EU — Frankfurt, Tyskland |
+| Plus Five Five, Inc. («Resend») | Utsending av e-post | **USA** |
 
-Begge selskapene er amerikanskeide, men opplysningene lagres i EU. Vi har
-databehandleravtaler med begge, og overføringer utenfor EØS som følger av
-selskapenes egen tilgang er regulert med EU-kommisjonens standard avtalevilkår.
+Vercel og Supabase er amerikanskeide, men opplysningene lagres i EU. Vi har
+databehandleravtaler med alle tre, og overføringer utenfor EØS er regulert med
+EU-kommisjonens standard avtalevilkår.
+
+**Om e-postutsending — vi er tydelige på dette:** når vi sender deg lisenskoden,
+går e-postadressen din og innholdet i meldingen gjennom Resend, som er
+amerikansk. Resend oppgir selv at all kontodata, e-postmetadata og logger
+lagres i USA, uavhengig av hvilken region e-posten sendes fra, og at data
+beholdes i **30 dager**. Vi sender derfor aldri mer enn det som må til: adressen
+din, lisenskoden og hvordan du kommer i gang. Ingen navn, ingen opplysninger om
+bruk, og ingenting av teksten du leser eller skriver.
 
 Vi selger aldri personopplysninger, og deler dem ikke med andre enn dette, med mindre
 vi er rettslig forpliktet til det.
