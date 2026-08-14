@@ -50,7 +50,12 @@ function visLisens(s: LicenseState): void {
     $("lEpost").textContent = "—";
     $("lBekreftet").textContent = "—";
     varsel.className = "melding warn";
-    varsel.textContent = "Ordlyd er ikke aktivert på denne maskinen. Åpne utvidelsen og logg inn med e-post og lisenskode.";
+    // Statisk markering, ingen brukerdata — trygt med innerHTML her, og
+    // nødvendig for at lenken skal være klikkbar.
+    varsel.innerHTML =
+      "Ordlyd er ikke aktivert på denne maskinen. Åpne utvidelsen og logg inn med e-post og lisenskode.<br />" +
+      'Har du ikke lisens? <a href="https://www.ordlyd.no/lisens" target="_blank" rel="noopener">' +
+      "Besøk www.ordlyd.no/lisens</a> og aktiver en gratis tilgang.";
     return;
   }
 

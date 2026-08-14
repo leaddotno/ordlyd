@@ -144,11 +144,11 @@
   <header>
     <p class="eyebrow">Ordlyd · utgivelse · 13. august 2026</p>
     <h1>Utgivelse i Edge Add-ons</h1>
-    <p class="standfirst">Pakka er bygget og verifisert. Det som står igjen er en konto hos Microsoft, noen tekster og bilder til butikksiden — og én avgjørelse om størrelse du bør ta med åpne øyne.</p>
+    <p class="standfirst">Utviklerkontoen er på plass og pakka er bygget. Herfra er det åtte steg gjennom Partner Center, med alle tekstene ferdig formulert. Ett av dem avgjør om innsendingen går gjennom — steg 7.</p>
     <div class="meta">
       <span>Pakke: ordlyd-1.0.0.zip</span>
-      <span>111 MB komprimert</span>
-      <span>1047 filer</span>
+      <span>111 MB · 1049 filer</span>
+      <span>Testlisens klar</span>
     </div>
   </header>
 
@@ -167,7 +167,10 @@
           <tr><td>Beskrivelse under 132 tegn</td><td>93 tegn</td></tr>
           <tr><td>Hjemmesideadresse</td><td><code>https://ordlyd.no</code></td></tr>
           <tr><td>Tilganger strammet inn</td><td>Bare de tre lisensadressene, ikke alle nettsteder</td></tr>
-          <tr><td>ZIP med manifest i rota</td><td>Verifisert utpakket: 1047 filer, stemmemodellen bit-identisk</td></tr>
+          <tr><td>ZIP med manifest i rota</td><td>Verifisert utpakket: 1049 filer, stemmemodellen bit-identisk</td></tr>
+          <tr><td>Utviklerkonto i Partner Center</td><td>Registrert</td></tr>
+          <tr><td>Testlisens til godkjenner</td><td>Løpende lisens opprettet og verifisert — se steg 7</td></tr>
+          <tr><td>Lisensserveren på eget domene</td><td><code>lisens.ordlyd.no</code> og <code>panel.ordlyd.no</code> svarer</td></tr>
         </tbody>
       </table>
     </div>
@@ -189,112 +192,276 @@
     <p>Vil du heller ha en liten pakke fra første stund, gjør vi L4 først og sender inn om en dag eller to. Det er en fullt forsvarlig vurdering — bare si hva du foretrekker.</p>
   </section>
 
-  <section id="konto">
-    <h2><span class="n">2</span> Utviklerkonto</h2>
-    <p class="where">partner.microsoft.com</p>
-    <ol class="actions">
-      <li>Gå til <a href="https://partner.microsoft.com/dashboard/microsoftedge/public/login">Partner Center for Microsoft Edge</a> og logg inn med en Microsoft-konto.</li>
-      <li>Registrer deg som utvikler. For Edge-utvidelser er dette <strong>gratis</strong> — ingen registreringsavgift, i motsetning til Chrome Web Store.</li>
-      <li>Vurder om utgiver skal være deg personlig eller Telemark fylkeskommune. Utgivernavnet vises på butikksiden og er tungt å endre senere. Skal fylket eie produktet, bør kontoen opprettes på en fylkeskommunal konto fra starten.</li>
-    </ol>
-    <div class="note danger">
-      <span class="tag">Avklar dette før du registrerer</span>
-      <p>Utgiveridentiteten følger utvidelsen. Registrerer du på en privat konto og fylket senere skal overta, må utvidelsen flyttes mellom kontoer — en prosess som i praksis betyr ny publisering og at brukere må installere på nytt. Ta én samtale om eierskap først.</p>
-    </div>
+  <section id="pakke">
+    <h2><span class="n">2</span> Lag pakka</h2>
+    <p class="where">Din maskin</p>
+    <p>Kjør denne først, så du sender inn nyeste bygg. Er ikke <code>pnpm</code> funnet i PowerShell, lukk vinduet og åpne et nytt.</p>
+    <pre><code>pnpm --filter @ordlyd/extension package</code></pre>
+    <p>Du får <code>ordlyd-1.0.0.zip</code> i prosjektmappa. Butikklogoen ligger ferdig i <code>apps\extension\dist\brand\butikklogo-300.png</code>.</p>
+    <p class="prelabel">bekreft at testlisensen virker før du sender inn</p>
+    <pre><code>pnpm exec tsx scripts/sjekk-testlisens.mts edge-review@ordlyd.no "395 4388"</code></pre>
+    <p>Alle fem punktene skal være grønne. Hvorfor det er kritisk står i steg 7.</p>
   </section>
 
-  <section id="listing">
-    <h2><span class="n">3</span> Butikksiden</h2>
-    <p class="where">Partner Center → Extensions → New extension</p>
-    <p>Last opp <code>ordlyd-1.0.0.zip</code>, og fyll ut feltene. Her er forslag du kan bruke som de er:</p>
+  <section id="opprett">
+    <h2><span class="n">3</span> Opprett innsendingen</h2>
+    <p class="where">partner.microsoft.com → Edge</p>
+    <ol class="actions">
+      <li>Åpne <a href="https://partner.microsoft.com/dashboard/microsoftedge/public/login">Partner Center</a>. Fra <strong>Home</strong> → <strong>Workspaces</strong> → kortet <strong>Edge</strong>. Du havner på <strong>Overview</strong>.</li>
+      <li>Klikk <strong>+ Create new extension</strong>.</li>
+      <li>Dra <code>ordlyd-1.0.0.zip</code> inn i feltet <strong>Drag your package here (.zip)</strong>. Pakka verifiseres — 111 MB tar litt tid å laste opp.</li>
+      <li>Klikk <strong>Continue</strong>.</li>
+    </ol>
+    <p>Venstremenyen viser nå rekkefølgen: <strong>Extension overview → Packages → Availability → Properties → Privacy → Store listings</strong>. På hver side trykker du <strong>Save &amp; Continue</strong> oppe til høyre.</p>
+  </section>
 
-    <h3>Kortbeskrivelse</h3>
-    <p>Denne står også i manifestet, der grensen er 132 tegn. Versjonen under er 126:</p>
-    <pre><code>Leser tekst, bokstaver og ord, gir ordprediksjon og har bokmåls- og
-nynorskordbok. Alt, inkludert talesyntesen, kjører lokalt.</code></pre>
+  <section id="availability">
+    <h2><span class="n">4</span> Availability og Properties</h2>
+    <p class="where">To sider, raskt unnagjort</p>
 
-    <h3>Fullstendig beskrivelse</h3>
-    <p>Her er det ingen 132-tegnsgrense, så den fulle formuleringen kan stå:</p>
-    <pre><code>Ordlyd leser tekst, bokstaver og ord, gir deg ordprediksjon og i tillegg
-innebygd bokmåls- og nynorskordbok. Alt, inkludert talesyntesen, kjører
-lokalt i nettleseren.
-
-Ordlyd er lese- og skrivestøtte for deg som har lese- og skrivevansker.
-
-LES OPP TEKST
-Marker tekst på en nettside og få den lest opp med norsk stemme, med
-ordet som leses uthevet mens du følger med.
-
-SKRIVEHJELP
-Ordforslag mens du skriver, dysleksitilpasset stavekontroll som forstår
-lydnære feilstavinger, og skriveekko som leser opp bokstaven, ordet eller
-setningen du skriver.
-
-ORDBOK
-Bokmålsordboka og Nynorskordboka innebygd. Slå opp et ord uten å forlate
-siden du er på.
-
-ALT SKJER PÅ DIN EGEN MASKIN
-Talesyntesen, ordboka og stavekontrollen kjører lokalt i nettleseren.
-Teksten du leser og skriver forlater aldri maskinen din, og Ordlyd
-fungerer uten internett.
-
-Ordlyd krever en lisenskode. Den får du av foreningen, skolen eller
-kommunen din.
-
-Ordbokinnhold: Bokmålsordboka og Nynorskordboka,
-© Universitetet i Bergen og Språkrådet.
-Stemme: Piper med norsk talesyntesemodell.</code></pre>
-
-    <h3>Kategori og språk</h3>
+    <h3>Availability</h3>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Felt</th><th>Verdi</th></tr></thead>
         <tbody>
-          <tr><td class="felt">Category</td><td>Accessibility</td></tr>
-          <tr><td class="felt">Language</td><td>Norsk (bokmål) — legg gjerne til engelsk senere</td></tr>
-          <tr><td class="felt">Privacy policy URL</td><td><code>https://ordlyd.no/personvern</code> — <strong>må finnes før innsending</strong></td></tr>
-          <tr><td class="felt">Support / contact</td><td>En e-postadresse du følger med på</td></tr>
+          <tr><td class="felt">Visibility</td><td><strong>Public</strong>. Det finnes bare Public og Hidden — ingen «unlisted».</td></tr>
+          <tr><td class="felt">Markets</td><td>La stå på alle markeder</td></tr>
         </tbody>
       </table>
     </div>
-
-    <h3>Bilder</h3>
-    <ul>
-      <li><strong>Butikklogo 300×300 px</strong> — genereres automatisk fra merkevareikonet, og ligger klar i <code>apps/extension/dist/brand/butikklogo-300.png</code></li>
-      <li><strong>Minst ett skjermbilde, 1280×800 eller 640×480</strong> — dette må du lage. Anbefalt: en nettside med tekst markert og gul uthevingsfarge synlig, popup-en åpen ved siden av</li>
-      <li>Valgfritt: promoteringsflis 440×280</li>
-    </ul>
-    <p>Skjermbildene er det folk faktisk ser i søkeresultatet. Ett godt bilde som viser opplesing i bruk gjør mer enn tre uskarpe.</p>
-
     <div class="note">
-      <span class="tag">Spørsmålet om ekstern kode</span>
-      <p>Partner Center spør om utvidelsen bruker ekstern kode. Svar <strong>nei</strong> for 1.0.0 — alt ligger i pakka. Når L4 flytter stemmemodellen til CDN, er svaret fortsatt nei: ONNX-vekter er <em>data</em>, ikke kode. Reglene om ekstern kode gjelder JavaScript og WebAssembly, og WASM-en blir liggende i pakka. Nevn nedlastingen i «Notes for certification» så gjennomgangen ikke stopper på det.</p>
+      <span class="tag">Ikke snevre inn markedene</span>
+      <p>Grensesnittet er norsk, så det er fristende å velge bare Norge. Men fjerner du et marked senere, beholder brukere der utvidelsen <em>uten å få oppdateringer</em>. Norske brukere i utlandet er også en reell gruppe. La alle stå.</p>
+    </div>
+
+    <h3>Properties</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Felt</th><th>Verdi</th></tr></thead>
+        <tbody>
+          <tr><td class="felt">Category</td><td>Velg <strong>Accessibility</strong> i nedtrekksmenyen</td></tr>
+          <tr><td class="felt">Website</td><td><code>https://www.ordlyd.no/</code></td></tr>
+          <tr><td class="felt">Support contact detail</td><td>E-postadressen du følger med på</td></tr>
+          <tr><td class="felt">Mature content</td><td>La stå avslått</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
-  <section id="personvern">
-    <h2><span class="n">4</span> Personvernerklæring</h2>
-    <p class="where">Må publiseres på ordlyd.no før innsending</p>
-    <p>Butikken krever en lenke til personvernerklæring, og siden Ordlyd behandler e-postadresser er den ikke valgfri. Innholdet kan være kort, men må dekke dette:</p>
+  <section id="privacy">
+    <h2><span class="n">5</span> Privacy — den lengste siden</h2>
+    <p class="where">Fem deler. Tekstene under kan limes rett inn.</p>
+
+    <h3>Single Purpose Description</h3>
+    <pre><code>Ordlyd er et lese- og skrivestøtteverktøy for norsk. Det leser opp tekst
+brukeren markerer, og hjelper med skriving gjennom ordforslag,
+dysleksitilpasset stavekontroll og innebygd ordbok. All tekstbehandling
+skjer lokalt i nettleseren.</code></pre>
+
+    <h3>Permission justification — én boks per tilgang</h3>
+    <p>Skriv disse på engelsk; det er engelskspråklige godkjennere som leser dem.</p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Punkt</th><th>Hva som er sant for Ordlyd</th></tr></thead>
+        <thead><tr><th>Tilgang</th><th>Begrunnelse å lime inn</th></tr></thead>
         <tbody>
-          <tr><td>Hva lagres</td><td>E-postadresse og lisenskode, begge som pepret hash. Installasjonens tilfeldige ID, produkt og versjon.</td></tr>
-          <tr><td>Hva lagres <em>ikke</em></td><td>Teksten du leser eller skriver. Den forlater aldri maskinen. Ingen rå IP-adresser.</td></tr>
-          <tr><td>Misbruksdeteksjon</td><td>Pseudonymiserte nettnøkler i aggregerte døgntall, slettet etter 30 dager.</td></tr>
-          <tr><td>Innstillinger</td><td>Lagres lokalt i nettleseren, sendes ikke til oss.</td></tr>
-          <tr><td>Hvor</td><td>Vercel og Supabase, EU-region (Frankfurt).</td></tr>
-          <tr><td>Rettigheter</td><td>Kontaktpunkt for innsyn og sletting.</td></tr>
+          <tr>
+            <td class="felt">offscreen</td>
+            <td>Speech synthesis runs in WebAssembly and needs both audio playback and a DOM. A Manifest V3 service worker has neither, so an offscreen document is the only way to play audio and keep the word bank in memory.</td>
+          </tr>
+          <tr>
+            <td class="felt">storage</td>
+            <td>Stores the user&rsquo;s own settings (speech rate, theme, which aids are enabled) and the signed licence receipt locally. None of it is sent anywhere.</td>
+          </tr>
+          <tr>
+            <td class="felt">alarms</td>
+            <td>Renews the licence receipt in the background about once a day. setTimeout cannot be used because the service worker is terminated after a short idle period.</td>
+          </tr>
+          <tr>
+            <td class="felt">host permissions</td>
+            <td>The extension contacts only our own licence server, to activate and renew the licence. The two other addresses are backup endpoints for the same service, so licence checks do not fail if one domain becomes unavailable.</td>
+          </tr>
+          <tr>
+            <td class="felt">content script på<br />alle nettsteder</td>
+            <td>The core feature is that the user can select text on any web page and have it read aloud. The content script only reads the selection the user makes, and sends nothing off the machine.</td>
+          </tr>
         </tbody>
       </table>
     </div>
-    <p>Dette er de samme opplysningene som skal inn i DPIA-støttepakka i L5, så teksten kan gjenbrukes begge steder.</p>
+    <p class="muted" style="font-size:.87rem">Ser du ikke en boks for hver av disse, hopp over dem du ikke finner. Antall bokser følger manifestet.</p>
+
+    <h3>Are you using remote code?</h3>
+    <p>Velg <strong>No, I am not using remote code</strong>. Alt ligger i pakka.</p>
+    <div class="note">
+      <span class="tag">Gjelder også etter L4</span>
+      <p>Når stemmemodellen senere flyttes til CDN, er svaret fortsatt nei: reglene om ekstern kode gjelder JavaScript og WebAssembly, og ONNX-vekter er <em>data</em>. WASM-en blir liggende i pakka. Nevn nedlastingen i Notes for certification den gangen.</p>
+    </div>
+
+    <h3>Data usage</h3>
+    <p>Kryss av det som er sant — og bare det:</p>
+    <ul>
+      <li><strong>Kryss av</strong> for e-postadresse og autentiseringsinformasjon. Vi mottar e-postadressen ved aktivering, og lisenskoden er autentisering.</li>
+      <li><strong>Ikke kryss av</strong> for nettleserhistorikk, nettstedsinnhold, personlig kommunikasjon, lokasjon, økonomiske opplysninger eller helseopplysninger. Ingen av dem samles inn.</li>
+      <li>Kryss til slutt av <strong>I certify that the following disclosures are true</strong>.</li>
+    </ul>
+    <p>Er du i tvil om en avkrysning: teksten brukeren leser og skriver forlater aldri maskinen, og e-postadressen lagres bare som hash. Punkt 3 i personvernerklæringen er skrevet nettopp for å kunne svare presist her.</p>
+
+    <h3>Privacy policy URL</h3>
+    <pre><code>https://www.ordlyd.no/personvern</code></pre>
+    <p><strong>Siden må være publisert før du sender inn.</strong> Feltet er påkrevd for utvidelser som behandler personopplysninger, og Ordlyd gjør det. Erklæringen må være spesifikk for Ordlyd og omtale Microsoft Edge — ikke en generisk tekst om andre nettlesere.</p>
+  </section>
+
+  <section id="listing">
+    <h2><span class="n">6</span> Store listings</h2>
+    <p class="where">Klikk «Edit details» på norsk-raden</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Felt</th><th>Verdi og grense</th></tr></thead>
+        <tbody>
+          <tr><td class="felt">Extension name</td><td>Låst — hentes fra manifestet. «Ordlyd».</td></tr>
+          <tr><td class="felt">Short description</td><td>Låst — hentes fra manifestet.</td></tr>
+          <tr><td class="felt">Description</td><td><strong>Minst 250, maks 10 000 tegn.</strong> Bruk teksten under.</td></tr>
+          <tr><td class="felt">Extension logo</td><td>1:1. Bruk <code>butikklogo-300.png</code> (300×300; minimum er 128×128).</td></tr>
+          <tr><td class="felt">Screenshots</td><td><strong>Valgfritt</strong>, maks 6. Må være 1280×800 eller 640×480.</td></tr>
+          <tr><td class="felt">Search terms</td><td>Maks 7 termer, maks 21 ord til sammen, 30 tegn per term.</td></tr>
+          <tr><td class="felt">Promotional tiles</td><td>Valgfritt. 440×280 og 1400×560.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Description</h3>
+    <pre><code>Ordlyd leser tekst, bokstaver og ord, gir deg ordprediksjon og i tillegg
+innebygd bokmåls- og nynorskordbok. Alt, inkludert talesyntesen, kjører
+lokalt i nettleseren.
+
+LES OPP TEKST
+Marker tekst på en nettside og få den lest opp med norsk stemme. Ordet som
+leses lyser opp, så du ser hvor du er.
+
+SKRIVEHJELP
+Ordforslag mens du skriver. Dysleksitilpasset stavekontroll som leter etter
+ord som LYDER likt, ikke ord som ser like ut — skriver du «sjønalist»,
+foreslår Ordlyd «journalist». Skriveekko leser opp bokstaven, ordet eller
+setningen du skriver.
+
+ORDBOK
+Bokmålsordboka og Nynorskordboka innebygd, over 190 000 artikler. Marker et
+ord og slå det opp uten å forlate siden. Ordboka forstår bøyde former:
+skriver du «husene», finner den «hus».
+
+ALT SKJER PÅ DIN EGEN MASKIN
+Talesyntesen, ordboka og stavekontrollen kjører lokalt i nettleseren.
+Teksten du leser og skriver forlater aldri maskinen din, og Ordlyd fungerer
+uten internett.
+
+GRATIS, MEN KREVER LISENSKODE
+Ordlyd er gratis. Lisenskoden finnes for at foreningen, skolen eller
+kommunen som deler ut Ordlyd skal kunne styre hvem som har tilgang — ikke
+for å ta betaling. Har du ikke kode, kan du bestille gratis tilgang på
+www.ordlyd.no/lisens
+
+Ordbokinnhold: Bokmålsordboka og Nynorskordboka,
+© Universitetet i Bergen og Språkrådet.
+Norsk ordbank: Språkbanken, CC-BY 4.0. Talesyntese: Piper.</code></pre>
+
+    <h3>Search terms</h3>
+    <pre><code>dysleksi
+lese- og skrivestøtte
+opplesing
+talesyntese
+norsk ordbok
+stavekontroll
+ordforslag</code></pre>
+
+    <div class="note">
+      <span class="tag">Skjermbilder er valgfrie — men ta dem likevel</span>
+      <p>Butikken krever dem ikke, men det er dette folk ser i søkeresultatet. Ett bilde som viser opplesing i bruk — en nettside med tekst markert, gul uthevingsfarge synlig, popup-en åpen ved siden av — gjør mer enn tre uskarpe. Policy 1.1.2 krever at de er klare og ikke strukket.</p>
+    </div>
+  </section>
+
+  <section id="notes">
+    <h2><span class="n">7</span> Notes for certification — steget som avgjør</h2>
+    <p class="where">Publish-knappen → «Submit your extension»</p>
+
+    <div class="note danger">
+      <span class="tag">Dette er den mest sannsynlige grunnen til avslag</span>
+      <p>Ordlyd gjør <em>ingenting</em> uten lisenskode. En godkjenner som installerer utvidelsen og møter en innloggingsskjerm hun ikke kommer forbi, kan avvise den på policy 1.3 «Product is testable». Policy 1.3.1 sier rett ut at du <strong>må</strong> oppgi en testkonto med legitimasjon, eller en god forklaring på hvorfor det ikke er mulig.</p>
+      <p>Testlisensen er alt laget, er løpende og kan ikke gå ut midt i gjennomgangen.</p>
+    </div>
+
+    <p>Lim inn dette i <strong>Notes for certification</strong>, på engelsk:</p>
+    <pre><code>TEST CREDENTIALS (the extension requires a licence code)
+
+  E-mail:       edge-review@ordlyd.no
+  Licence code: 395 4388
+
+This licence does not expire and has all features enabled.
+
+HOW TO ACTIVATE
+1. Click the Ordlyd icon in the toolbar.
+2. Enter the e-mail and licence code above, then click "Aktiver" (Activate).
+3. The panel then shows licence status and all settings.
+
+HOW TO TEST THE MAIN FEATURES
+- Read aloud: select any text on a web page, then click the speaker button
+  that appears next to the selection. Words are highlighted as they are read.
+- Dictionary: select a single Norwegian word, click the book button.
+- Word prediction and spell check: type Norwegian text into any text field.
+  Suggestions appear at the caret. Typing "sjonalist" will suggest
+  "journalist" - the spell checker matches words that SOUND alike, which is
+  what users with dyslexia need.
+- Settings and licence status: click the toolbar icon. "Om Ordlyd" (About)
+  opens a page with licence details and version information.
+
+ABOUT THIS EXTENSION
+- The interface and all content are in Norwegian. Ordlyd is assistive
+  technology for Norwegian speakers with dyslexia.
+- All text processing - speech synthesis, dictionary lookup, spell checking
+  and word prediction - runs locally in the browser using WebAssembly. No
+  page content is ever sent to any server.
+- The only network requests go to our own licence server
+  (https://lisens.ordlyd.no) to activate and renew the licence.
+- The package is large (about 111 MB) because the Norwegian speech model and
+  both dictionaries are bundled, so the extension works fully offline. This
+  is intentional: many users are pupils on school networks without reliable
+  internet access.
+- Ordlyd is free of charge. The licence code exists so the distributing
+  organisation - a dyslexia association, school or municipality - can manage
+  who has access. It is not used to charge money.
+- Dictionary content is used under licence from the University of Bergen and
+  the Language Council of Norway, with attribution given in the listing and
+  in the extension itself.</code></pre>
+
+    <p>Når <strong>Status</strong> viser <strong>Complete</strong> på alle sidene, blir <strong>Publish</strong> klikkbar. Trykk den.</p>
+  </section>
+
+  <section id="etterpaa">
+    <h2><span class="n">8</span> Etter innsending</h2>
+    <p class="where">Opptil sju arbeidsdager</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Status</th><th>Hva det betyr</th></tr></thead>
+        <tbody>
+          <tr><td class="felt">In draft</td><td>Ikke sendt inn ennå</td></tr>
+          <tr><td class="felt">In review</td><td>Til gjennomgang hos Microsoft</td></tr>
+          <tr><td class="felt">Waiting to publish</td><td>Godkjent, på vei ut. Vises ikke alltid</td></tr>
+          <tr><td class="felt">In the store</td><td>Publisert og søkbar</td></tr>
+          <tr><td class="felt">Review failed</td><td>Avvist. Rett opp og send inn igjen</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note danger">
+      <span class="tag">Lisensserveren må være oppe hele perioden</span>
+      <p>Policy 1.3.2 krever at en server utvidelsen er avhengig av, faktisk fungerer under gjennomgangen. Ikke gjør endringer på lisensserveren mens statusen er <strong>In review</strong> — og skal du gjøre noe, sjekk <code>https://lisens.ordlyd.no/api/health</code> etterpå.</p>
+    </div>
+
+    <p>Blir den avvist, kommer det med en begrunnelse. Mener du avslaget er feil, finnes en <a href="https://support.microsoft.com/supportrequestform/e7a381be-9c9a-fafb-ed76-262bc93fd9e4">klageordning</a> — men den brukes sjelden med hell: av 193 saker i regnskapsåret ble 12 omgjort. Det er nesten alltid raskere å rette og sende inn på nytt.</p>
   </section>
 
   <section id="oppdatering">
-    <h2><span class="n">5</span> Oppdateringstesten</h2>
+    <h2><span class="n">9</span> Oppdateringstesten</h2>
     <p class="where">Det du spurte om — og en ærlig begrensning</p>
     <p>Knappen «Se etter oppdatering» i <strong>Om Ordlyd</strong> kaller nettleserens egen oppdateringssjekk. Den virker bare for utvidelser som er <em>installert fra butikken</em>. En utvidelse du har lastet inn manuelt fra <code>dist</code>-mappa har ingen oppdateringsadresse, og da svarer knappen:</p>
     <span class="expect">Denne installasjonen kan ikke sjekke oppdateringer automatisk — det skjer
@@ -324,17 +491,27 @@ når utvidelsen er lastet inn manuelt under utvikling.</span>
   </section>
 
   <section id="videre">
-    <h2><span class="n">→</span> Rekkefølgen jeg foreslår</h2>
-    <p class="where">Fra i dag til en fungerende oppdateringskanal</p>
+    <h2><span class="n">→</span> Det ene som blokkerer</h2>
+    <p class="where">Alt annet er klart</p>
+
+    <div class="note danger">
+      <span class="tag">Personvernerklæringen må publiseres først</span>
+      <p><code>https://www.ordlyd.no/personvern</code> må svare før du fyller ut Privacy-siden. Teksten er ferdig i <code>docs/personvernerklaering.md</code> — du mangler bare å fylle inn organisasjonsnavn, org.nr., postadresse, e-post og dato, og legge den ut.</p>
+    </div>
+
+    <p>Skjermbildet til butikksiden er valgfritt, så det stopper deg ikke — men det er verdt et kvarter, siden det er dette folk ser i søkeresultatet.</p>
+
+    <h3>Rekkefølgen videre</h3>
     <ol class="actions">
-      <li><strong>Avklar eierskap</strong> til utgiverkontoen — deg eller fylket. Blokkerer registreringen.</li>
-      <li><strong>Publiser personvernerklæringen</strong> på ordlyd.no. Blokkerer innsendingen.</li>
-      <li><strong>Lag butikklogo og ett skjermbilde.</strong></li>
-      <li><strong>Send inn 1.0.0.</strong> Klokka begynner å gå.</li>
-      <li><strong>Vi gjør L4</strong> mens gjennomgangen pågår: stemme og ordbok til CDN, pakka ned til noen få megabyte.</li>
-      <li><strong>Publiser 1.1.0.</strong> Dette er oppdateringstesten.</li>
+      <li><strong>Publiser personvernerklæringen.</strong> Eneste blokkering.</li>
+      <li><strong>Gå gjennom steg 2 til 8</strong> og send inn. Klokka begynner å gå — opptil sju arbeidsdager.</li>
+      <li><strong>Vi gjør L4</strong> mens gjennomgangen pågår: stemme og ordbok til CDN, pakka fra 111 MB til noen få megabyte.</li>
+      <li><strong>Publiser 1.1.0.</strong> Dette blir oppdateringstesten — ekte oppdatering, ekte butikk.</li>
     </ol>
-    <p>Punkt 1 til 3 er dine. Punkt 5 er min. Si ifra når du vil at jeg skal starte på L4 — den kan begynne umiddelbart og er uavhengig av butikken.</p>
+    <p>Punkt 1 og 2 er dine, punkt 3 er min. L4 kan starte umiddelbart og er uavhengig av butikken — si ifra.</p>
+
+    <h3>Én ting som fortsatt mangler i beredskapen</h3>
+    <p><code>lisens.ordlyd.no</code> og <code>panel.ordlyd.no</code> svarer, men reserveadressen <code>lisens.ordlyd.lead.no</code> er ikke satt opp. Den står i utvidelsens manifest, så den kan legges til når som helst uten ny utgivelse — men til den peker et sted, har vi bare én egen adresse å falle tilbake på.</p>
   </section>
 
   <footer>

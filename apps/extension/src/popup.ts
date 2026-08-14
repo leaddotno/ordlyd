@@ -201,6 +201,10 @@ function visLisens(s: LicenseState): void {
   masterCard.classList.toggle("hidden", ulisensiert);
   for (const d of innstillingsseksjoner()) d.classList.toggle("hidden", ulisensiert);
 
+  // Lenken til lisensbestilling vises bare når den er relevant — den som
+  // alt har lisens skal ikke lete forbi den hver gang popupen åpnes.
+  $("ingenLisens").classList.toggle("hidden", !ulisensiert);
+
   if (ulisensiert) {
     status.textContent = s.feil
       ? "Lisensen kunne ikke verifiseres. Logg inn på nytt."
