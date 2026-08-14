@@ -159,6 +159,32 @@ export function lesPng(buf) {
 }
 
 /**
+ * Utvider bildet til et kvadrat ved å legge gjennomsiktig luft rundt, med
+ * motivet sentrert.
+ *
+ * Alternativet — å skalere et ikke-kvadratisk bilde rett til 128×128 —
+ * strekker motivet. Et bokmerke som er 270×261 blir da 3 % bredere enn det
+ * skal være, og selv om det er lite nok å ikke se ved første øyekast, er
+ * det synlig når ikonet står ved siden av andre ikoner i verktøylinja.
+ */
+export function tilKvadrat(kilde) {
+  const { bredde, hoyde, rgba } = kilde;
+  if (bredde === hoyde) return kilde;
+
+  const side = Math.max(bredde, hoyde);
+  const ut = Buffer.alloc(side * side * 4);
+  const xOff = Math.round((side - bredde) / 2);
+  const yOff = Math.round((side - hoyde) / 2);
+
+  for (let y = 0; y < hoyde; y++) {
+    const fra = y * bredde * 4;
+    const til = ((y + yOff) * side + xOff) * 4;
+    rgba.copy(ut, til, fra, fra + bredde * 4);
+  }
+  return { bredde: side, hoyde: side, rgba: ut };
+}
+
+/**
  * Nedskalering med boksfilter i premultiplisert alfa.
  *
  * Premultiplisering er poenget: skalerer man RGB og alfa hver for seg, vil

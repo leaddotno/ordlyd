@@ -15,7 +15,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, copyFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { lesPng, skalerPngTilFil } from "./png-hjelp.mjs";
+import { lesPng, skalerPngTilFil, tilKvadrat } from "./png-hjelp.mjs";
 import { tegnPlassholder } from "./ikon-plassholder.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -48,11 +48,26 @@ if (!harMerke) {
   }
   console.log(`Skrev plassholder i ${STORRELSER.join(", ")} og 300 px.`);
 } else {
-  const kilde = lesPng(readFileSync(IKON_KILDE));
-  if (kilde.bredde !== kilde.hoyde) {
-    console.warn(`⚠ ikon.png er ${kilde.bredde}×${kilde.hoyde} — ikke kvadratisk. Butikken vil ha kvadratisk.`);
+  const lest = lesPng(readFileSync(IKON_KILDE));
+  console.log(`Kilde: brand/ikon.png (${lest.bredde}×${lest.hoyde})`);
+
+  // Ikoner MÅ være kvadratiske. Fyll ut med gjennomsiktig luft framfor å
+  // strekke motivet.
+  const kilde = tilKvadrat(lest);
+  if (kilde.bredde !== lest.bredde || kilde.hoyde !== lest.hoyde) {
+    console.log(`  → fylt ut til ${kilde.bredde}×${kilde.hoyde} med gjennomsiktig luft, motivet sentrert`);
   }
-  console.log(`Kilde: brand/ikon.png (${kilde.bredde}×${kilde.hoyde})\n`);
+
+  const største = Math.max(...STORRELSER, 300);
+  if (kilde.bredde < største) {
+    console.warn(
+      `\n⚠ Kilden er ${kilde.bredde} px, men butikklogoen skal være 300 px.\n` +
+        `  Den blir oppskalert og dermed litt uskarp. Har du ikonet i høyere\n` +
+        `  oppløsning (512 px eller mer), gir det et merkbart skarpere resultat\n` +
+        `  — særlig i butikklisten der logoen vises stor.`,
+    );
+  }
+  console.log("");
 
   for (const s of STORRELSER) {
     const overstyring = join(BRAND, `ikon-${s}.png`);

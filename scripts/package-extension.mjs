@@ -32,8 +32,13 @@ const TILLATTE_ROTFILER = new Set([
   "om.js",
   "om.html",
 ]);
-const TILLATTE_MAPPER = new Set(["icons", "chunks", "assets", "voices", "ort", "piper", "dict"]);
+const TILLATTE_MAPPER = new Set(["icons", "brand", "chunks", "assets", "voices", "ort", "piper", "dict"]);
 const UTELUKK_ENDELSER = [".map", ".zip"];
+/**
+ * Butikklogoen lastes opp manuelt i Partner Center og skal ikke ligge i
+ * utvidelsen — 64 kB død vekt hos hver bruker.
+ */
+const UTELUKK_FILER = new Set(["brand/butikklogo-300.png"]);
 
 /* ------------------------------------------------------------ filutvalg */
 
@@ -53,6 +58,10 @@ function samleFiler(katalog, base = katalog) {
       continue;
     }
     if (UTELUKK_ENDELSER.some((e) => navn.endsWith(e))) continue;
+    if (UTELUKK_FILER.has(rel)) {
+      console.log(`  hopper over: ${rel}`);
+      continue;
+    }
     if (!rel.includes("/") && !TILLATTE_ROTFILER.has(navn)) {
       console.log(`  hopper over fil: ${navn}`);
       continue;
