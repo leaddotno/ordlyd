@@ -1,0 +1,843 @@
+<title>Adminpanelet for flere hender — analyse og plan</title>
+<style>
+  :root {
+    --ground: #eef1f1; --surface: #fafbfb; --surface-2: #e6ebeb;
+    --line: #cdd6d6; --line-soft: #dde4e4;
+    --text: #142124; --text-soft: #4a5b5f; --text-faint: #6d7f83;
+    --petrol: #0e3d43; --petrol-soft: #14585f; --brass: #8a6412;
+    --ok: #1c6647; --ok-bg: #dcebe3;
+    --warn: #8a5f08; --warn-bg: #f2e8d2;
+    --crit: #97302a; --crit-bg: #f2dedc;
+    --code-bg: #e8eded;
+    --shadow: 0 1px 2px rgba(16,32,36,.06), 0 8px 24px -16px rgba(16,32,36,.28);
+    --serif: Constantia, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1215; --surface: #111c20; --surface-2: #17252a;
+      --line: #2b3d42; --line-soft: #223236;
+      --text: #dde7e8; --text-soft: #a3b4b7; --text-faint: #7d9094;
+      --petrol: #7fc6cc; --petrol-soft: #a5d8dc; --brass: #d4a648;
+      --ok: #6fc79b; --ok-bg: #143024;
+      --warn: #d9ad55; --warn-bg: #33280f;
+      --crit: #e8938c; --crit-bg: #371917;
+      --code-bg: #16242a;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 1.25rem 6rem; background: var(--ground); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 58rem; margin: 0 auto; }
+  .masthead { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--line); margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint); margin: 0 0 .9rem;
+  }
+  h1 { font-family: var(--serif); font-size: 2.4rem; line-height: 1.15; margin: 0 0 1rem; letter-spacing: -.015em; font-weight: 600; }
+  .standfirst { font-size: 1.12rem; color: var(--text-soft); margin: 0; max-width: 46rem; }
+  h2 {
+    font-family: var(--serif); font-size: 1.55rem; font-weight: 600;
+    margin: 3.2rem 0 .5rem; letter-spacing: -.01em; scroll-margin-top: 1rem;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: .78rem; color: var(--brass);
+    letter-spacing: .1em; display: block; margin-bottom: .3rem; font-weight: 400;
+  }
+  h3 { font-size: 1.02rem; margin: 1.9rem 0 .4rem; letter-spacing: -.005em; }
+  .lede { color: var(--text-soft); font-size: 1.03rem; margin: 0 0 1.4rem; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .42rem; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .1em .35em; border-radius: 3px; }
+  a { color: var(--petrol-soft); }
+  strong { font-weight: 650; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.15rem 1.35rem; margin: 0 0 1.2rem; box-shadow: var(--shadow);
+  }
+  .dh { display: flex; gap: .7rem; align-items: baseline; margin-bottom: .5rem; }
+  .did {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+    background: var(--petrol); color: var(--surface); padding: .18em .5em;
+    border-radius: 3px; white-space: nowrap;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .did { color: #06171a; } }
+  .dt { font-weight: 650; }
+  .verdict { border-left: 3px solid var(--brass); padding-left: .8rem; color: var(--text-soft); margin: .7rem 0 0; }
+
+  .callout { border-radius: 7px; padding: .9rem 1.15rem; margin: 1.3rem 0; border: 1px solid transparent; }
+  .callout.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .callout.crit { background: var(--crit-bg); border-color: color-mix(in srgb, var(--crit) 25%, transparent); }
+  .callout.ok { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+  .callout p:last-child { margin-bottom: 0; }
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: .68rem;
+    letter-spacing: .09em; text-transform: uppercase; margin-bottom: .4rem;
+  }
+  .callout.warn .tag { color: var(--warn); }
+  .callout.crit .tag { color: var(--crit); }
+  .callout.ok .tag { color: var(--ok); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 7px; margin: 0 0 1.3rem; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .89rem; min-width: 32rem; }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: .67rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-faint); font-weight: 400; background: var(--surface-2); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 7px;
+    padding: .9rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .82rem;
+    line-height: 1.55; margin: 0 0 1.2rem;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: .67rem; letter-spacing: .05em;
+    text-transform: uppercase; padding: .16em .5em; border-radius: 3px; white-space: nowrap;
+  }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.crit { background: var(--crit-bg); color: var(--crit); }
+  .toc { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.35rem; margin-bottom: 2.5rem; }
+  .toc p { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 .6rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .92rem; }
+  .toc li { margin-bottom: .2rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--text-faint); }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Ordlyd · fase A · analyse og plan</p>
+  <h1>Adminpanelet for flere hender</h1>
+  <p class="standfirst">
+    Panelet er i dag bygget for én person med én delt nøkkel. Det holder så lenge den
+    personen er deg. I det øyeblikket noen andre skal administrere lisenser, faller tre
+    ting sammen samtidig: du kan ikke se hvem som gjorde hva, du kan ikke ta fra én
+    person tilgangen uten å ta den fra alle, og du kan ikke gi noen mindre tilgang enn alt.
+    Denne planen retter opp alle tre — uten å røre utvidelsen.
+  </p>
+</header>
+
+<div class="callout ok">
+  <span class="tag">Rammen for arbeidet</span>
+  <p>
+    <strong>Ingenting her berører utvidelsen.</strong> Alt ligger i <code>/api/v1/admin/*</code>,
+    <code>/admin/</code> og databasen. Endepunktene utvidelsen snakker med —
+    <code>/login</code>, <code>/license/refresh</code>, <code>/keys</code>, <code>/version</code> —
+    er urørt, og ZIP-en Microsoft har til review påvirkes ikke.
+    Det finnes <em>ett</em> sted der planen kunne ha smittet over på utvidelsen, og det er
+    CORS-innstrammingen i kapittel 6. Den er derfor skrevet som en endring som gjelder
+    bare admin-endepunktene, med en test som beviser at de andre er uberørt.
+  </p>
+</div>
+
+<div class="toc">
+  <p>Innhold</p>
+  <ol>
+    <li><a href="#idag">Hva panelet er i dag</a></li>
+    <li><a href="#funn">Sju funn</a></li>
+    <li><a href="#palogging">Valg av påloggingsmodell</a></li>
+    <li><a href="#roller">Roller og tilgangsomfang</a></li>
+    <li><a href="#datamodell">Datamodell</a></li>
+    <li><a href="#okt">Økten, informasjonskapselen og CORS</a></li>
+    <li><a href="#revisjon">Et revisjonsspor som faktisk holder</a></li>
+    <li><a href="#mangler">Funksjonene panelet mangler</a></li>
+    <li><a href="#kode">Panelet som kode</a></li>
+    <li><a href="#drift">Å drifte dette med flere</a></li>
+    <li><a href="#personvern">Personvern og juss</a></li>
+    <li><a href="#faseplan">Faseplan</a></li>
+    <li><a href="#risiko">Risikoregister</a></li>
+    <li><a href="#avgjorelser">Avgjørelser jeg trenger fra deg</a></li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="idag"><span class="num">01</span> Hva panelet er i dag</h2>
+<p class="lede">Kort og presist, så vurderingene under har et felles utgangspunkt.</p>
+
+<p>
+  Panelet er én fil på 771 linjer, <code>apps/lisensserver/public/admin/index.html</code>,
+  med innebygd CSS og JavaScript. Det snakker med sju endepunkter under
+  <code>/api/v1/admin/</code>. Alle sju begynner likt:
+</p>
+
+<pre><code>const denied = requireAdmin(req.headers);
+if (denied) return denied;</code></pre>
+
+<p>
+  <code>requireAdmin</code> gjør nøyaktig én ting: sammenligner <code>Authorization: Bearer …</code>
+  med miljøvariabelen <code>ADMIN_TOKEN</code>, tidskonstant. Ingen brukere, ingen økter,
+  ingen roller. Nøkkelen lever i <code>sessionStorage</code> til fanen lukkes.
+</p>
+
+<p>Panelet kan i dag: opprette kunde, opprette pool, importere e-postliste med engangs-CSV,
+se lisensene i én pool, stenge og gjenåpne en lisens, endre innstillingene for
+selvregistrering, og lese de siste 40 linjene av revisjonsloggen.</p>
+
+<p>
+  Det er faktisk et solid fundament. Datamodellen er ryddig, hemmelighetene ligger riktig,
+  <code>audit_log</code>-tabellen finnes allerede, og skillet mellom <code>logic.ts</code>
+  (domenelogikk, testet mot <code>MemoryDb</code>) og <code>admin-queries.ts</code>
+  (rapportering) er en god grense å bygge videre på. Det som mangler er ikke arkitektur —
+  det er identitet.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="funn"><span class="num">02</span> Sju funn</h2>
+<p class="lede">Rangert etter hva som faktisk gjør vondt den dagen person nummer to får tilgang.</p>
+
+<div class="card">
+  <div class="dh"><span class="did">F1</span><span class="dt">Revisjonsloggen kan ikke fortelle hvem som gjorde noe</span></div>
+  <p>
+    Tolv steder i koden kaller <code>db.audit(…)</code>, og de som utløses av et menneske
+    skriver alle den samme konstante strengen: <code>"superadmin"</code>. Med to
+    administratorer betyr en linje i loggen bare «en av dem». Med fem betyr den ingenting.
+  </p>
+  <p>
+    Dette er ikke bare upraktisk. Dere behandler opplysninger som i praksis avslører
+    lese- og skrivevansker, altså helseopplysninger etter personvernforordningen artikkel 9.
+    Da er sporbarhet på personnivå et krav i artikkel 5(2) og 32, ikke en bekvemmelighet.
+  </p>
+  <p class="verdict">Alvorligst av de sju, fordi den ikke kan repareres bakover: logglinjer som skrives før dette er fikset, blir aldri mulige å tilskrive.</p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">F2</span><span class="dt">Tilgang kan ikke tas fra én person</span></div>
+  <p>
+    Slutter en medhjelper, eller mister vedkommende maskinen sin, er eneste utvei å bytte
+    <code>ADMIN_TOKEN</code> i Vercel. Det logger ut alle samtidig og knekker de tre
+    røyktestskriptene, som leser samme verdi fra <code>ORDLYD_ADMIN_TOKEN</code>.
+    En tilbakekalling som gjør vondt, blir en tilbakekalling som utsettes.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">F3</span><span class="dt">Alt eller ingenting</span></div>
+  <p>
+    Den som får nøkkelen kan opprette kunder, importere ubegrenset med adresser, stenge
+    hvilken som helst lisens, endre prøvelengden for hele tjenesten og lese hele
+    revisjonsloggen. En kontaktperson i en kommune som bare skal håndtere sine egne
+    medlemmer, får i dag tilgang til alle andres.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">F4</span><span class="dt">Hemmeligheten håndteres på en måte som garanterer lekkasje</span></div>
+  <p>
+    Nøkkelen må kopieres fra Vercels dashbord og limes inn i et skjemafelt. Den havner i
+    utklippstavler, passordbehandlere, skjermbilder og chatlogger — den har allerede vært
+    innom en chatlogg i dette prosjektet. Den har ingen utløpsdato og fornyes aldri av seg selv.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">F5</span><span class="dt">CORS står åpen på admin-endepunktene</span></div>
+  <p>
+    <code>vercelHandler</code> setter <code>access-control-allow-origin: *</code> på
+    <em>alt</em>, også <code>/api/v1/admin/*</code>. Det er ikke direkte utnyttbart, siden
+    autentisering skjer med en header og ikke en informasjonskapsel — en fremmed side kan
+    ikke låne tilgangen din. Men det er unødvendig angrepsflate i dag, og det blir en
+    ekte CSRF-sårbarhet i det sekundet vi går over til informasjonskapsler i kapittel 6.
+  </p>
+  <p class="verdict">Må ryddes <em>før</em> økter innføres, ikke etter.</p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">F6</span><span class="dt">Panelet mangler det man trenger for å hjelpe én bruker</span></div>
+  <p>
+    Ringer noen og sier «koden min virker ikke», må du vite hvilken pool hun ligger i,
+    åpne den, og lese deg gjennom inntil 500 rader. Det finnes ikke søk. Det finnes ikke
+    paginering — grensen på 500 er stille, så pool nummer 501 og oppover er usynlig.
+    Det finnes ingen måte å redigere en kunde eller pool på etter opprettelsen, og ingen
+    måte å flytte én enkelt lisens, selv om <code>moveEntry</code> ligger klar i
+    databaselaget og brukes av importen.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">F7</span><span class="dt">771 linjer i én fil, med <code>unsafe-inline</code> som forutsetning</span></div>
+  <p>
+    Innholdssikkerhetspolicyen for <code>/admin/</code> er ellers stram
+    (<code>default-src 'none'</code>), men må tillate <code>script-src 'unsafe-inline'</code>
+    fordi all koden ligger i selve HTML-en. Det er den ene åpningen som gjør et
+    skript-innsprøytningsangrep mulig. Samtidig er én stor fil det som gjør at to personer
+    ikke kan jobbe i panelet samtidig uten å kollidere.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="palogging"><span class="num">03</span> Valg av påloggingsmodell</h2>
+<p class="lede">Fire realistiske veier. Jeg anbefaler den tredje, og forklarer hvorfor de andre taper.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Modell</th><th>For</th><th>Mot</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>Passord i egen base</strong></td>
+  <td>Kjent for alle; ingen avhengigheter</td>
+  <td>Du må drifte tilbakestilling, styrkekrav, lekkasjekontroll og totrinns selv. Mest arbeid, minst sikkerhet per krone.</td>
+</tr>
+<tr>
+  <td><strong>Entra ID (OIDC)</strong></td>
+  <td>Fylkeskommunen har det; totrinn og livssyklus følger med gratis</td>
+  <td>Binder admintilgang til <em>én</em> organisasjons katalog. Dysleksi Norge eller en kommune må bli gjestebrukere hos Telemark for å administrere sine egne. Det er feil eierskap.</td>
+</tr>
+<tr>
+  <td><strong>Engangslenke på e-post <span class="chip ok">anbefalt start</span></strong></td>
+  <td>Resend er allerede integrert og betalt. Ingen passord å lekke. Virker for hvem som helst med en jobbadresse.</td>
+  <td>Faktoren er «kontroll over postkassen». For en jobbadresse hos fylkeskommunen er den allerede beskyttet av Entra med totrinn, så i praksis arver vi den sikkerheten.</td>
+</tr>
+<tr>
+  <td><strong>Passkey / WebAuthn <span class="chip ok">anbefalt påbygg</span></strong></td>
+  <td>Sterkest som finnes: kan ikke fiskes, kan ikke gjenbrukes, ingen hemmelighet å lekke</td>
+  <td>Krever et bibliotek (<code>@simplewebauthn/server</code>) og en gjennomtenkt gjenopprettingsvei hvis noen mister enheten sin.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  <strong>Anbefaling: engangslenke først, passkey som påbygg på samme øktmaskineri.</strong>
+  Det er ikke en kompromissløsning — det er slik passkeys faktisk anbefales innført. Du
+  trenger uansett en e-postbasert gjenopprettingsvei den dagen noen bytter telefon, så den
+  veien må bygges. Bygger vi den først, kan du delegere med én gang, og passkey legges
+  oppå uten at noe må gjøres om.
+</p>
+
+<div class="callout crit">
+  <span class="tag">Fallgruve som må håndteres i design, ikke etterpå</span>
+  <p>
+    <strong>Microsoft 365 Safe Links åpner lenker i e-post før mennesket rekker det.</strong>
+    En engangslenke som logger deg inn ved <code>GET</code> vil derfor være brukt opp når
+    mottakeren klikker. Dette rammer nøyaktig deres oppsett, siden adressene er
+    Microsoft-adresser.
+  </p>
+  <p>
+    Løsningen: lenken går til en landingsside som ikke gjør noe av seg selv. Der står det
+    én knapp, og først et <code>POST</code> derfra veksler engangskoden inn i en økt.
+    En forhåndshenting laster da bare en side uten virkning.
+  </p>
+</div>
+
+<h3>Detaljene i engangslenken</h3>
+<ul>
+  <li>32 tilfeldige byte, base64url. Bare HMAC-hashen lagres — samme pepper som ellers, med nytt domeneprefiks <code>adminlink:</code>, slik at en lekket database ikke gir noen en gyldig lenke.</li>
+  <li>Engangsbruk, 15 minutters levetid, bundet til én adresse.</li>
+  <li>Ratebegrenset per adresse og per pseudonymisert nett, gjennom <code>login_attempts</code> som allerede finnes.</li>
+  <li>Bare adresser som ligger i <code>admins</code> får lenke. Ukjente adresser får nøyaktig samme svar som kjente — ellers blir endepunktet en måte å finne ut hvem som er administrator på.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="roller"><span class="num">04</span> Roller og tilgangsomfang</h2>
+<p class="lede">Fire roller dekker alt du har beskrevet, og en femte du bør la være å lage.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Rolle</th><th>Kan</th><th>Kan ikke</th></tr></thead>
+<tbody>
+<tr>
+  <td><code>eier</code></td>
+  <td>Alt, inkludert å opprette og fjerne administratorer og endre globale innstillinger</td>
+  <td>—</td>
+</tr>
+<tr>
+  <td><code>forvalter</code></td>
+  <td>Alt om lisenser hos alle kunder: opprette kunder og pooler, importere, stenge, gjenåpne, flytte, søke</td>
+  <td>Administrere administratorer. Endre prøvelengde og om registrering er åpen.</td>
+</tr>
+<tr>
+  <td><code>kundeadmin</code></td>
+  <td>Det samme, men <strong>bare for kundene vedkommende er knyttet til</strong></td>
+  <td>Se andre kunder i det hele tatt — de finnes ikke i svarene hun får</td>
+</tr>
+<tr>
+  <td><code>revisor</code></td>
+  <td>Lese alt, inkludert revisjonsloggen</td>
+  <td>Endre noe som helst</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  Den femte — en selvbetjeningsportal der kunden selv logger inn og administrerer
+  medlemslisten sin — <strong>bør ikke bygges nå</strong>. Den endrer hvem som er
+  behandlingsansvarlig, krever databehandleravtale med hver kunde og egen innlogging for
+  folk uten forhold til dere. <code>kundeadmin</code> gir 90 % av nytten ved at
+  <em>du</em> oppretter kontoen for kontaktpersonen deres.
+</p>
+
+<div class="callout warn">
+  <span class="tag">Bygg omfanget inn nå, selv om du ikke bruker det ennå</span>
+  <p>
+    Du trenger antakelig bare <code>eier</code> og <code>forvalter</code> det første året.
+    Men <code>kundeadmin</code> krever at <em>hver eneste</em> spørring filtreres på hvilke
+    kunder den innloggede har tilgang til. Å ettermontere den filtreringen på et dusin
+    spørringer senere er nøyaktig der lekkasjer oppstår — én glemt <code>where</code> og
+    en kommune ser en annen kommunes liste. Filteret legges inn fra første dag og
+    gjennomtvinges ett sted, slik at en ny spørring ikke <em>kan</em> glemme det.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="datamodell"><span class="num">05</span> Datamodell</h2>
+<p class="lede">Fem nye tabeller i migrasjon <code>0004_administratorer.sql</code>. Ingen eksisterende tabell endrer betydning.</p>
+
+<pre><code>-- Administratorer er identifiserte medarbeidere, ikke sluttbrukere.
+-- Adressen lagres derfor i KLARTEKST — vi må kunne sende dem e-post,
+-- og de er ikke i kategorien opplysninger vi hasher (se kap. 11).
+create table admins (
+  id          uuid primary key default gen_random_uuid(),
+  email       text not null unique,        -- alltid normalisert til små bokstaver
+  name        text not null,
+  role        text not null check (role in ('eier','forvalter','kundeadmin','revisor')),
+  status      text not null default 'aktiv' check (status in ('aktiv','sperret')),
+  created_by  uuid references admins(id),
+  created_at  timestamptz not null default now(),
+  last_login_at timestamptz
+);
+
+-- Tomt sett for eier/forvalter/revisor = alle kunder.
+-- For kundeadmin er dette hele tilgangen.
+create table admin_scopes (
+  admin_id  uuid not null references admins(id) on delete cascade,
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  primary key (admin_id, tenant_id)
+);
+
+-- Serverside økt: eneste måte å kunne rive tilgangen umiddelbart.
+create table admin_sessions (
+  id          uuid primary key default gen_random_uuid(),
+  admin_id    uuid not null references admins(id) on delete cascade,
+  token_hash  text not null unique,
+  created_at  timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  expires_at  timestamptz not null,
+  revoked_at  timestamptz,
+  net_hash    text                          -- pseudonymisert, som ellers i systemet
+);
+
+create table admin_login_links (
+  token_hash text primary key,
+  admin_id   uuid not null references admins(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  used_at    timestamptz
+);
+
+-- Maskiner og skript. Erstatter ADMIN_TOKEN med noe som kan
+-- tilbakekalles enkeltvis og som viser hvem som handlet.
+create table admin_api_tokens (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,                -- "røyktest", "importskript hos DN"
+  token_hash  text not null unique,
+  role        text not null check (role in ('forvalter','revisor')),
+  created_by  uuid references admins(id),
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz,
+  revoked_at  timestamptz,
+  last_used_at timestamptz
+);
+
+alter table admins            enable row level security;
+alter table admin_scopes      enable row level security;
+alter table admin_sessions    enable row level security;
+alter table admin_login_links enable row level security;
+alter table admin_api_tokens  enable row level security;
+
+-- Revisjonsloggen får identitet.
+alter table audit_log
+  add column actor_id   uuid,
+  add column actor_kind text not null default 'system'
+    check (actor_kind in ('admin','apitoken','system','cron','bootstrap'));
+create index audit_log_at_idx on audit_log (at desc);
+create index audit_log_actor_idx on audit_log (actor_id, at desc);</code></pre>
+
+<p>
+  Merk at <code>actor</code>-kolonnen beholdes som visningsnavn. Gamle linjer med
+  <code>"superadmin"</code> blir stående som de er — vi later ikke som om vi vet hvem det var.
+</p>
+
+<h3>Nødinngang</h3>
+<p>
+  Går alle administratorkontoene tapt, må det finnes en vei inn. En egen hemmelighet i
+  Vercel, <code>BOOTSTRAP_TOKEN</code>, som kan gjøre nøyaktig én ting: opprette eller
+  gjenopprette en <code>eier</code>-konto. Hver bruk skriver en logglinje med
+  <code>actor_kind = 'bootstrap'</code> og sender e-post til alle eiere. Den er ikke en
+  bakvei — den er en overvåket nødutgang, og det er slik den skal beskrives i rutinen.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="okt"><span class="num">06</span> Økten, informasjonskapselen og CORS</h2>
+<p class="lede">Her ligger den ene endringen som må gjøres varsomt, fordi utvidelsen deler kodebase med panelet.</p>
+
+<h3>Informasjonskapselen</h3>
+<pre><code>__Host-ordlyd_panel=&lt;32 tilfeldige byte, base64url&gt;
+  HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200</code></pre>
+<p>
+  <code>__Host-</code>-prefikset gjør at nettleseren nekter å ta imot den uten
+  <code>Secure</code> og <code>Path=/</code>, og uten <code>Domain</code>. Den kan derfor
+  ikke settes for et helt domene og lekker ikke til underdomener. Bare hashen lagres i
+  <code>admin_sessions</code>. Glidende fornyelse ved bruk, absolutt tak på sju dager.
+</p>
+
+<div class="callout ok">
+  <span class="tag">En gratis gevinst av at panelet har eget vertsnavn</span>
+  <p>
+    Fordi <code>panel.ordlyd.no</code> og <code>lisens.ordlyd.no</code> er ulike vertsnavn,
+    følger <em>aldri</em> adminkapselen med på forespørslene utvidelsen sender. Det er en
+    reell skillelinje som kommer av seg selv — forutsatt at panelet bare serveres fra
+    <code>panel.ordlyd.no</code>. I dag svarer <code>lisens.ordlyd.no/admin/</code> også.
+    Den bør slutte å gjøre det.
+  </p>
+</div>
+
+<h3>CORS, delt i to</h3>
+<p>
+  <code>vercelHandler</code> setter i dag de samme CORS-hodene på alt. Den deles i to
+  varianter:
+</p>
+<ul>
+  <li><strong>Åpen</strong> — <code>/login</code>, <code>/license/refresh</code>, <code>/keys</code>,
+      <code>/version</code>, <code>/registrer</code>, <code>/health</code>. Uendret
+      <code>access-control-allow-origin: *</code>, fordi utvidelsen kaller fra en
+      <code>chrome-extension://</code>-opprinnelse som endrer seg mellom bygg.
+      <strong>Denne må ikke røres.</strong></li>
+  <li><strong>Lukket</strong> — <code>/api/v1/admin/*</code>. Ingen CORS-hoder i det hele
+      tatt. Panelet er samme opprinnelse og trenger dem ikke. En fremmed nettside kan da
+      verken lese svar eller utløse handlinger.</li>
+</ul>
+<p>
+  I tillegg krever alle tilstandsendrende admin-kall en egendefinert header
+  (<code>x-ordlyd-panel: 1</code>). Uten CORS-tillatelse kan en fremmed side ikke sette
+  den, så dette er et andre lag over <code>SameSite=Strict</code>.
+</p>
+
+<div class="callout warn">
+  <span class="tag">Testen som må skrives sammen med endringen</span>
+  <p>
+    Et røyktestskript som slår fast at <code>/api/v1/login</code>,
+    <code>/api/v1/license/refresh</code>, <code>/api/v1/keys</code> og
+    <code>/api/v1/version</code> fortsatt svarer med <code>access-control-allow-origin: *</code>
+    på en <code>OPTIONS</code>-preflight, og at <code>/api/v1/admin/overview</code> ikke gjør
+    det. Uten den testen er dette den ene endringen i planen som kan ta ned utvidelsen for
+    alle brukere — og det ville i så fall krevd en ny pakke til Microsoft for å rette.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="revisjon"><span class="num">07</span> Et revisjonsspor som faktisk holder</h2>
+<p class="lede">Fra tolv kall som sier «superadmin» til et spor du kan stole på i en tilsynssak.</p>
+
+<p>
+  <code>db.audit()</code> endrer signatur fra <code>(actor, action, details)</code> til å ta
+  imot den innloggede identiteten. Alle admin-endepunkter får identiteten inn fra
+  øktkontrollen, ikke fra en konstant — det gjør at en ny handling ikke <em>kan</em> glemme
+  å loggføre hvem det var.
+</p>
+
+<p>Utover det som logges i dag, bør disse komme til:</p>
+<ul>
+  <li><strong>Innlogging og utlogging</strong>, og hver gang en engangslenke bestilles — også når den bestilles for en adresse som ikke finnes.</li>
+  <li><strong>Mislykkede forsøk</strong>, slik at gjentatte 401-er er synlige.</li>
+  <li><strong>Oppslag i personopplysninger.</strong> Under artikkel 5 er det ikke bare endringer som skal kunne spores, men hvem som har <em>sett</em> hva. Vi logger visning av lisenslisten i en pool og hvert søk — med pool-id og treffantall, aldri adressen.</li>
+  <li><strong>Rolleendringer og nye administratorer</strong>, med e-postvarsel til alle eiere.</li>
+</ul>
+
+<p>
+  Panelet får en egen loggside med filtrering på person, handling og tidsrom, og eksport
+  til CSV. I dag vises de siste 40 linjene uten filter, som er nok til å ane at noe skjedde
+  og for lite til å finne ut hva.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="mangler"><span class="num">08</span> Funksjonene panelet mangler</h2>
+<p class="lede">Rangert etter hvor ofte du kommer til å savne dem.</p>
+
+<div class="card">
+  <div class="dh"><span class="did">1</span><span class="dt">Søk etter e-postadresse på tvers av alle pooler</span></div>
+  <p>
+    Den viktigste enkeltfunksjonen som mangler, og den er både enkel og elegant å bygge:
+    adressen hashes med pepperet på samme måte som ved innlogging, og
+    <code>pool_entries.email_hash</code> har allerede indeks. Søket virker altså
+    <em>uten</em> at adressen finnes lagret noe sted.
+  </p>
+  <p>
+    Dette er ikke bare bekvemmelighet. Personvernerklæringen lover allerede innsyn og
+    sletting, og beskriver nøyaktig denne mekanismen: «Fordi e-postadressen din bare finnes
+    som hash, finner vi opplysningene dine ved å regne ut hashen av adressen du oppgir.»
+    I dag finnes ikke det verktøyet — det må gjøres med SQL for hånd. Å bygge det er å
+    innfri et løfte som allerede er gitt.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">2</span><span class="dt">Handlinger på én lisens</span></div>
+  <p>
+    Flytt til annen pool (<code>moveEntry</code> finnes), forleng gyldighet, utsted ny kode
+    (<code>setEntryCode</code> finnes), steng og gjenåpne. Alt bortsett fra det siste
+    mangler endepunkt i dag, selv om logikken er skrevet og testet.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">3</span><span class="dt">Redigering av kunde og pool</span></div>
+  <p>
+    Endre navn, sluttdato, funksjonsliste og status. I dag kan alt bare opprettes.
+    Setter du feil dato på en kommune, må den fikses i SQL Editor.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">4</span><span class="dt">Paginering og filtrering i lisenslisten</span></div>
+  <p>
+    Grensen på 500 rader er stille i dag. En pool med 5000 medlemmer viser 500 og sier
+    ingenting om resten. Serverside paginering, med filter på status, kilde og
+    «ikke brukt siden».
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">5</span><span class="dt">Import fra fil, og en forhåndsvisning før den kjøres</span></div>
+  <p>
+    CSV-opplasting i tillegg til innliming, og et sammendrag før du trykker: så mange nye,
+    så mange flyttes fra prøve, så mange ligger hos en annen kunde, så mange er ugyldige
+    adresser. I dag får du vite det etterpå.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="kode"><span class="num">09</span> Panelet som kode</h2>
+<p class="lede">Moderne betyr her lesbart og delbart, ikke rammeverk.</p>
+
+<p>
+  Panelet deles i ES-moduler som lastes direkte av nettleseren — <code>app.js</code>,
+  <code>api.js</code>, <code>tabell.js</code>, <code>skjema.js</code> og så videre.
+  <strong>Ingen byggesteg.</strong> Vercel serverer <code>public/</code> som statiske filer,
+  og moderne nettlesere laster <code>&lt;script type="module"&gt;</code> uten hjelp.
+  Det holder løftet ditt om ett repo og ett Vercel-prosjekt, og gir tre gevinster:
+</p>
+<ul>
+  <li><code>script-src 'unsafe-inline'</code> kan fjernes fra policyen og erstattes med <code>'self'</code>. Det lukker den siste åpningen i en ellers stram policy.</li>
+  <li>To personer kan endre hver sin del uten å kollidere i samme fil.</li>
+  <li>Innholdet kan endelig skrives med <code>textContent</code> og <code>&lt;template&gt;</code> i stedet for strengsammensatt HTML. Rømmingsfunksjonen <code>esc()</code> er riktig brukt i dag, men den er ett glemt kall unna et problem.</li>
+</ul>
+
+<p>
+  <strong>Rammeverk anbefales ikke.</strong> React eller Svelte ville krevd byggesteg,
+  avhengighetsvedlikehold og sikkerhetsoppdateringer i et prosjekt som er nær ideelt drevet.
+  771 linjer er ikke i nærheten av å rettferdiggjøre det.
+</p>
+
+<h3>Utseende</h3>
+<p>
+  Panelet arver fargene fra <code>ordlyd.no</code> slik registreringssiden nå gjør, så det
+  kjennes som samme produkt. Men <strong>mørk modus beholdes her</strong>, i motsetning til
+  på de utadvendte sidene: dette er et verktøy noen sitter i over tid, og det er en annen
+  bruk enn en landingsside man er innom i to minutter.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="drift"><span class="num">10</span> Å drifte dette med flere</h2>
+<p class="lede">Fire ting som ikke er kode, men som avgjør om delegeringen fungerer i praksis.</p>
+
+<div class="card">
+  <div class="dh"><span class="did">D1</span><span class="dt">Forhåndsutrullinger mot produksjonsdatabasen</span></div>
+  <p>
+    Hvis Vercel-prosjektet har <code>DATABASE_URL</code> satt for <em>Preview</em>-miljøet,
+    får hver gren-utrulling en offentlig URL med full tilgang til produksjonsdataene.
+    Dette må sjekkes. Enten fjernes variabelen fra Preview, eller så peker den på et eget
+    Supabase-prosjekt.
+  </p>
+  <p class="verdict">Dette er en ting jeg ikke kan verifisere herfra — du må se i Vercels innstillinger.</p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">D2</span><span class="dt">Sikkerhetskopi som er prøvd</span></div>
+  <p>
+    En sikkerhetskopi ingen har gjenopprettet fra, er en antakelse. Kontroller hva
+    Supabase-planen faktisk gir av gjenoppretting til et tidspunkt, og gjennomfør én
+    øvelse: gjenopprett til et testprosjekt og bekreft at en lisensinnlogging virker mot det.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">D3</span><span class="dt">Ingen varsling i dag</span></div>
+  <p>
+    Feiler et endepunkt, står det i Vercels logg til noen ser etter. Enkleste virksomme
+    tiltak, uten nye leverandører: utvid den daglige opprydningsjobben til også å sende et
+    kort sammendrag til eierne via Resend — administratorhandlinger siste døgn, mislykkede
+    innlogginger, nye flaggede lisenser, og om nattens jobb gikk gjennom. En e-post som
+    <em>uteblir</em> er også et signal.
+  </p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">D4</span><span class="dt">En driftsrutine å overlevere</span></div>
+  <p>
+    <code>docs/driftsrutine-panel.html</code>: hvordan du oppretter en administrator, hva
+    hver rolle får se, hvordan en tilgang tilbakekalles, hva du gjør ved mistanke om
+    misbruk, hvordan nødinngangen brukes og hvem som skal varsles. En delegering uten
+    nedskrevet rutine er en delegering du må gjenta muntlig hver gang.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="personvern"><span class="num">11</span> Personvern og juss</h2>
+<p class="lede">To ting endrer seg, og begge må dokumenteres samtidig med koden.</p>
+
+<div class="callout warn">
+  <span class="tag">Personvernerklæringen blir uriktig hvis den ikke oppdateres</span>
+  <p>
+    Erklæringen slår i dag fast: «<strong>E-postadresser og lisenskoder finnes ikke i
+    lesbar form</strong> i databasen.» Den setningen er sann i dag. Med en
+    <code>admins</code>-tabell er den det ikke lenger, med mindre den presiseres til å
+    gjelde <em>brukere av produktet</em>.
+  </p>
+  <p>
+    Administratorer er en annen kategori: identifiserte medarbeidere med en rolle, ikke
+    elever. Behandlingsgrunnlaget er avtale eller berettiget interesse, ikke artikkel 9.
+    Det skal stå eksplisitt, med en egen rad i lagringstabellen og en egen oppbevaringstid
+    — jeg foreslår sletting 12 måneder etter at tilgangen opphører, slik at
+    revisjonssporet fortsatt kan tilskrives i ettertid.
+  </p>
+</div>
+
+<p>
+  <strong>Den andre:</strong> gir du en kontaktperson hos Dysleksi Norge eller en kommune
+  en <code>kundeadmin</code>-konto, oppstår spørsmålet om hvem som er behandlingsansvarlig
+  for medlemslisten. Det vanlige svaret er at foreningen er ansvarlig for sin egen
+  medlemsliste og dere er databehandler for den — noe som krever en databehandleravtale.
+  Dette er ikke noe jeg skal avgjøre. Jeg noterer at avtalen bør være på plass før første
+  eksterne <code>kundeadmin</code> opprettes, og at det er greit å utsette hele
+  <code>kundeadmin</code>-rollen til den finnes.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="faseplan"><span class="num">12</span> Faseplan</h2>
+<p class="lede">Seks trinn. Hvert trinn er nyttig alene og kan rulles ut for seg.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Trinn</th><th>Innhold</th><th>Etter dette kan du</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>A1</strong><br><span class="chip crit">størst</span></td>
+  <td>Migrasjon 0004. Engangslenke med landingsside som krever klikk. Serverside økt med informasjonskapsel. Rollene <code>eier</code>, <code>forvalter</code>, <code>revisor</code>. Tilskrevet revisjonsspor. Nødinngang. <code>ADMIN_TOKEN</code> beholdes midlertidig for skriptene.</td>
+  <td><strong>Gi én person tilgang og se hva hun gjør.</strong></td>
+</tr>
+<tr>
+  <td><strong>A2</strong></td>
+  <td>Navngitte maskintokens. Røyktestskriptene går over til dem. <code>ADMIN_TOKEN</code> avvikles som admintilgang og blir bare nødinngang.</td>
+  <td>Trekke tilbake ett skripts tilgang uten å røre menneskene.</td>
+</tr>
+<tr>
+  <td><strong>A3</strong></td>
+  <td>CORS deles i åpen og lukket, med testen som beviser at utvidelsens endepunkter er uberørt. Panelet splittes i ES-moduler, <code>unsafe-inline</code> fjernes. <code>/admin/</code> begrenses til <code>panel.ordlyd.no</code>.</td>
+  <td>Slutte å ha én åpning i en ellers stram policy.</td>
+</tr>
+<tr>
+  <td><strong>A4</strong><br><span class="chip ok">kan hentes fram</span></td>
+  <td>Søk på e-postadresse. Handlinger på én lisens: flytt, forleng, ny kode. Redigering av kunde og pool. Paginering. Loggside med filter og CSV.</td>
+  <td>Hjelpe én bruker på telefonen uten å åpne SQL Editor.</td>
+</tr>
+<tr>
+  <td><strong>A5</strong></td>
+  <td><code>kundeadmin</code> med kundeavgrensning, gjennomtvunget ett sted. Forutsetter databehandleravtale.</td>
+  <td>Gi en kommune tilgang til bare sine egne.</td>
+</tr>
+<tr>
+  <td><strong>A6</strong></td>
+  <td>Driftsrutine. Daglig sammendrag på e-post. Preview-miljøet ryddet. Gjenopprettingsøvelse. Passkey som påbygg.</td>
+  <td>Overlevere driften uten å være tilgjengelig selv.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  <strong>A4 kan flyttes foran A3</strong> hvis søk og enkeltlisenshandlinger haster mer enn
+  opprydningen. A1 må være først, og A2 må komme før <code>ADMIN_TOKEN</code> avvikles.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="risiko"><span class="num">13</span> Risikoregister</h2>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Risiko</th><th>Konsekvens</th><th>Tiltak</th></tr></thead>
+<tbody>
+<tr>
+  <td>CORS-innstrammingen treffer utvidelsens endepunkter</td>
+  <td><span class="chip crit">kritisk</span> Alle brukere mister fornying. Krever ny pakke til Microsoft for å rette.</td>
+  <td>Delt <code>vercelHandler</code> med eksplisitt valg per endepunkt, og røyktest på preflight før utrulling.</td>
+</tr>
+<tr>
+  <td>Safe Links spiser engangslenken</td>
+  <td><span class="chip warn">høy</span> Ingen får logget inn, og feilen ser tilfeldig ut.</td>
+  <td>Landingsside som krever klikk. Testes mot en ekte <code>@telemarkfylke.no</code>-adresse, ikke bare mot Gmail.</td>
+</tr>
+<tr>
+  <td>Migrasjon og utrulling er ikke samtidige</td>
+  <td><span class="chip warn">høy</span> Har skjedd før i dette prosjektet: kode som leste en kolonne før migrasjonen var kjørt ga 500 i panelet.</td>
+  <td>Samme mønster som sist — <code>to_jsonb(rad) -&gt;&gt; 'kolonne'</code> for lesing i overgangen, migrasjon kjøres først.</td>
+</tr>
+<tr>
+  <td>Kundeavgrensningen glemmes i én spørring</td>
+  <td><span class="chip crit">kritisk</span> En kunde ser en annens medlemsliste.</td>
+  <td>Avgrensningen legges i ett delt lag som alle admin-spørringer må gå gjennom, med test som beviser at en <code>kundeadmin</code> ikke ser fremmede kunder.</td>
+</tr>
+<tr>
+  <td>Nødinngangen brukes uten at noen merker det</td>
+  <td><span class="chip warn">høy</span> Stille full tilgang.</td>
+  <td>Hver bruk gir logglinje <em>og</em> e-post til alle eiere. Hemmeligheten oppbevares utenfor Vercel-dashbordet.</td>
+</tr>
+<tr>
+  <td>Preview-utrulling med produksjonsdata</td>
+  <td><span class="chip crit">kritisk</span> Offentlig URL med full tilgang.</td>
+  <td>Sjekkes som første punkt i A1, før noe annet bygges.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="avgjorelser"><span class="num">14</span> Avgjørelser jeg trenger fra deg</h2>
+
+<div class="card">
+  <div class="dh"><span class="did">V1</span><span class="dt">Engangslenke på e-post som første påloggingsmåte?</span></div>
+  <p>Alternativet er å gå rett på passkey, som er sterkere, men som uansett trenger en e-postbasert gjenopprettingsvei — altså det samme arbeidet, i motsatt rekkefølge og med lengre vei til at du kan delegere.</p>
+  <p class="verdict">Min anbefaling: ja, engangslenke i A1, passkey i A6.</p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">V2</span><span class="dt">Hvem er den første som skal ha tilgang, og i hvilken rolle?</span></div>
+  <p>Svaret avgjør om <code>kundeadmin</code> og kundeavgrensning må med tidlig, eller om A5 kan vente. En kollega hos fylkeskommunen er <code>forvalter</code>. En kontaktperson hos Dysleksi Norge er <code>kundeadmin</code>, og da trengs databehandleravtalen først.</p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">V3</span><span class="dt">Skal <code>lisens.ordlyd.no/admin/</code> slutte å svare?</span></div>
+  <p>Anbefalt ja — panelet bare på <code>panel.ordlyd.no</code>. Det gir en ekte skillelinje mellom adminkapselen og alt utvidelsen snakker med. Kostnaden er at du må huske riktig adresse.</p>
+</div>
+
+<div class="card">
+  <div class="dh"><span class="did">V4</span><span class="dt">Rekkefølge: A3 eller A4 først?</span></div>
+  <p>A3 er opprydning og sikkerhet. A4 er søk og enkeltlisenshandlinger — det du merker i hverdagen. Begge kan komme rett etter A2.</p>
+</div>
+
+<footer>
+  Ordlyd · analyse av <code>apps/lisensserver</code> slik den står i dag ·
+  ingen del av planen berører <code>apps/extension</code>
+</footer>
+
+</div>
