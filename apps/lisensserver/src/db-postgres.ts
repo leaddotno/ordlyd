@@ -276,9 +276,30 @@ export class PostgresDb implements Db {
     // postgres.json vil ha en JSONValue; en gjennomgang av JSON.stringify
     // garanterer at bare serialiserbare verdier havner i kolonnen.
     const safe = JSON.parse(JSON.stringify(details)) as Record<string, string | number | boolean | null>;
-    await this.sql`
-      insert into audit_log (actor, action, details, actor_id, actor_kind, tenant_id)
-      values (${actor}, ${action}, ${this.sql.json(safe)},
-              ${meta.actorId ?? null}, ${meta.actorKind ?? "system"}, ${meta.tenantId ?? null})`;
+
+    /*
+     * Kodeutrulling og migrasjon skjer ikke samtidig på Vercel. En
+     * INSERT som navngir kolonner som ennå ikke finnes gir 500 — og
+     * fordi audit() kalles fra innloggingen, ville det tatt ned
+     * aktivering for ekte brukere.
+     *
+     * Lesespørringene løser det samme med `to_jsonb(rad) ->> 'kolonne'`,
+     * men det finnes ingen tilsvarende form for INSERT. Derfor forsøkes
+     * den fulle formen først, med den gamle som fallback. Fallbacken
+     * mister identiteten på linjen, men en logglinje uten aktør er langt
+     * bedre enn en innlogging som feiler.
+     */
+    try {
+      await this.sql`
+        insert into audit_log (actor, action, details, actor_id, actor_kind, tenant_id)
+        values (${actor}, ${action}, ${this.sql.json(safe)},
+                ${meta.actorId ?? null}, ${meta.actorKind ?? "system"}, ${meta.tenantId ?? null})`;
+    } catch (err) {
+      if (!/column .* does not exist/i.test(String(err))) throw err;
+      console.warn("[lisensserver] audit_log mangler identitetskolonnene — er migrasjon 0004 kjørt?");
+      await this.sql`
+        insert into audit_log (actor, action, details)
+        values (${actor}, ${action}, ${this.sql.json(safe)})`;
+    }
   }
 }
