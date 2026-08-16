@@ -19,9 +19,16 @@
 -- kategorien etter artikkel 9. Personvernerklæringen må presiseres
 -- tilsvarende — se planens kapittel 13.
 
-create table admins (
-  -- Samme id som i Supabase Auth. Slettes kontoen der, forsvinner den her.
-  id            uuid primary key references auth.users(id) on delete cascade,
+-- Alt er skrevet med «if not exists» slik at skriptet kan kjøres på nytt
+-- uten å feile. Supabase kjører hele skriptet i én transaksjon: feiler
+-- én linje, rulles ALT tilbake — også det som så ut til å gå bra.
+
+create table if not exists admins (
+  -- Samme id som i Supabase Auth. Fremmednøkkelen legges til i et eget
+  -- steg lenger nede, fordi den krever rettigheter i auth-skjemaet som
+  -- ikke alltid finnes. Den er en bekvemmelighet (kaskadesletting), ikke
+  -- en forutsetning — så den skal ikke få velte hele migrasjonen.
+  id            uuid primary key,
   email         text not null unique,
   name          text not null,
   role          text not null check (role in ('eier','forvalter','kundeadmin','revisor')),
@@ -42,14 +49,14 @@ comment on column admins.email is
 -- For kundeadmin og revisor er dette hele tilgangen, og minst én rad kreves.
 -- Regelen håndheves i applikasjonen (tilgang.ts), ikke her, fordi den
 -- avhenger av rollen i en annen tabell.
-create table admin_scopes (
+create table if not exists admin_scopes (
   admin_id  uuid not null references admins(id) on delete cascade,
   tenant_id uuid not null references tenants(id) on delete cascade,
   primary key (admin_id, tenant_id)
 );
-create index admin_scopes_tenant_idx on admin_scopes (tenant_id);
+create index if not exists admin_scopes_tenant_idx on admin_scopes (tenant_id);
 
-create table admin_sessions (
+create table if not exists admin_sessions (
   id           uuid primary key default gen_random_uuid(),
   admin_id     uuid not null references admins(id) on delete cascade,
   -- HMAC(pepper, 'okt:' + token). Selve tokenet finnes bare i kapselen.
@@ -67,14 +74,14 @@ create table admin_sessions (
   -- «dine økter» og til forarbeidet for landsperren (planens kap. 09).
   land         text
 );
-create index admin_sessions_admin_idx on admin_sessions (admin_id, created_at desc);
-create index admin_sessions_expires_idx on admin_sessions (expires_at);
+create index if not exists admin_sessions_admin_idx on admin_sessions (admin_id, created_at desc);
+create index if not exists admin_sessions_expires_idx on admin_sessions (expires_at);
 
 -- Supabase Auth utsteder ikke reservekoder for TOTP. Uten dem betyr en
 -- mistet telefon at nødinngangen må brukes hver gang.
 -- Samme mønster som engangs-eksporten ved medlemsimport: vist én gang,
 -- lagret bare som pepret hash.
-create table admin_recovery_codes (
+create table if not exists admin_recovery_codes (
   admin_id   uuid not null references admins(id) on delete cascade,
   code_hash  text not null,          -- HMAC(pepper, 'recovery:' + kode)
   used_at    timestamptz,
@@ -84,7 +91,7 @@ create table admin_recovery_codes (
 
 -- Maskiner og skript. Erstatter ADMIN_TOKEN for røyktestene, slik at én
 -- automatisering kan miste tilgangen uten at menneskene rammes.
-create table admin_api_tokens (
+create table if not exists admin_api_tokens (
   id           uuid primary key default gen_random_uuid(),
   name         text not null,        -- «røyktest», «importskript hos DN»
   token_hash   text not null unique, -- HMAC(pepper, 'apitoken:' + token)
@@ -117,17 +124,41 @@ alter table admin_api_tokens     enable row level security;
 -- administratorer) og er synlig bare for eier og forvalter.
 -- ---------------------------------------------------------------------
 alter table audit_log
-  add column actor_id   uuid,
-  add column actor_kind text not null default 'system'
-    check (actor_kind in ('admin','apitoken','system','cron','bootstrap')),
-  add column tenant_id  uuid references tenants(id) on delete set null;
+  add column if not exists actor_id   uuid,
+  add column if not exists actor_kind text not null default 'system',
+  add column if not exists tenant_id  uuid references tenants(id) on delete set null;
+
+-- Sjekken legges til separat, slik at et gjentatt kjør ikke feiler på at
+-- den finnes fra før.
+do $$
+begin
+  alter table audit_log add constraint audit_log_actor_kind_sjekk
+    check (actor_kind in ('admin','apitoken','system','cron','bootstrap'));
+exception
+  when duplicate_object then null;
+end $$;
+
+-- Kaskadesletting fra Supabase Auth. Krever rettigheter i auth-skjemaet,
+-- og er en bekvemmelighet framfor en forutsetning: uten den blir en
+-- slettet Supabase-bruker stående igjen som en rad her, som eier da må
+-- rydde manuelt. Feiler den, skal ikke resten av migrasjonen ryke.
+do $$
+begin
+  alter table admins add constraint admins_auth_bruker
+    foreign key (id) references auth.users(id) on delete cascade;
+  raise notice 'Fremmednøkkel mot auth.users lagt til.';
+exception
+  when duplicate_object then null;
+  when others then
+    raise notice 'Kunne IKKE knytte admins til auth.users (%). Alt annet virker; slettede Supabase-brukere må ryddes manuelt.', sqlerrm;
+end $$;
 
 comment on column audit_log.actor_kind is
   'bootstrap = nødinngangen. Hver slik linje skal ha utløst e-post til alle eiere.';
 
-create index audit_log_at_idx     on audit_log (at desc);
-create index audit_log_actor_idx  on audit_log (actor_id, at desc);
-create index audit_log_tenant_idx on audit_log (tenant_id, at desc);
+create index if not exists audit_log_at_idx     on audit_log (at desc);
+create index if not exists audit_log_actor_idx  on audit_log (actor_id, at desc);
+create index if not exists audit_log_tenant_idx on audit_log (tenant_id, at desc);
 
 -- Bekreftelse: skal vise fem nye tabeller og tre nye kolonner på audit_log.
 select 'tabell' as hva, table_name as navn
