@@ -23,7 +23,7 @@ import {
   type SigningKeyPair,
   type ReceiptPayload,
 } from "@ordlyd/license-core";
-import type { Db, LicensePool, PoolEntry, Tenant } from "./types.js";
+import type { AktorType, Db, LicensePool, PoolEntry, Tenant } from "./types.js";
 
 export const ISSUER = "https://lisens.ordlyd.no";
 
@@ -59,12 +59,26 @@ export interface ImportResult {
  *    Automatisk flytting her ville latt én kommune hente brukere fra en
  *    annen bare ved å importere adressene deres.
  */
+/**
+ * Hvem som utfører importen. Valgfri, slik at testene kan kalle
+ * funksjonen uten en innlogget bruker — da føres den som systemhandling.
+ */
+export interface Aktor {
+  actor: string;
+  actorId: string | null;
+  actorKind: AktorType;
+  tenantId: string | null;
+}
+
+const SYSTEM: Aktor = { actor: "system", actorId: null, actorKind: "system", tenantId: null };
+
 export async function importEntries(
   db: Db,
   pepper: string,
   poolId: string,
   emails: string[],
   newId: () => string,
+  aktor: Aktor = SYSTEM,
 ): Promise<ImportResult> {
   const pool = await db.getPool(poolId);
   if (!pool) throw new Error(`ukjent pool ${poolId}`);
@@ -98,12 +112,12 @@ export async function importEntries(
       if (fra?.plan !== "prove") continue;
       // Prøveperiodens sluttdato skal ikke følge med til en varig lisens.
       await db.moveEntry(e.id, poolId, null);
-      await db.audit("superadmin", "flytt-lisens", {
+      await db.audit(aktor.actor, "flytt-lisens", {
         entry: e.id,
         fra_pool: e.poolId,
         til_pool: poolId,
         grunn: "importert til ny pool fra prøvelisens",
-      });
+      }, { actorId: aktor.actorId, actorKind: aktor.actorKind, tenantId: aktor.tenantId });
       moved.push({ email, fraPool: fra.name });
       flyttet = true;
       break;
@@ -132,13 +146,13 @@ export async function importEntries(
     imported.push({ email, code });
   }
 
-  await db.audit("superadmin", "import", {
+  await db.audit(aktor.actor, "import", {
     poolId,
     nye: imported.length,
     flyttet: moved.length,
     hos_annen_kunde: claimedElsewhere.length,
     hoppet_over: skipped.length,
-  });
+  }, { actorId: aktor.actorId, actorKind: aktor.actorKind, tenantId: aktor.tenantId });
   return { imported, moved, claimedElsewhere, skipped };
 }
 

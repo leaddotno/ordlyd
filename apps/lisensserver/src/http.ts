@@ -34,9 +34,29 @@ function parseBody(raw: unknown): Record<string, unknown> {
  * Pakker en handler som en Vercel-funksjon: håndterer preflight,
  * metodesjekk og at uventede feil aldri lekker stakksporet ut.
  */
-export function vercelHandler(allowedMethod: "GET" | "POST", handler: Handler) {
+export interface HandlerValg {
+  /**
+   * Åpen CORS. Standard er PÅ, slik at alle eksisterende endepunkter er
+   * uendret — utvidelsen kaller fra en chrome-extension://-opprinnelse
+   * som skifter mellom bygg, og MÅ ha `*`.
+   *
+   * Admin-endepunktene setter dette til false. De er samme opprinnelse
+   * som panelet og trenger ingen CORS-hoder i det hele tatt; uten dem
+   * kan en fremmed side verken lese svar eller utløse handlinger.
+   * Innstrammingen hører hjemme her og ikke i A5, fordi den må være på
+   * plass FØR øktkapsler tas i bruk.
+   */
+  cors?: boolean;
+}
+
+export function vercelHandler(
+  allowedMethod: "GET" | "POST",
+  handler: Handler,
+  valg: HandlerValg = {},
+) {
+  const aapenCors = valg.cors !== false;
   return async (req: VercelRequest, res: VercelResponse): Promise<void> => {
-    for (const [k, v] of Object.entries(CORS_HEADERS)) res.setHeader(k, v);
+    if (aapenCors) for (const [k, v] of Object.entries(CORS_HEADERS)) res.setHeader(k, v);
 
     if (req.method === "OPTIONS") {
       res.status(204).end();
@@ -62,6 +82,12 @@ export function vercelHandler(allowedMethod: "GET" | "POST", handler: Handler) {
         ip,
       });
       for (const [k, v] of Object.entries(result.headers ?? {})) res.setHeader(k, v);
+      if (result.cookies?.length) res.setHeader("set-cookie", result.cookies);
+      if (result.html !== undefined) {
+        res.setHeader("content-type", "text/html; charset=utf-8");
+        res.status(result.status).send(result.html);
+        return;
+      }
       res.status(result.status).json(result.body);
     } catch (err) {
       // Detaljer til serverloggen, aldri til klienten.

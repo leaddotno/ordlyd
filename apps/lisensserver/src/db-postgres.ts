@@ -11,7 +11,7 @@
  */
 
 import postgres from "postgres";
-import type { Db, EntryStatus, Install, LicensePool, PoolEntry, Tenant } from "./types.js";
+import type { AuditMeta, Db, EntryStatus, Install, LicensePool, PoolEntry, Tenant } from "./types.js";
 
 export type Sql = ReturnType<typeof postgres>;
 
@@ -267,12 +267,18 @@ export class PostgresDb implements Db {
               ${secToDate(r.issuedAt)}, ${secToDate(r.expiresAt)})`;
   }
 
-  async audit(actor: string, action: string, details: Record<string, unknown>): Promise<void> {
+  async audit(
+    actor: string,
+    action: string,
+    details: Record<string, unknown>,
+    meta: AuditMeta = {},
+  ): Promise<void> {
     // postgres.json vil ha en JSONValue; en gjennomgang av JSON.stringify
     // garanterer at bare serialiserbare verdier havner i kolonnen.
     const safe = JSON.parse(JSON.stringify(details)) as Record<string, string | number | boolean | null>;
     await this.sql`
-      insert into audit_log (actor, action, details)
-      values (${actor}, ${action}, ${this.sql.json(safe)})`;
+      insert into audit_log (actor, action, details, actor_id, actor_kind, tenant_id)
+      values (${actor}, ${action}, ${this.sql.json(safe)},
+              ${meta.actorId ?? null}, ${meta.actorKind ?? "system"}, ${meta.tenantId ?? null})`;
   }
 }

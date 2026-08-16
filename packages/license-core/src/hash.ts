@@ -44,6 +44,25 @@ export async function hashInstallSecret(pepper: string, secret: string): Promise
 }
 
 /**
+ * Hemmeligheter på adminsiden: øktnøkler, reservekoder og maskintokens.
+ *
+ * Egne domeneprefikser av samme grunn som over — en øktnøkkel skal ikke
+ * kunne gjenbrukes som reservekode om noen skulle klare å regne ut den
+ * ene. Disse har høy entropi (32 tilfeldige byte), i motsetning til
+ * e-poster og sjusifrede koder, men pepres likevel: da er en lekket
+ * admin_sessions-tabell verdiløs uten nøkkelen fra Vercel.
+ */
+export type AdminHemmelighet = "okt" | "recovery" | "apitoken";
+
+export async function hashAdminSecret(
+  pepper: string,
+  domain: AdminHemmelighet,
+  value: string,
+): Promise<string> {
+  return hmac(pepper, `${domain}:${value}`);
+}
+
+/**
  * Pseudonymisert nettnøkkel for misbrukstellerne: /24 for IPv4, /48 for
  * IPv6. Rå IP lagres aldri — bare denne hashen, og bare som del av et
  * aggregert døgntall.

@@ -1,6 +1,6 @@
 /**
  * POST /api/v1/admin/pool — opprett lisenspool under en kunde.
- * {tenantId, name, features[], products?, validTo?}
+ * {tenantId, name, features[], products?, validTo?, plan?}
  *
  * Funksjonslisten kopieres inn i hver kvittering poolen utsteder, så det er
  * her man bestemmer hva brukerne faktisk får bruke.
@@ -8,19 +8,28 @@
 
 import { vercelHandler, requireString } from "../../../src/http.js";
 import { getDb, newId, ok, badRequest } from "../../../src/runtime.js";
-import { requireAdmin } from "../../../src/admin-auth.js";
+import { loesInnlogget, erNektet, krevPanelhode, somAktor } from "../../../src/admin-auth.js";
+import { krevEndring, krevKunde } from "../../../src/tilgang.js";
 
 export const KJENTE_FUNKSJONER = ["tts", "ordbok", "stavekontroll", "prediksjon", "skriveekko"];
 export const KJENTE_PRODUKTER = ["edge-extension", "win-desktop"];
 export const KJENTE_PLANER = ["medlem", "skole", "prove", "apen"] as const;
 
 export default vercelHandler("POST", async (req) => {
-  const denied = requireAdmin(req.headers);
-  if (denied) return denied;
+  const t = await loesInnlogget(req);
+  if (erNektet(t)) return t.svar;
+  const { meg } = t;
+  const vakt = krevPanelhode(req, meg) ?? krevEndring(meg);
+  if (vakt) return vakt;
 
   const tenantId = requireString(req.body, "tenantId");
   const name = requireString(req.body, "name");
   if (!tenantId || !name) return badRequest("tenantId og name er påkrevd");
+
+  // Avgrensningen sjekkes FØR kunden slås opp, slik at en fremmed
+  // kunde-id ikke kan skilles fra en som ikke finnes.
+  const utenfor = krevKunde(meg, tenantId);
+  if (utenfor) return utenfor;
 
   const features = Array.isArray(req.body.features) ? (req.body.features as unknown[]) : [];
   const ukjent = features.filter((f) => typeof f !== "string" || !KJENTE_FUNKSJONER.includes(f));
@@ -53,6 +62,12 @@ export default vercelHandler("POST", async (req) => {
 
   const id = newId();
   await db.createPool({ id, tenantId, name, status: "aktiv", validTo, products, plan });
-  await db.audit("superadmin", "opprett-pool", { pool: id, tenant: tenantId, plan });
+
+  const a = somAktor(meg);
+  await db.audit(a.actor, "opprett-pool", { pool: id, tenant: tenantId, plan }, {
+    actorId: a.actorId,
+    actorKind: a.actorKind,
+    tenantId,
+  });
   return ok({ poolId: id, name, products, plan });
-});
+}, { cors: false });

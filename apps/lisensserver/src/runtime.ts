@@ -25,9 +25,13 @@ export function requireEnv(name: string): string {
 let sqlSingleton: Sql | undefined;
 let keysSingleton: Promise<SigningKeyPair> | undefined;
 
-export function getDb(): Db {
+export function getSql(): Sql {
   sqlSingleton ??= createSql(requireEnv("DATABASE_URL"));
-  return new PostgresDb(sqlSingleton);
+  return sqlSingleton;
+}
+
+export function getDb(): Db {
+  return new PostgresDb(getSql());
 }
 
 export function getSigningKeys(): Promise<SigningKeyPair> {
@@ -79,6 +83,10 @@ export interface HttpResponse {
   status: number;
   body: unknown;
   headers?: Record<string, string>;
+  /** Set-Cookie-linjer. Egen liste fordi det er det ene hodet som kan gjentas. */
+  cookies?: string[];
+  /** Sendes som ren tekst framfor JSON. Brukes av innloggingslandingssiden. */
+  html?: string;
 }
 
 /**

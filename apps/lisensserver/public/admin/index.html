@@ -152,20 +152,76 @@
       </div>
     </header>
     <div class="card" style="max-width: 30rem">
-      <h2>Logg inn</h2>
-      <p class="hint">Lim inn admin-nøkkelen (<code>ADMIN_TOKEN</code> fra Vercel).</p>
       <div id="loginMsg" class="banner"></div>
+
+      <!-- Steg 1: e-post og passord -->
       <form id="loginForm">
-        <label for="token">Admin-nøkkel</label>
-        <input type="password" id="token" autocomplete="current-password" spellcheck="false" />
+        <h2>Logg inn</h2>
+        <p class="hint">Med din egen konto.</p>
+        <label for="lEpost">E-post</label>
+        <input type="text" id="lEpost" autocomplete="username" inputmode="email" spellcheck="false" />
+        <label for="lPassord" style="margin-top:.9rem">Passord</label>
+        <input type="password" id="lPassord" autocomplete="current-password" />
         <div class="actions">
           <button class="primary" type="submit" id="loginBtn">Logg inn</button>
         </div>
       </form>
-      <p class="interim" style="margin-top:1.1rem">
-        Midlertidig innlogging med delt nøkkel. Erstattes av passkey — nøkkelen lagres bare
-        i denne fanen og forsvinner når du lukker den.
-      </p>
+
+      <!-- Steg 2: engangskode -->
+      <form id="totpForm" class="hidden">
+        <h2>Engangskode</h2>
+        <p class="hint" id="totpHint">
+          Åpne authenticator-appen og skriv inn de seks sifrene. Har du mistet telefonen,
+          kan du bruke en av reservekodene i stedet.
+        </p>
+        <label for="lKode">Kode</label>
+        <input type="text" id="lKode" autocomplete="one-time-code" inputmode="text"
+               spellcheck="false" style="font-family: var(--mono); letter-spacing:.1em" />
+        <div class="actions">
+          <button class="primary" type="submit" id="totpBtn">Bekreft</button>
+          <button type="button" class="small" id="avbrytBtn">Avbryt</button>
+        </div>
+      </form>
+
+      <!-- Steg 3: førstegangs oppsett av totrinn -->
+      <div id="oppsett" class="hidden">
+        <h2>Sett opp totrinn</h2>
+        <p class="hint">
+          Rollen din krever engangskode i tillegg til passord. Skann koden med Microsoft
+          Authenticator, Google Authenticator eller en annen app, og skriv inn de seks
+          sifrene appen viser.
+        </p>
+        <div id="qr" style="background:#fff;padding:.8rem;border-radius:6px;display:inline-block"></div>
+        <p class="hint" style="margin-top:.7rem">
+          Får du ikke skannet? Skriv inn denne nøkkelen manuelt:
+          <code id="hemmelighet" style="user-select:all"></code>
+        </p>
+        <form id="oppsettForm">
+          <label for="oKode">Kode fra appen</label>
+          <input type="text" id="oKode" autocomplete="one-time-code" inputmode="numeric"
+                 spellcheck="false" style="font-family: var(--mono); letter-spacing:.1em" />
+          <div class="actions">
+            <button class="primary" type="submit" id="oppsettBtn">Aktiver totrinn</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Reservekodene vises ÉN gang -->
+    <div class="card hidden" id="reservekortet" style="max-width: 30rem">
+      <h2>Reservekoder</h2>
+      <div class="banner warn">
+        <strong>Dette er eneste gang du ser disse.</strong> Serveren lagrer bare hasher.
+        Skriv dem ned eller legg dem i passordbehandleren din nå — de er veien inn hvis du
+        mister telefonen.
+      </div>
+      <div class="tablewrap">
+        <table><tbody id="reservekoder"></tbody></table>
+      </div>
+      <div class="actions">
+        <button class="primary" id="reserveOk">Jeg har lagret dem</button>
+        <button class="small" id="reserveKopi">Kopier</button>
+      </div>
     </div>
   </section>
 
@@ -379,8 +435,10 @@ const PLAN_NAVN = {
 };
 
 const $ = (id) => document.getElementById(id);
-const KEY = "ordlyd_admin_token";
-let token = sessionStorage.getItem(KEY) || "";
+/*
+ * Ingen nøkkel i nettleseren lenger. Økten bæres av en HttpOnly-kapsel
+ * som JavaScript ikke kan lese — heller ikke et innsprøytet skript.
+ */
 let data = null;
 let valgtPool = null;
 let sisteImport = null;
@@ -405,49 +463,173 @@ function dato(iso) {
     : d.toLocaleDateString("nb-NO", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-async function api(path, { method = "GET", body } = {}) {
+async function api(path, { method = "GET", body, raatt = false } = {}) {
   const res = await fetch(path, {
     method,
+    // Kapselen er SameSite=Strict og samme opprinnelse. Serveren setter
+    // ingen CORS-hoder på admin-endepunktene, så en fremmed side kan
+    // hverken lese svaret eller utløse kallet.
+    credentials: "same-origin",
     headers: {
-      authorization: `Bearer ${token}`,
+      // Kreves på alt som endrer noe. En fremmed side kan ikke sette
+      // egendefinerte hoder uten CORS-tillatelse, som ikke gis.
+      "x-ordlyd-panel": "1",
       ...(body ? { "content-type": "application/json" } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   let json = null;
   try { json = await res.json(); } catch { /* tomt svar */ }
-  if (res.status === 401) throw new Error("Admin-nøkkelen ble avvist.");
-  if (!res.ok) throw new Error(json?.feil || `Serveren svarte ${res.status}.`);
+  if (raatt) return { status: res.status, json };
+  if (res.status === 401) { visInnlogging(); throw new Error("Du er ikke logget inn."); }
+  if (res.status === 403 && json?.feil === "krever-totrinn") {
+    visInnlogging();
+    throw new Error("Kontoen din må sette opp totrinn. Logg inn på nytt.");
+  }
+  if (!res.ok) throw new Error(FEILTEKST[json?.feil] ?? json?.feil ?? `Serveren svarte ${res.status}.`);
   return json;
 }
 
+/** Serverens korte feilkoder oversatt til noe et menneske kan handle på. */
+const FEILTEKST = {
+  "revisor-kan-ikke-endre": "Revisor har bare lesetilgang.",
+  "bare-eier": "Bare eier kan gjøre dette.",
+  "ikke-tillatt": "Du har ikke tilgang til dette.",
+  "ukjent-kunde": "Fant ikke kunden.",
+  "ukjent-pool": "Fant ikke poolen.",
+  "mangler-panelhode": "Forespørselen ble avvist. Last siden på nytt.",
+  "for-mange-forsok": "For mange forsøk. Vent et kvarter og prøv igjen.",
+  "ugyldig-omfang": "Kontoen din har en ugyldig kombinasjon av rolle og kunder. Kontakt eier.",
+  "innloggingen-er-utlopt": "Innloggingen tok for lang tid. Start på nytt.",
+};
+
 /* ---------- Innlogging ---------- */
+
+const STEG = ["loginForm", "totpForm", "oppsett", "reservekortet"];
+function visSteg(id) {
+  for (const s of STEG) $(s).classList.toggle("hidden", s !== id);
+  $("login").classList.remove("hidden");
+  $("panel").classList.add("hidden");
+}
+function visInnlogging() {
+  visSteg("loginForm");
+  $("lPassord").value = "";
+}
+async function visPanel() {
+  await lastData();
+  $("login").classList.add("hidden");
+  $("panel").classList.remove("hidden");
+  $("lPassord").value = "";
+  $("lKode").value = "";
+}
+
+/** Reservekodene vises én gang, og panelet åpnes først når de er kvittert ut. */
+function visReservekoder(koder) {
+  $("reservekoder").innerHTML = koder
+    .map((k) => `<tr><td class="mono" style="user-select:all">${esc(k)}</td></tr>`)
+    .join("");
+  visSteg("reservekortet");
+  $("reserveKopi").onclick = () => {
+    navigator.clipboard.writeText(koder.join("\n"))
+      .then(() => melding($("loginMsg"), "Kodene er kopiert.", "ok"))
+      .catch(() => melding($("loginMsg"), "Klarte ikke kopiere — merk og kopier for hånd.", "err"));
+  };
+  $("reserveOk").onclick = () => visPanel().catch((e) => melding($("loginMsg"), e.message, "err"));
+}
+
 $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const kandidat = $("token").value.trim();
-  if (!kandidat) return melding($("loginMsg"), "Skriv inn admin-nøkkelen.", "err");
+  const epost = $("lEpost").value.trim();
+  const passord = $("lPassord").value;
+  if (!epost || !passord) return melding($("loginMsg"), "Fyll inn e-post og passord.", "err");
+
   $("loginBtn").disabled = true;
-  const forrige = token;
-  token = kandidat;
+  melding($("loginMsg"), "", "ok");
   try {
-    await lastData();
-    sessionStorage.setItem(KEY, token);
-    $("login").classList.add("hidden");
-    $("panel").classList.remove("hidden");
-    $("token").value = "";
+    const r = await api("/api/v1/admin/auth/login", { method: "POST", body: { epost, passord } });
+    if (r.trinn === "innlogget") return await visPanel();
+    if (r.trinn === "totrinn") {
+      visSteg("totpForm");
+      $("lKode").focus();
+      return;
+    }
+    if (r.trinn === "totrinn-oppsett") {
+      const o = await api("/api/v1/admin/auth/totp", {
+        method: "POST", body: { handling: "oppsett-start" },
+      });
+      // Supabase kan gi QR-koden enten som rå SVG eller som data-URI.
+      // Begge holder seg innenfor policyen; en ekstern URL ville ikke
+      // gjort det, og avvises derfor framfor å gi et tomt felt.
+      const qr = o.qrKode || "";
+      $("qr").innerHTML = "";
+      if (qr.trimStart().startsWith("<svg")) {
+        $("qr").innerHTML = qr;
+      } else if (qr.startsWith("data:")) {
+        const img = document.createElement("img");
+        img.src = qr;
+        img.alt = "QR-kode for authenticator-appen";
+        img.style.display = "block";
+        $("qr").append(img);
+      } else {
+        $("qr").textContent = "Fikk ikke vist QR-koden — bruk nøkkelen under.";
+      }
+      $("hemmelighet").textContent = o.hemmelighet || "";
+      visSteg("oppsett");
+      $("oKode").focus();
+      return;
+    }
+    melding($("loginMsg"), "Uventet svar fra serveren.", "err");
   } catch (err) {
-    token = forrige;
-    melding($("loginMsg"), err.message, "err");
+    melding($("loginMsg"), err.message === "Du er ikke logget inn."
+      ? "Feil e-post eller passord." : err.message, "err");
   } finally {
     $("loginBtn").disabled = false;
   }
 });
 
-$("logoutBtn").addEventListener("click", () => {
-  sessionStorage.removeItem(KEY);
-  token = "";
-  $("panel").classList.add("hidden");
-  $("login").classList.remove("hidden");
+$("totpForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kode = $("lKode").value.trim();
+  if (!kode) return melding($("loginMsg"), "Skriv inn koden.", "err");
+  $("totpBtn").disabled = true;
+  try {
+    const r = await api("/api/v1/admin/auth/totp", { method: "POST", body: { kode } });
+    if (r.medReservekode && r.reservekoderIgjen <= 2) {
+      melding($("msg"), `Du har ${r.reservekoderIgjen} reservekoder igjen. Lag nye snart.`, "warn");
+    }
+    await visPanel();
+  } catch (err) {
+    melding($("loginMsg"), err.message === "Du er ikke logget inn."
+      ? "Koden stemmer ikke." : err.message, "err");
+    $("lKode").value = "";
+  } finally {
+    $("totpBtn").disabled = false;
+  }
+});
+
+$("oppsettForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const kode = $("oKode").value.trim();
+  if (!kode) return melding($("loginMsg"), "Skriv inn koden appen viser.", "err");
+  $("oppsettBtn").disabled = true;
+  try {
+    const r = await api("/api/v1/admin/auth/totp", {
+      method: "POST", body: { handling: "oppsett-fullfor", kode },
+    });
+    visReservekoder(r.reservekoder ?? []);
+  } catch (err) {
+    melding($("loginMsg"), err.message, "err");
+    $("oKode").value = "";
+  } finally {
+    $("oppsettBtn").disabled = false;
+  }
+});
+
+$("avbrytBtn").addEventListener("click", visInnlogging);
+
+$("logoutBtn").addEventListener("click", async () => {
+  try { await api("/api/v1/admin/auth/meg", { method: "POST", body: {} }); } catch { /* uansett ut */ }
+  visInnlogging();
 });
 
 $("reloadBtn").addEventListener("click", () => lastData().catch((e) => melding($("msg"), e.message, "err")));
@@ -465,7 +647,27 @@ async function lastData() {
   $("serverState").innerHTML = h?.ok
     ? `<span class="chip ok">server ok</span>`
     : `<span class="chip crit">server feiler</span>`;
-  $("envLabel").textContent = `Lisensadministrasjon · nøkkel ${h?.sjekker?.signingKey ?? "ukjent"}`;
+
+  /*
+   * Hvem er jeg, og hva ser jeg? En kundeadmin skal aldri være i tvil om
+   * at hun ser et utsnitt og ikke helheten — ellers blir «kunden finnes
+   * ikke» et mysterium i stedet for en grense.
+   */
+  const m = data.meg ?? {};
+  $("envLabel").textContent =
+    `${m.navn ?? "ukjent"} · ${m.rolle ?? "?"}` +
+    (m.alleKunder === false ? " · avgrenset til dine kunder" : "");
+
+  // Skjul det som uansett ville blitt avvist. Serveren håndhever.
+  for (const [id, lov] of [
+    ["tenantBtn", m.kanEndre], ["poolBtn", m.kanEndre],
+    ["importBtn", m.kanEndre], ["settingsBtn", m.kanEndreGlobaltOppsett],
+  ]) {
+    const el = $(id);
+    if (el) el.disabled = lov === false;
+  }
+  $("settingsInfo").textContent = m.kanEndreGlobaltOppsett === false
+    ? "Bare eier kan endre dette." : "";
 }
 
 function tegnStats() {
@@ -760,12 +962,17 @@ $("poolBtn").addEventListener("click", async () => {
   }
 });
 
-/* ---------- Oppstart: gjenopprett økt ---------- */
-if (token) {
-  lastData()
-    .then(() => { $("login").classList.add("hidden"); $("panel").classList.remove("hidden"); })
-    .catch(() => { sessionStorage.removeItem(KEY); token = ""; });
-}
+/* ---------- Oppstart: har vi allerede en levende økt? ---------- */
+(async () => {
+  // Rått kall: en 401 her er normalt — det betyr bare at ingen er
+  // logget inn ennå, og skal ikke vises som en feil.
+  const { status } = await api("/api/v1/admin/auth/meg", { raatt: true });
+  if (status === 200) {
+    await visPanel().catch(() => visInnlogging());
+  } else {
+    visInnlogging();
+  }
+})();
 </script>
 </body>
 </html>

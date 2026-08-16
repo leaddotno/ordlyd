@@ -3,7 +3,7 @@
  * Semantikken speiler Postgres-skjemaet i supabase/migrations/.
  */
 
-import type { Db, EntryStatus, Install, LicensePool, PoolEntry, Tenant } from "./types.js";
+import type { AuditMeta, Db, EntryStatus, Install, LicensePool, PoolEntry, Tenant } from "./types.js";
 
 export class MemoryDb implements Db {
   tenants = new Map<string, Tenant>();
@@ -19,7 +19,7 @@ export class MemoryDb implements Db {
     prove_dager: 60,
     prove_fornyelse_tillatt: true,
   };
-  auditLog: Array<{ actor: string; action: string; details: Record<string, unknown> }> = [];
+  auditLog: Array<{ actor: string; action: string; details: Record<string, unknown> } & AuditMeta> = [];
 
   async getTenant(id: string) {
     return this.tenants.get(id) ?? null;
@@ -126,7 +126,12 @@ export class MemoryDb implements Db {
     this.receipts.push(r);
   }
 
-  async audit(actor: string, action: string, details: Record<string, unknown>) {
-    this.auditLog.push({ actor, action, details });
+  async audit(
+    actor: string,
+    action: string,
+    details: Record<string, unknown>,
+    meta: AuditMeta = {},
+  ) {
+    this.auditLog.push({ actor, action, details, ...meta });
   }
 }

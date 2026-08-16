@@ -11,6 +11,33 @@
  */
 
 import type { Sql } from "./db-postgres.js";
+import type { Innlogget } from "./tilgang.js";
+
+/**
+ * Kundeavgrensningen, oversatt til noe spørringene kan bruke.
+ *
+ * `alle` er true for eier og forvalter. Ellers gjelder `liste`, og en
+ * TOM liste betyr at kontoen ikke ser noe — da svarer funksjonene uten
+ * å spørre databasen i det hele tatt. Det er både raskere og fjerner
+ * spørsmålet om hvordan et tomt uuid-array skal types i Postgres.
+ */
+function omfang(meg: Innlogget): { alle: boolean; liste: string[]; tomt: boolean } {
+  const alle = meg.kunder === null;
+  const liste = meg.kunder ?? [];
+  return { alle, liste, tomt: !alle && liste.length === 0 };
+}
+
+/**
+ * Ser den innloggede denne poolen?
+ *
+ * Slår opp kunden bak poolen. Brukes av endepunktene som tar imot en
+ * pool-id utenfra — uten dette kunne en kundeadmin lest en fremmed
+ * kundes lisensliste ved å gjette en id.
+ */
+export async function poolensKunde(sql: Sql, poolId: string): Promise<string | null> {
+  const rows = await sql`select tenant_id from license_pools where id = ${poolId} limit 1`;
+  return rows[0]?.tenant_id ?? null;
+}
 
 /** Terskler for å flagge en lisens som mulig delt på nettet. */
 export const FLAG_MIN_INSTALLS = 8;
@@ -36,7 +63,9 @@ export interface TenantSummary {
   pools: PoolSummary[];
 }
 
-export async function overview(sql: Sql): Promise<TenantSummary[]> {
+export async function overview(sql: Sql, meg: Innlogget): Promise<TenantSummary[]> {
+  const { alle, liste, tomt } = omfang(meg);
+  if (tomt) return [];
   const rows = await sql`
     select
       t.id as tenant_id, t.slug, t.name, t.status, t.valid_to,
@@ -50,6 +79,7 @@ export async function overview(sql: Sql): Promise<TenantSummary[]> {
                 where e2.pool_id = p.id), 0)::int as installasjoner
     from tenants t
     left join license_pools p on p.tenant_id = t.id
+    where ${alle} or t.id::text = any(${liste})
     order by t.name, p.name nulls first`;
 
   const byTenant = new Map<string, TenantSummary>();
@@ -129,7 +159,9 @@ export interface FlaggedRow extends EntryRow {
  * Lisenser med uvanlig bruksmønster. Ingen automatisk stenging — dette er
  * en liste et menneske skal vurdere, slik planen krever.
  */
-export async function flagged(sql: Sql): Promise<FlaggedRow[]> {
+export async function flagged(sql: Sql, meg: Innlogget): Promise<FlaggedRow[]> {
+  const { alle, liste, tomt } = omfang(meg);
+  if (tomt) return [];
   const rows = await sql`
     select * from (
       select
@@ -144,6 +176,7 @@ export async function flagged(sql: Sql): Promise<FlaggedRow[]> {
       join license_pools p on p.id = e.pool_id
       join tenants t on t.id = p.tenant_id
       where e.status = 'aktiv'
+        and (${alle} or t.id::text = any(${liste}))
     ) x
     where x.installasjoner > ${FLAG_MIN_INSTALLS} or x.nett_7d > ${FLAG_MIN_NETS_7D}
     order by x.installasjoner desc, x.nett_7d desc
@@ -167,16 +200,34 @@ export interface AuditRow {
   aktoer: string;
   handling: string;
   detaljer: unknown;
+  /** null = global handling, synlig bare for dem som ser alle kunder. */
+  kunde: string | null;
 }
 
-export async function auditTail(sql: Sql, limit = 50): Promise<AuditRow[]> {
+/**
+ * Revisjonsloggen, avgrenset etter samme regel som alt annet.
+ *
+ * Linjer UTEN kunde er globale — innstillinger, administratorstyring —
+ * og vises bare for dem som ser alle kunder. En kundeadmin skal ikke
+ * kunne slutte seg til at systemet har andre kunder ved å lese loggen,
+ * og en revisor er der for sin egen kunde, ikke for å følge med på
+ * driften. Samme regel som serLoggLinje() i tilgang.ts, her uttrykt i SQL.
+ */
+export async function auditTail(sql: Sql, meg: Innlogget, limit = 50): Promise<AuditRow[]> {
+  const { alle, liste, tomt } = omfang(meg);
+  if (tomt) return [];
   const rows = await sql`
-    select at, actor, action, details from audit_log
+    select at, actor, action, details,
+           to_jsonb(audit_log) ->> 'tenant_id' as tenant_id
+    from audit_log
+    where ${alle}
+       or (to_jsonb(audit_log) ->> 'tenant_id') = any(${liste})
     order by id desc limit ${limit}`;
   return rows.map((r) => ({
     tid: new Date(r.at).toISOString(),
     aktoer: r.actor,
     handling: r.action,
     detaljer: r.details,
+    kunde: r.tenant_id ?? null,
   }));
 }

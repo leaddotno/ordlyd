@@ -56,6 +56,21 @@ export interface Install {
   lastSeenAt: number | null;
 }
 
+export type AktorType = "admin" | "apitoken" | "system" | "cron" | "bootstrap";
+
+/**
+ * Tilleggsopplysninger på en logglinje.
+ *
+ * `tenantId` er det som gjør at en revisor kan se sin egen kundes
+ * linjer og ingen andres. Er den null, regnes handlingen som global og
+ * vises bare for eier og forvalter — se tilgang.ts.
+ */
+export interface AuditMeta {
+  actorId?: string | null;
+  actorKind?: AktorType;
+  tenantId?: string | null;
+}
+
 export interface Db {
   getTenant(id: string): Promise<Tenant | null>;
   getPool(id: string): Promise<LicensePool | null>;
@@ -106,5 +121,10 @@ export interface Db {
     expiresAt: number;
   }): Promise<void>;
 
-  audit(actor: string, action: string, details: Record<string, unknown>): Promise<void>;
+  audit(
+    actor: string,
+    action: string,
+    details: Record<string, unknown>,
+    meta?: AuditMeta,
+  ): Promise<void>;
 }

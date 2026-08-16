@@ -9,12 +9,17 @@
  */
 
 import { vercelHandler, requireString } from "../../../src/http.js";
-import { getDb, ok, badRequest } from "../../../src/runtime.js";
-import { requireAdmin } from "../../../src/admin-auth.js";
+import { getDb, getSql, ok, badRequest } from "../../../src/runtime.js";
+import { loesInnlogget, erNektet, krevPanelhode, somAktor } from "../../../src/admin-auth.js";
+import { krevEndring, krevKunde } from "../../../src/tilgang.js";
+import { poolensKunde } from "../../../src/admin-queries.js";
 
 export default vercelHandler("POST", async (req) => {
-  const denied = requireAdmin(req.headers);
-  if (denied) return denied;
+  const t = await loesInnlogget(req);
+  if (erNektet(t)) return t.svar;
+  const { meg } = t;
+  const vakt = krevPanelhode(req, meg) ?? krevEndring(meg);
+  if (vakt) return vakt;
 
   const entryId = requireString(req.body, "entryId");
   const status = requireString(req.body, "status");
@@ -25,10 +30,20 @@ export default vercelHandler("POST", async (req) => {
   const entry = await db.getEntry(entryId);
   if (!entry) return badRequest("ukjent lisens");
 
+  // Lisensen tilhører en pool, som tilhører en kunde. En kundeadmin får
+  // nøyaktig samme svar for en fremmed lisens som for en som ikke finnes.
+  const kunde = await poolensKunde(getSql(), entry.poolId);
+  if (!kunde || krevKunde(meg, kunde)) return badRequest("ukjent lisens");
+
   await db.setEntryStatus(entryId, status);
-  await db.audit("superadmin", status === "stengt" ? "steng" : "gjenaapne", {
+  const a = somAktor(meg);
+  await db.audit(a.actor, status === "stengt" ? "steng" : "gjenaapne", {
     entry: entryId,
     grunn: requireString(req.body, "reason") ?? "ikke oppgitt",
+  }, {
+    actorId: a.actorId,
+    actorKind: a.actorKind,
+    tenantId: kunde,
   });
   return ok({ entryId, status, maskertEpost: entry.emailMasked });
-});
+}, { cors: false });

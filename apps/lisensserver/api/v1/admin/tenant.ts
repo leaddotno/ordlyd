@@ -1,17 +1,24 @@
 /**
  * POST /api/v1/admin/tenant — opprett kunde.
  * {slug, name, validTo?}  validTo er en dato «gyldig til og med».
+ *
+ * Krever eier eller forvalter: en kundeadmin styrer sine egne kunder,
+ * men oppretter ikke nye.
  */
 
 import { vercelHandler, requireString } from "../../../src/http.js";
 import { getDb, newId, ok, badRequest } from "../../../src/runtime.js";
-import { requireAdmin } from "../../../src/admin-auth.js";
+import { loesInnlogget, erNektet, krevPanelhode, somAktor } from "../../../src/admin-auth.js";
+import { krevEndring, krevKundeoppretting } from "../../../src/tilgang.js";
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
 export default vercelHandler("POST", async (req) => {
-  const denied = requireAdmin(req.headers);
-  if (denied) return denied;
+  const t = await loesInnlogget(req);
+  if (erNektet(t)) return t.svar;
+  const { meg } = t;
+  const vakt = krevPanelhode(req, meg) ?? krevEndring(meg) ?? krevKundeoppretting(meg);
+  if (vakt) return vakt;
 
   const slug = requireString(req.body, "slug")?.toLowerCase();
   const name = requireString(req.body, "name");
@@ -37,6 +44,12 @@ export default vercelHandler("POST", async (req) => {
     if (String(err).includes("duplicate key")) return badRequest(`kunden «${slug}» finnes allerede`);
     throw err;
   }
-  await db.audit("superadmin", "opprett-kunde", { tenant: id, slug });
+
+  const a = somAktor(meg);
+  await db.audit(a.actor, "opprett-kunde", { tenant: id, slug }, {
+    actorId: a.actorId,
+    actorKind: a.actorKind,
+    tenantId: id,
+  });
   return ok({ tenantId: id, slug, name });
-});
+}, { cors: false });

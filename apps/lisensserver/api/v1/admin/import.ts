@@ -4,21 +4,23 @@
  * Svaret inneholder klartekstkodene. Det er ENGANGS-EKSPORTEN som gis
  * videre til foreningen eller kommunen — serveren beholder bare hasher,
  * så listen kan aldri hentes ut på nytt.
- *
- * Midlertidig autentisering med delt hemmelighet. Erstattes av
- * passkey-innlogging når superadmin-panelet bygges (planens kapittel 4).
  */
 
 import { vercelHandler, requireString } from "../../../src/http.js";
-import { getDb, getPepper, newId, ok, badRequest } from "../../../src/runtime.js";
-import { requireAdmin } from "../../../src/admin-auth.js";
+import { getDb, getSql, getPepper, newId, ok, badRequest } from "../../../src/runtime.js";
+import { loesInnlogget, erNektet, krevPanelhode, somAktor } from "../../../src/admin-auth.js";
+import { krevEndring, krevKunde } from "../../../src/tilgang.js";
+import { poolensKunde } from "../../../src/admin-queries.js";
 import { importEntries } from "../../../src/logic.js";
 
 const MAX_EMAILS_PER_CALL = 5000;
 
 export default vercelHandler("POST", async (req) => {
-  const denied = requireAdmin(req.headers);
-  if (denied) return denied;
+  const t = await loesInnlogget(req);
+  if (erNektet(t)) return t.svar;
+  const { meg } = t;
+  const vakt = krevPanelhode(req, meg) ?? krevEndring(meg);
+  if (vakt) return vakt;
 
   const poolId = requireString(req.body, "poolId");
   const emails = req.body.emails;
@@ -29,7 +31,17 @@ export default vercelHandler("POST", async (req) => {
   }
   if (!emails.every((e) => typeof e === "string")) return badRequest("emails må inneholde bare tekst");
 
-  const result = await importEntries(getDb(), getPepper(), poolId, emails as string[], newId);
+  const kunde = await poolensKunde(getSql(), poolId);
+  if (!kunde || krevKunde(meg, kunde)) return { status: 404, body: { feil: "ukjent-pool" } };
+
+  const a = somAktor(meg);
+  const result = await importEntries(getDb(), getPepper(), poolId, emails as string[], newId, {
+    actor: a.actor,
+    actorId: a.actorId,
+    actorKind: a.actorKind,
+    tenantId: kunde,
+  });
+
   return ok({
     antallImportert: result.imported.length,
     antallFlyttet: result.moved.length,
@@ -46,4 +58,4 @@ export default vercelHandler("POST", async (req) => {
     // Eneste gang de nye kodene finnes i klartekst. Lagre dem trygt nå.
     lisenser: result.imported,
   });
-});
+}, { cors: false });
