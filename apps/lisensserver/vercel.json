@@ -21,7 +21,6 @@
       "permanent": false
     },
     {
-      "//": "Panelet skal bare finnes på panel.ordlyd.no. Da holder øktkapselen seg på et annet vertsnavn enn det utvidelsen snakker med, og skillet blir reelt framfor bare tilsiktet.",
       "source": "/admin/:sti*",
       "missing": [{ "type": "host", "value": "panel.ordlyd.no" }],
       "destination": "https://panel.ordlyd.no/admin/:sti*",
