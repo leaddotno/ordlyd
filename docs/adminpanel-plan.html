@@ -250,35 +250,45 @@
   <li><strong>AAL</strong> — «authenticator assurance level». <code>aal1</code> betyr passord bekreftet, <code>aal2</code> betyr at også totrinn er bekreftet. Det er nøyaktig kranen vi trenger: <code>eier</code>, <code>forvalter</code> og <code>kundeadmin</code> slippes bare inn på <code>aal2</code>.</li>
 </ul>
 
-<div class="callout warn">
-  <span class="tag">Et funn som koster penger — eller litt kode</span>
+<div class="callout ok">
+  <span class="tag">Verifisert mot gratisplanen</span>
   <p>
-    Supabases beskyttelse mot <strong>lekkede passord</strong> (oppslag mot
-    HaveIBeenPwned) <strong>krever Pro-planen</strong>. Er dere på gratisplanen, får dere
-    den ikke.
+    <strong>TOTP er inkludert på Free</strong> («Basic Multi-Factor Auth»), og
+    <strong>egendefinert SMTP er det også</strong>. Planen holder uten å oppgradere.
   </p>
   <p>
-    Det finnes en gratis vei rundt som vi uansett kontrollerer selv: siden vi setter
-    passord gjennom vårt eget endepunkt (se under), gjør vi HIBP-oppslaget der.
-    API-et bruker <em>k-anonymitet</em> — vi SHA-1-hasher passordet, sender bare de fem
-    første tegnene av hashen til <code>api.pwnedpasswords.com/range/…</code> og leter etter
-    resten i svaret. Passordet forlater aldri serveren. Ingen konto, ingen kostnad.
+    Tre auth-funksjoner er Pro-only, og ingen av dem treffer oss: <em>leaked password
+    protection</em> (droppet, se under), <em>session timeouts</em> og <em>single session
+    per user</em> — de to siste fordi vi styrer øktene i vår egen
+    <code>admin_sessions</code>. Valget om å ikke bruke Supabase-tokens i nettleseren
+    betaler seg altså med én gang.
   </p>
-  <p class="verdict">Anbefaling: bygg HIBP-sjekken selv uansett. Da er den uavhengig av hvilken Supabase-plan dere er på i framtiden.</p>
 </div>
 
 <h3>Passordkravene</h3>
-<p>
-  «Trygt passord» bør bygges etter gjeldende anbefaling (NIST SP 800-63B), som er mindre
-  intuitiv enn den gamle skolen:
-</p>
+<p>Avgjort: <strong>minst 10 tegn, bokstaver, minst ett tall og minst ett spesialtegn.</strong>
+  Ingen kontroll mot lekkede passord, ingen tvungen rullering.</p>
 <ul>
-  <li><strong>Minst 12 tegn.</strong> Lengde er den eneste egenskapen som virkelig betyr noe.</li>
-  <li><strong>Ingen krav om store bokstaver, tall og spesialtegn.</strong> Sammensetningsregler gjør passord <em>dårligere</em> — de presser folk mot <code>Sommer2026!</code>, som er kort, forutsigbart og allerede i alle ordlister.</li>
-  <li><strong>Sjekk mot lekkede passord</strong> ved hvert bytte. Dette er tiltaket som faktisk fanger de svake.</li>
-  <li><strong>Ingen tvungen rullering.</strong> Tvungen bytte hver 90. dag gir <code>Sommer2026!</code> → <code>Sommer2027!</code>. Byttes bare ved mistanke om kompromittering.</li>
+  <li>Kravet håndheves i vårt eget endepunkt, ikke i Supabase-innstillingene, slik at feilmeldingen kan være på norsk og presis om hva som mangler.</li>
   <li>Tillat hele tegnsettet og innliming, slik at passordbehandlere fungerer.</li>
+  <li>Ingen tvungen rullering — bytte skjer ved mistanke om kompromittering. Tvungen bytte hver 90. dag gir bare <code>Sommer2026!</code> → <code>Sommer2027!</code>.</li>
 </ul>
+
+<div class="callout warn">
+  <span class="tag">Én konsekvens verdt å kjenne, ikke en innvending</span>
+  <p>
+    Med sammensetningskrav og uten lekkasjekontroll er <code>Sommer2026!</code> et gyldig
+    passord: ti tegn, bokstaver, tall og spesialtegn. Det står også i praktisk talt enhver
+    ordliste en angriper bruker.
+  </p>
+  <p>
+    Billigste mottiltak som ikke rører kravet ditt: en liten lokal sperreliste i koden — et
+    par hundre åpenbare norske mønstre (<code>passord</code>, <code>sommer</code>,
+    <code>ordlyd</code>, årstall, tastaturrekker). Null kostnad, null avhengighet, og den
+    fanger nettopp det sammensetningsreglene slipper gjennom. Jeg bygger den med mindre du
+    sier nei — den kan alltid tømmes til en tom liste.
+  </p>
+</div>
 
 <h3>Hvorfor panelet ikke snakker direkte med Supabase</h3>
 <p>
@@ -290,7 +300,7 @@
 <pre><code>POST /api/v1/admin/auth/login      {epost, passord}   → «trenger totrinn» eller økt
 POST /api/v1/admin/auth/totp       {utfordring, kode} → økt
 POST /api/v1/admin/auth/logout
-POST /api/v1/admin/auth/passord    {gammelt, nytt}    → HIBP-sjekk her
+POST /api/v1/admin/auth/passord    {gammelt, nytt}    → passordkravet håndheves her
 POST /api/v1/admin/auth/totp/start                    → QR-kode ved førstegangs oppsett
 POST /api/v1/admin/auth/gjenoppretting {kode}         → innlogging med reservekode</code></pre>
 
@@ -299,7 +309,7 @@ POST /api/v1/admin/auth/gjenoppretting {kode}         → innlogging med reserve
   <li><strong>Ingen nøkkel i nettleseren.</strong> Prinsippet er allerede etablert i dette prosjektet — utvidelsen har aldri fått en Supabase-nøkkel. Panelet er den mest verdifulle siden i systemet; den bør ikke være det første stedet vi bryter regelen.</li>
   <li><strong>Innholdssikkerhetspolicyen forblir stram.</strong> Panelet trenger da ikke <code>connect-src</code> mot et fremmed domene.</li>
   <li><strong>Vi eier øktene.</strong> En rad i vår egen <code>admin_sessions</code> kan rives umiddelbart. Med Supabase-tokens i nettleseren må du vente til de utløper.</li>
-  <li><strong>Reservekoder og HIBP</strong> hører hjemme hos oss uansett, siden Supabase ikke har dem.</li>
+  <li><strong>Reservekoder og passordkravet</strong> hører hjemme hos oss uansett — Supabase har ikke reservekoder, og norsk feilmelding om hva som mangler får vi bare i vårt eget endepunkt.</li>
 </ol>
 
 <h3>Reservekoder</h3>
@@ -343,24 +353,24 @@ POST /api/v1/admin/auth/gjenoppretting {kode}         → innlogging med reserve
 <thead><tr><th>Rolle</th><th>Omfang</th><th>Totrinn</th><th>Kan</th><th>Kan ikke</th></tr></thead>
 <tbody>
 <tr>
-  <td><code>eier</code></td>
+  <td><code>eier</code><br><span class="chip ok">deg</span></td>
   <td>Alle kunder</td>
   <td><span class="chip crit">påkrevd</span></td>
-  <td>Alt, inkludert å opprette og fjerne administratorer og endre globale innstillinger</td>
+  <td>Alt. Den eneste rollen som kan opprette og fjerne administratorer, tildele kunder og endre globale innstillinger.</td>
   <td>—</td>
 </tr>
 <tr>
   <td><code>forvalter</code></td>
   <td>Alle kunder</td>
   <td><span class="chip crit">påkrevd</span></td>
-  <td>Alt om lisenser: opprette kunder og pooler, importere, stenge, gjenåpne, flytte, søke</td>
-  <td>Administrere administratorer. Endre globale innstillinger som prøvelengde.</td>
+  <td>Support og lisensarbeid for alle kunder: opprette kunder og pooler, importere, aktivere, deaktivere, flytte, søke</td>
+  <td>Opprette eller endre administratorer. Endre globale innstillinger som prøvelengde.</td>
 </tr>
 <tr>
   <td><code>kundeadmin</code></td>
   <td><span class="chip warn">tildelte kunder</span></td>
   <td><span class="chip crit">påkrevd</span></td>
-  <td>Som forvalter, men bare for sine kunder</td>
+  <td>Nøyaktig det samme som forvalter, men bare innenfor de kundene du tildeler</td>
   <td>Se at andre kunder finnes i det hele tatt</td>
 </tr>
 <tr>
@@ -373,6 +383,26 @@ POST /api/v1/admin/auth/gjenoppretting {kode}         → innlogging med reserve
 </tbody>
 </table>
 </div>
+
+<div class="callout ok">
+  <span class="tag">Hvorfor kundeadmin er den mest nyttige rollen</span>
+  <p>
+    Den tjener to helt ulike formål med samme mekanikk, og det er derfor den er verdt å
+    bygge riktig:
+  </p>
+  <ul style="margin-bottom:0">
+    <li><strong>Utover:</strong> en ansatt hos en kunde som styrer bedriftens egne lisenser selv. Da slipper du å være mellomledd for hver eneste inn- og utmelding.</li>
+    <li><strong>Innover:</strong> en som jobber for deg, men som med vilje skal begrenses til noen bestemte kunder — <code>kundeadmin</code> i stedet for <code>forvalter</code>. Samme rolle, motsatt hensikt.</li>
+  </ul>
+</div>
+
+<p>
+  Forskjellen mellom <code>forvalter</code> og <code>kundeadmin</code> er derfor bare
+  <em>omfang</em>, ikke <em>rettigheter</em>. Det er en bevisst forenkling: én
+  tillatelsesmodell å teste, og du bytter en medarbeider mellom bred og smal tilgang ved å
+  endre rollen og tildele kunder — ikke ved å krysse av i en liste over enkeltrettigheter
+  som ingen holder oversikt over etter et halvår.
+</p>
 
 <p>
   <strong>Regelen for <code>revisor</code>:</strong> minst én kunde må være tildelt.
@@ -649,8 +679,22 @@ create index audit_log_tenant_idx on audit_log (tenant_id, at desc);</code></pre
 </div>
 
 <!-- ============================================================ -->
-<h2 id="geo"><span class="num">09</span> Geografisk avgrensning — forberedt, ikke skrudd på</h2>
-<p class="lede">Du vil ha det tilrettelagt nå og aktivert senere. Her er hvordan, og hvor grensene går.</p>
+<h2 id="geo"><span class="num">09</span> Geografisk avgrensning — utsatt til panelet står</h2>
+<p class="lede">Avgjort: dette gjøres <em>etter</em> at panelet er pusset opp og i daglig bruk. Kapittelet står som forarbeid, ikke som en oppgave.</p>
+
+<div class="callout ok">
+  <span class="tag">Rekkefølgen er riktig</span>
+  <p>
+    Å bygge landsperren sist er det fornuftige valget, og ikke bare fordi det haster mindre:
+    sperren er lett å skru på når alt annet virker, men vanskelig å feilsøke <em>gjennom</em>
+    hvis noe annet er halvferdig samtidig. Får du ikke logget inn, vil du vite om det er
+    passordet, totrinnet eller landet — ikke sitte med alle tre på én gang.
+  </p>
+  <p>
+    Ingenting i A1–A5 låser noe her. Sperren er ren middleware foran det ferdige panelet og
+    kan legges på uten å endre en linje av det som da står.
+  </p>
+</div>
 
 <div class="callout crit">
   <span class="tag">Det viktigste å ha klart før dette bygges</span>
@@ -887,8 +931,8 @@ if (HANDHEV && !TILLATTE_LAND.includes(land)) {
   <td>
     Sjekk Preview-miljøet. Rullér <code>ADMIN_TOKEN</code>. Migrasjon 0004. Supabase Auth
     med egendefinert SMTP mot Resend. Innlogging med passord og TOTP gjennom egne
-    endepunkter, med HIBP-sjekk og reservekoder. Økt med informasjonskapsel. Rollene
-    <code>eier</code>, <code>forvalter</code>, <code>revisor</code>. Tilskrevet revisjonsspor
+    endepunkter, med reservekoder. Økt med informasjonskapsel. Rollene
+    <code>eier</code> og <code>forvalter</code>. Tilskrevet revisjonsspor
     med <code>tenant_id</code>. Nødinngangen omgjort etter N1–N4.
   </td>
   <td><strong>Gi én person tilgang og se hva hun gjør.</strong></td>
@@ -896,7 +940,7 @@ if (HANDHEV && !TILLATTE_LAND.includes(land)) {
 <tr>
   <td><strong>A2</strong></td>
   <td>Kundeavgrensning gjennomtvunget i typene (kap. 05), rollene <code>kundeadmin</code> og avgrenset <code>revisor</code>, med testene som beviser at ingen ser over gjerdet.</td>
-  <td>Gi en kommune tilgang til bare sine egne — når avtalen er på plass.</td>
+  <td>Gi en kunde tilgang til bare sine egne — eller begrense en av dine egne folk.</td>
 </tr>
 <tr>
   <td><strong>A3</strong></td>
@@ -915,8 +959,13 @@ if (HANDHEV && !TILLATTE_LAND.includes(land)) {
 </tr>
 <tr>
   <td><strong>A6</strong></td>
-  <td>Geo-middleware, bygget men med <code>GEO_HANDHEV=0</code>. Driftsrutine. Daglig sammendrag. Gjenopprettingsøvelse.</td>
-  <td>Skru på landsperren den dagen du vil, med én miljøvariabel.</td>
+  <td>Driftsrutine. Daglig sammendrag på e-post. Gjenopprettingsøvelse.</td>
+  <td>Overlevere driften uten å være tilgjengelig selv.</td>
+</tr>
+<tr>
+  <td><strong>A7</strong><br><span class="chip warn">utsatt</span></td>
+  <td>Geo-middleware med <code>GEO_HANDHEV=0</code>, logging av avviste, IP-unntaksliste. Sjekk først om Vercel-planen har brannmur med landblokkering — da er det konfigurasjon i stedet for kode.</td>
+  <td>Skru på landsperren med én miljøvariabel, når panelet ellers står støtt.</td>
 </tr>
 </tbody>
 </table>
@@ -986,26 +1035,36 @@ if (HANDHEV && !TILLATTE_LAND.includes(land)) {
 </div>
 
 <!-- ============================================================ -->
-<h2 id="avgjorelser"><span class="num">16</span> Det jeg fortsatt trenger svar på</h2>
+<h2 id="avgjorelser"><span class="num">16</span> Avgjort, og det som står igjen</h2>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Spørsmål</th><th>Avgjort</th></tr></thead>
+<tbody>
+<tr><td>Supabase-plan</td><td>Gratis. Verifisert at TOTP og egendefinert SMTP er inkludert, og at de Pro-låste auth-funksjonene ikke treffer oss.</td></tr>
+<tr><td>Passordkrav</td><td>Minst 10 tegn, bokstaver, minst ett tall og ett spesialtegn. Ingen kontroll mot lekkede passord.</td></tr>
+<tr><td>Roller i A1</td><td><code>eier</code> (deg) og <code>forvalter</code>. <code>kundeadmin</code> og <code>revisor</code> kommer i A2.</td></tr>
+<tr><td><code>lisens.ordlyd.no/admin/</code></td><td>Skal slutte å svare. Lisenssystemet på samme vertsnavn er uberørt.</td></tr>
+<tr><td>Landsperre</td><td>Utsatt til A7, etter at panelet er i daglig bruk.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Det som fortsatt står åpent</h3>
 
 <div class="card">
-  <div class="dh"><span class="did">V1</span><span class="dt">Er dere på Supabase Pro eller gratisplanen?</span></div>
-  <p>Avgjør om HIBP-sjekken følger med eller må bygges. Anbefalingen min er å bygge den selv uansett — da er den uavhengig av plan — men svaret påvirker om det haster.</p>
+  <div class="dh"><span class="did">Å1</span><span class="dt">Har Preview-miljøet i Vercel <code>DATABASE_URL</code>?</span></div>
+  <p>Kan ikke sjekkes herfra. Er den satt, har hver gren-utrulling en offentlig URL med full tilgang til produksjonsdataene. Første punkt i A1.</p>
 </div>
 
 <div class="card">
-  <div class="dh"><span class="did">V2</span><span class="dt">Hvem er den første, og i hvilken rolle?</span></div>
-  <p>En kollega hos fylkeskommunen er <code>forvalter</code> og krever ingenting ekstra — da holder A1. En ekstern <code>kundeadmin</code> eller <code>revisor</code> krever databehandleravtale først, og da må A2 med.</p>
+  <div class="dh"><span class="did">Å2</span><span class="dt">Sperreliste for åpenbare passord — ja eller nei?</span></div>
+  <p>Et par hundre norske mønstre, lokalt i koden, som fanger nettopp det sammensetningskravet slipper gjennom. Jeg bygger den med mindre du sier fra.</p>
 </div>
 
 <div class="card">
-  <div class="dh"><span class="did">V3</span><span class="dt">Skal <code>lisens.ordlyd.no/admin/</code> slutte å svare?</span></div>
-  <p>Anbefalt ja — panelet bare på <code>panel.ordlyd.no</code>. Gir en ekte skillelinje mellom adminkapselen og alt utvidelsen snakker med.</p>
-</div>
-
-<div class="card">
-  <div class="dh"><span class="did">V4</span><span class="dt">Har Vercel-planen deres brannmur med landblokkering?</span></div>
-  <p>I så fall gjøres kap. 09 som konfigurasjon framfor kode. Verdt ett blikk i dashbordet før A6.</p>
+  <div class="dh"><span class="did">Å3</span><span class="dt">Databehandleravtale før første eksterne kundeadmin</span></div>
+  <p>Blokkerer ikke A1, men må være på plass før en ansatt hos en kunde får konto. Ikke min avgjørelse — men den bør ikke oppdages i etterkant.</p>
 </div>
 
 <footer>
