@@ -134,6 +134,8 @@ export async function flagged(sql: Sql): Promise<FlaggedRow[]> {
     select * from (
       select
         e.id, e.email_masked, e.status, e.last_used_at,
+        (to_jsonb(e) ->> 'valid_to') as valid_to,
+        to_jsonb(e) ->> 'source' as source,
         t.name as kunde, p.name as pool,
         coalesce((select count(*) from installs i where i.entry_id = e.id), 0)::int as installasjoner,
         coalesce((select count(distinct n.net_hash) from usage_nets n
@@ -153,6 +155,8 @@ export async function flagged(sql: Sql): Promise<FlaggedRow[]> {
     sistBrukt: r.last_used_at ? new Date(r.last_used_at).toISOString() : null,
     installasjoner: r.installasjoner,
     nett7d: r.nett_7d,
+    gyldigTil: r.valid_to ? String(r.valid_to).slice(0, 10) : null,
+    kilde: r.source ?? "import",
     kunde: r.kunde,
     pool: r.pool,
   }));

@@ -98,6 +98,12 @@ export const CORS_HEADERS: Record<string, string> = {
 export const ok = (body: unknown): HttpResponse => ({ status: 200, body });
 export const badRequest = (feil: string): HttpResponse => ({ status: 400, body: { feil } });
 export const unauthorized = (): HttpResponse => ({ status: 401, body: { feil: "ikke-autorisert" } });
+/**
+ * 401 betyr «jeg vet ikke hvem du er», 403 «jeg vet hvem du er, og du
+ * får ikke». Skillet er viktig for panelet: 401 skal sende deg til
+ * innlogging, 403 skal ikke — da er du logget inn, bare uten rettigheten.
+ */
+export const forbidden = (feil = "ikke-tillatt"): HttpResponse => ({ status: 403, body: { feil } });
 export const tooManyRequests = (): HttpResponse => ({
   status: 429,
   body: { feil: "for-mange-forsok" },
