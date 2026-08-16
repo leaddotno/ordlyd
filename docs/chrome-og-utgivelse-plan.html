@@ -1,0 +1,666 @@
+<title>Chrome, Edge og en utgivelseskjede som tåler feil</title>
+<style>
+  :root {
+    --ground: #eef1f1; --surface: #fafbfb; --surface-2: #e6ebeb;
+    --line: #cdd6d6; --line-soft: #dde4e4;
+    --text: #142124; --text-soft: #4a5b5f; --text-faint: #6d7f83;
+    --petrol: #0e3d43; --petrol-soft: #14585f; --brass: #8a6412;
+    --ok: #1c6647; --ok-bg: #dcebe3;
+    --warn: #8a5f08; --warn-bg: #f2e8d2;
+    --crit: #97302a; --crit-bg: #f2dedc;
+    --code-bg: #e8eded;
+    --skygge: 0 1px 2px rgba(16,32,36,.06), 0 8px 24px -16px rgba(16,32,36,.28);
+    --serif: Constantia, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1215; --surface: #111c20; --surface-2: #17252a;
+      --line: #2b3d42; --line-soft: #223236;
+      --text: #dde7e8; --text-soft: #a3b4b7; --text-faint: #7d9094;
+      --petrol: #7fc6cc; --petrol-soft: #a5d8dc; --brass: #d4a648;
+      --ok: #6fc79b; --ok-bg: #143024;
+      --warn: #d9ad55; --warn-bg: #33280f;
+      --crit: #e8938c; --crit-bg: #371917;
+      --code-bg: #16242a;
+      --skygge: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 1.25rem 6rem; background: var(--ground); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 58rem; margin: 0 auto; }
+  .masthead { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--line); margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint); margin: 0 0 .9rem;
+  }
+  h1 { font-family: var(--serif); font-size: 2.4rem; line-height: 1.15; margin: 0 0 1rem; letter-spacing: -.015em; font-weight: 600; }
+  .standfirst { font-size: 1.12rem; color: var(--text-soft); margin: 0; max-width: 46rem; }
+  h2 {
+    font-family: var(--serif); font-size: 1.55rem; font-weight: 600;
+    margin: 3.2rem 0 .5rem; letter-spacing: -.01em; scroll-margin-top: 1rem;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: .78rem; color: var(--brass);
+    letter-spacing: .1em; display: block; margin-bottom: .3rem; font-weight: 400;
+  }
+  h3 { font-size: 1.02rem; margin: 1.9rem 0 .4rem; letter-spacing: -.005em; }
+  .lede { color: var(--text-soft); font-size: 1.03rem; margin: 0 0 1.4rem; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .42rem; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .1em .35em; border-radius: 3px; }
+  a { color: var(--petrol-soft); }
+  strong { font-weight: 650; }
+
+  .kort {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.15rem 1.35rem; margin: 0 0 1.2rem; box-shadow: var(--skygge);
+  }
+  .dh { display: flex; gap: .7rem; align-items: baseline; margin-bottom: .5rem; }
+  .did {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+    background: var(--petrol); color: var(--surface); padding: .18em .5em;
+    border-radius: 3px; white-space: nowrap;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .did { color: #06171a; } }
+  .dt { font-weight: 650; }
+  .verdict { border-left: 3px solid var(--brass); padding-left: .8rem; color: var(--text-soft); margin: .7rem 0 0; }
+
+  .callout { border-radius: 7px; padding: .9rem 1.15rem; margin: 1.3rem 0; border: 1px solid transparent; }
+  .callout.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .callout.crit { background: var(--crit-bg); border-color: color-mix(in srgb, var(--crit) 25%, transparent); }
+  .callout.ok { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+  .callout p:last-child { margin-bottom: 0; }
+  .tag { display: inline-block; font-family: var(--mono); font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; margin-bottom: .4rem; }
+  .callout.warn .tag { color: var(--warn); }
+  .callout.crit .tag { color: var(--crit); }
+  .callout.ok .tag { color: var(--ok); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 7px; margin: 0 0 1.3rem; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .89rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .67rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); font-weight: 400; background: var(--surface-2); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  pre { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 7px; padding: .9rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: .67rem; letter-spacing: .05em; text-transform: uppercase; padding: .16em .5em; border-radius: 3px; white-space: nowrap; }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.crit { background: var(--crit-bg); color: var(--crit); }
+  .toc { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.35rem; margin-bottom: 2.5rem; }
+  .toc p { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 .6rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .92rem; }
+  .toc li { margin-bottom: .2rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--text-faint); }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Ordlyd · fase B · plan</p>
+  <h1>Chrome, Edge og en utgivelseskjede som tåler feil</h1>
+  <p class="standfirst">
+    Den gode nyheten først: Ordlyd <em>er</em> allerede en Chrome-utvidelse. Ingenting i
+    koden må skrives om. Det som må bygges er ikke kompatibilitet, men disiplin — én
+    pakkekjede som treffer to butikker, og et sted å oppdage feil før 5000 elever gjør det.
+  </p>
+</header>
+
+<div class="toc">
+  <p>Innhold</p>
+  <ol>
+    <li><a href="#kompatibel">Hvor kompatibel er vi allerede?</a></li>
+    <li><a href="#forskjeller">De fire tingene som faktisk skiller</a></li>
+    <li><a href="#chromebook">Chromebook — den store muligheten, og hindringen</a></li>
+    <li><a href="#butikk">Chrome Web Store i praksis</a></li>
+    <li><a href="#produktnokkel">Produktnøkkelen som ikke lenger stemmer</a></li>
+    <li><a href="#ettbygg">Ett bygg, to butikker</a></li>
+    <li><a href="#miljoer">Fire nivåer: lokalt, dev, beta, produksjon</a></li>
+    <li><a href="#devserver">Dev-lisensserveren</a></li>
+    <li><a href="#port">Porten før utgivelse</a></li>
+    <li><a href="#arbeidsflyt">Hvordan vi jobber her</a></li>
+    <li><a href="#faseplan">Faseplan</a></li>
+    <li><a href="#risiko">Risiko</a></li>
+    <li><a href="#avgjorelser">Avgjørelser jeg trenger</a></li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="kompatibel"><span class="num">01</span> Hvor kompatibel er vi allerede?</h2>
+<p class="lede">Jeg gikk gjennom manifestet linje for linje. Konklusjonen er kortere enn ventet.</p>
+
+<div class="callout ok">
+  <span class="tag">Hovedfunnet</span>
+  <p>
+    <strong>Den samme ZIP-en som ligger til godkjenning hos Microsoft, kan lastes opp til
+    Chrome Web Store uten én endring i koden.</strong> Edge <em>er</em> Chromium. Vi har
+    ikke brukt en eneste Edge-spesifikk API, og manifestet inneholder ingen
+    <code>browser_specific_settings</code> eller andre butikkbundne felt.
+  </p>
+</div>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Det manifestet ber om</th><th>Chrome</th><th>Merknad</th></tr></thead>
+<tbody>
+<tr><td><code>manifest_version: 3</code></td><td><span class="chip ok">virker</span></td><td>Chrome krever MV3 for nye utvidelser. Vi er allerede der.</td></tr>
+<tr><td><code>offscreen</code></td><td><span class="chip ok">virker</span></td><td>Chrome 109+. Det er her lyd og DOM lever.</td></tr>
+<tr><td><code>storage</code>, <code>alarms</code></td><td><span class="chip ok">virker</span></td><td>Kjerne-API-er, identiske.</td></tr>
+<tr><td><code>service_worker</code> som modul</td><td><span class="chip ok">virker</span></td><td>Samme motor.</td></tr>
+<tr><td><code>wasm-unsafe-eval</code></td><td><span class="chip ok">virker</span></td><td>Nødvendig for Piper. Chrome tillater det eksplisitt i MV3.</td></tr>
+<tr><td><code>minimum_chrome_version: 116</code></td><td><span class="chip ok">virker</span></td><td>Allerede uttrykt i Chrome-termer, ikke Edge-termer.</td></tr>
+<tr><td><code>content_scripts</code> på <code>&lt;all_urls&gt;</code></td><td><span class="chip warn">virker, men</span></td><td>Teknisk uproblematisk. Det er her Chromes gjennomgang blir strengest — se kap. 04.</td></tr>
+<tr><td>3 <code>host_permissions</code></td><td><span class="chip warn">virker, men</span></td><td>Én av dem peker på et domene som ikke finnes ennå — se kap. 02.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  Det betyr at spørsmålet ikke er «kan vi lage en Chrome-versjon», men «hvordan holder vi to
+  butikkoppføringer i takt uten å publisere feil versjon til feil sted». Det er et
+  prosessproblem, ikke et kodeproblem — og det er dét resten av planen handler om.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="forskjeller"><span class="num">02</span> De fire tingene som faktisk skiller</h2>
+
+<div class="kort">
+  <div class="dh"><span class="did">S1</span><span class="dt">Utvidelsen får ulik ID i hver butikk</span></div>
+  <p>
+    Chrome og Edge tildeler hver sin ID. Det spiller ingen rolle for lisensserveren — CORS
+    er åpen for utvidelser nettopp fordi opprinnelsen skifter mellom bygg — men det betyr
+    to ting i praksis: skoler som tvangsinstallerer via Google Admin eller Intune må ha
+    <em>riktig</em> ID for sin nettleser, og en bruker kan ende opp med begge installert
+    samtidig uten at de vet om hverandre.
+  </p>
+  <p class="verdict">Ikke et problem å løse, men noe som må stå i veiledningene fra dag én.</p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">S2</span><span class="dt">Ett av domenene i manifestet finnes ikke</span></div>
+  <p>
+    <code>lisens.ordlyd.lead.no</code> står som reserveadresse i både
+    <code>host_permissions</code> og <code>BASE_URLS</code>, men DNS er aldri satt opp. I
+    dag er den bare ubrukt. I en Chrome-gjennomgang er den noe verre: en tillatelse vi ber
+    om uten å bruke, til et domene som ikke svarer.
+  </p>
+  <p class="verdict">Sett opp DNS-en før innsending, eller ta den ut. Å be om mindre er alltid lettere å forsvare.</p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">S3</span><span class="dt"><code>ordlyd-demo.vercel.app</code> ser ut som en fremmed</span></div>
+  <p>
+    Den står som absolutt siste utvei hvis begge egne domener svikter, og det er en god
+    grunn. Men for en gjennomgang som ikke kjenner historikken, er det et
+    tredjepartsdomene i tillatelseslisten. Den skal forklares eksplisitt i
+    innsendingsnotatene: dette er vår egen utrulling, samme server, annen adresse.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">S4</span><span class="dt">Butikkene vil ha ulike bilder</span></div>
+  <p>
+    Chrome vil ha skjermbilder i 1280×800 eller 640×400 og en liten kampanjeflis på
+    440×280. Edge har sine egne mål. Vi har allerede en egenskrevet PNG-verktøykasse i
+    <code>scripts/png.mjs</code> som skalerer riktig, så begge sett kan genereres fra
+    samme kilde framfor å klippes for hånd hver gang.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="chromebook"><span class="num">03</span> Chromebook — den store muligheten, og hindringen</h2>
+<p class="lede">Her ligger den egentlige gevinsten ved å gå til Chrome. Og her ligger den ene tekniske blokkeringen.</p>
+
+<p>
+  Norske skoler kjører Chromebook i stor skala, og en administrert Chromebook kan
+  <strong>tvangsinstallere</strong> en utvidelse fra Google Admin-konsollen. Det er
+  nøyaktig distribusjonsmodellen Ordlyd trenger: skoleeier slår den på for elevene som
+  skal ha den, uten at eleven må finne noe selv. Edge-siden har det samme gjennom Intune,
+  men Chromebook er der de fleste norske elevene faktisk sitter.
+</p>
+
+<div class="callout crit">
+  <span class="tag">Blokkeringen</span>
+  <p>
+    <strong>Pakken er 169 MB utpakket.</strong> Ordboka er 71 MB, stemmene 61 MB,
+    kjøretiden 20 MB og Piper 18 MB.
+  </p>
+  <p>
+    Chrome Web Store godtar det uten videre — grensen er 2 GB. Problemet er ikke butikken,
+    det er maskinen: en rimelig skole-Chromebook har 32 GB lagring, og etter ChromeOS og
+    elevdata er det ofte under ti igjen. Tvangsinstallerer skolen dette på 300 maskiner, er
+    det 50 GB nedlasting og et merkbart jafs av hver elevs disk.
+  </p>
+  <p>
+    Dette er ikke en Chrome-oppgave — det er <strong>L4</strong> fra lisensplanen, som
+    allerede står på lista: flytt stemme og ordbok til CDN og last dem ved første bruk.
+    Men Chrome-lanseringen er grunnen til at L4 slutter å være opprydding og blir en
+    forutsetning.
+  </p>
+</div>
+
+<p>
+  <strong>Det andre å måle før vi lover noe:</strong> mange Chromebooker er ARM-baserte og
+  vesentlig tregere enn en kontor-PC. Piper kjører i WASM og vil virke, men hvor lang tid
+  det tar før første setning leses opp på en fire år gammel Chromebook, vet vi ikke. Det
+  bør måles på ekte maskinvare før vi anbefaler den til en skole — ikke fordi det
+  sannsynligvis er galt, men fordi svaret «det går litt tregt» er noe vi vil vite selv
+  framfor å få det fra en lærer.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="butikk"><span class="num">04</span> Chrome Web Store i praksis</h2>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Punkt</th><th>Chrome Web Store</th></tr></thead>
+<tbody>
+<tr><td>Registrering</td><td><strong>5 USD én gang</strong>, per konto, aldri mer. Ingen årsavgift.</td></tr>
+<tr><td>Maks pakkestørrelse</td><td>2 GB. Våre ~111 MB er godt innenfor.</td></tr>
+<tr><td>Antall utvidelser</td><td>Maks 20 publiserte per konto. Vi trenger 2–3.</td></tr>
+<tr><td>Synlighet</td><td>Offentlig · <strong>Skjult</strong> (kun med lenke) · <strong>Privat</strong> (kun navngitte Google-kontoer eller en Google-gruppe)</td></tr>
+<tr><td>Utsatt publisering</td><td>Kan holdes upublisert i inntil 30 dager etter godkjenning, og slippes når <em>du</em> vil.</td></tr>
+<tr><td>Testversjon</td><td>Kan ligge som egen oppføring merket BETA parallelt med produksjonen.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  <strong>De to siste radene er gull for punkt 3 i bestillingen din.</strong> «Privat med
+  navngitte testere» og «utsatt publisering» er nettopp mekanismene som gjør at vi kan
+  teste en ekte butikkinstallasjon — med ekte oppdateringskjede — uten at en eneste bruker
+  ser den. Se kapittel 07.
+</p>
+
+<h3>Der gjennomgangen blir streng</h3>
+<p>
+  <code>&lt;all_urls&gt;</code> er den mest inngripende tillatelsen som finnes, og Ordlyd
+  ber om den. Begrunnelsen er god og enkel — verktøyet skal kunne lese opp tekst på den
+  siden eleven faktisk er på, og vi vet ikke på forhånd hvilken det er — men den må
+  formuleres like tydelig som til Microsoft. Det som hjelper oss:
+</p>
+<ul>
+  <li>Ingen kode hentes utenfra. Alt ligger i pakken, og innholdspolicyen sier <code>script-src 'self'</code>.</li>
+  <li>Talesyntesen kjører lokalt. Ingen tekst forlater maskinen.</li>
+  <li>Bare tre nettverksadresser, alle våre egne, alle til lisenssjekk.</li>
+  <li>Personvernerklæringen finnes allerede og er skrevet for å tåle innsyn.</li>
+</ul>
+<p>
+  Svarene vi skrev til Microsoft kan gjenbrukes nesten ordrett. Jeg legger dem i et eget
+  dokument slik at de ikke må finnes opp på nytt neste gang.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="produktnokkel"><span class="num">05</span> Produktnøkkelen som ikke lenger stemmer</h2>
+<p class="lede">En liten ting i lisensserveren som blir feil i det Chrome kommer til, og som er billig å rette nå.</p>
+
+<p>
+  Klienten sender i dag <code>product: "edge-extension"</code>, og lisenspoolene lagrer
+  rettighetene under samme nøkkel. Kommer en Chrome-bygget klient og sier
+  <code>chrome-extension</code>, finner serveren ingen rettigheter og brukeren får
+  ingenting.
+</p>
+
+<p>To dårlige utveier, og én god:</p>
+<ul>
+  <li><strong>La Chrome også si <code>edge-extension</code>.</strong> Virker, men da lyver identifikatoren for alltid — og «Oppdater»-knappen kan ikke vite hvilken butikk den skal sende brukeren til.</li>
+  <li><strong>Legge <code>chrome-extension</code> inn i alle eksisterende pooler.</strong> Krever migrering av data som allerede er i bruk, for null gevinst.</li>
+  <li><strong>Skille de to spørsmålene.</strong> <span class="chip ok">anbefalt</span></li>
+</ul>
+
+<p>
+  Lisensen bryr seg ikke om hvilken butikk du installerte fra — rettighetene er de samme.
+  Det som <em>er</em> butikkavhengig, er hvor «Oppdater» skal peke. Derfor:
+</p>
+
+<pre><code>// Rettigheter: én produktnøkkel, med alias slik at ingen pool må røres.
+const PRODUKTALIAS = { "chrome-extension": "edge-extension" };
+
+// Butikk: eget felt, sendt ved innlogging og fornying.
+{ product: "chrome-extension", butikk: "chrome" }</code></pre>
+
+<p>
+  <code>installs</code>-tabellen har allerede en <code>platform</code>-kolonne som står
+  ubrukt — den er stedet. Da får vi som bieffekt noe vi ikke har i dag: å kunne se hvor
+  mange som faktisk bruker hver nettleser, uten å registrere noe nytt om brukeren.
+  <code>/api/v1/version</code> svarer med riktig butikklenke per kanal.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="ettbygg"><span class="num">06</span> Ett bygg, to butikker</h2>
+<p class="lede">Den enkleste modellen som virker, og hvorfor jeg ikke anbefaler noe mer.</p>
+
+<p>
+  <strong>Én pakke, lastet opp to steder.</strong> Ikke to grener, ikke to manifester, ikke
+  et byggflagg per butikk. Så lenge manifestene er identiske — og de er det — er hver
+  ekstra variant bare en ny måte å publisere feil fil på.
+</p>
+
+<h3>Versjonsnummer</h3>
+<ul>
+  <li><strong>Samme nummer i begge butikkene.</strong> Da vet du alltid hva som er ute uten å slå opp.</li>
+  <li><strong>Aldri gjenbruk et nummer</strong>, selv om den ene butikken avviste det. Blir 1.2.0 avvist hos Microsoft mens Chrome slapp den gjennom, heter neste forsøk 1.2.1 — ikke 1.2.0 én gang til.</li>
+  <li>Versjonen bor i <code>manifest.json</code> og er fasit. <code>package.json</code> i utvidelsen står i dag på <code>0.0.1</code> mens manifestet sier <code>1.0.0</code>; det er forvirrende og bør synkroniseres av et skript framfor for hånd.</li>
+  <li><code>CHANGELOG.md</code> med én seksjon per versjon. Butikkene spør uansett «hva er nytt», og da skal svaret finnes fra før.</li>
+</ul>
+
+<h3>Hva jeg vil legge til i pakkeskriptet</h3>
+<pre><code>pnpm --filter @ordlyd/extension utgi 1.1.0
+  → kjører hele testpakken og typesjekken (stopper ved første feil)
+  → oppdaterer manifest.json og package.json til 1.1.0
+  → krever at CHANGELOG.md har en seksjon for 1.1.0
+  → bygger og pakker
+  → skriver ordlyd-1.1.0.zip + en sjekksum
+  → skriver ut hva som skal fylles inn i hver butikk</code></pre>
+
+<p>
+  Poenget med sjekksummen er ikke sikkerhet, men at du kan bekrefte at filen du lastet opp
+  til Chrome er bit for bit den samme som den du lastet opp til Edge.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="miljoer"><span class="num">07</span> Fire nivåer: lokalt, dev, beta, produksjon</h2>
+<p class="lede">Dette er svaret på punkt 3. Hvert nivå fanger en annen type feil.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Nivå</th><th>Hva det er</th><th>Hvilke feil det fanger</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>1. Lokalt</strong></td>
+  <td>Utpakket utvidelse fra <code>dist/</code>, lastet med «Load unpacked». Peker på dev-serveren.</td>
+  <td>Alt som går i stykker med én gang. Sekunder mellom endring og test.</td>
+</tr>
+<tr>
+  <td><strong>2. Dev</strong></td>
+  <td>Egen lisensserver med egen database. Samme kode som produksjon, andre data.</td>
+  <td>Migrasjoner, endepunkter, ting som bare skjer med ekte HTTP og ekte database.</td>
+</tr>
+<tr>
+  <td><strong>3. Beta</strong></td>
+  <td>Egen butikkoppføring, <em>privat</em> i Chrome og skjult i Edge, med deg og noen få testere.</td>
+  <td>Det bare en ekte butikkinstallasjon avslører: pakkeinnhold, tillatelser slik brukeren ser dem, og <strong>oppdateringskjeden</strong>.</td>
+</tr>
+<tr>
+  <td><strong>4. Produksjon</strong></td>
+  <td>De offentlige oppføringene.</td>
+  <td>—</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout ok">
+  <span class="tag">Hvorfor nivå 3 er det viktigste</span>
+  <p>
+    Oppgave 22 på lista di er «test oppdateringskjeden», og den har stått uløst fordi den
+    krevde selvhostet CRX og registernøkler med administratorrettigheter. Med en privat
+    Chrome-oppføring blir den enkel: publiser 1.1.0 til betaoppføringen, se at din egen
+    installerte 1.0.0 faktisk oppdaterer seg. Ekte butikk, ekte mekanisme, null brukere.
+  </p>
+</div>
+
+<h3>Bygg som ikke kan forveksles</h3>
+<p>
+  Et dev-bygg og et produksjonsbygg må kunne stå side om side i samme nettleser uten at du
+  er i tvil om hvilket du tester. Derfor får ikke-produksjonsbygg:
+</p>
+<ul>
+  <li>et annet navn — <code>Ordlyd (dev)</code>, <code>Ordlyd (beta)</code></li>
+  <li>et tonet ikon, laget av det samme merket gjennom PNG-verktøykassa vi alt har</li>
+  <li>andre <code>BASE_URLS</code> og tilsvarende <code>host_permissions</code></li>
+</ul>
+<p>
+  Miljøet velges ved bygging, ikke ved kjøring. Manifest V3 fryser
+  <code>host_permissions</code> inn i pakken, så det <em>kan</em> ikke være en innstilling —
+  og det er like greit: en utvidelse ute hos brukere skal ikke ha en bryter som lar den
+  snakke med en annen server.
+</p>
+
+<pre><code>ORDLYD_MILJO=dev  pnpm --filter @ordlyd/extension package
+ORDLYD_MILJO=prod pnpm --filter @ordlyd/extension package   # standard</code></pre>
+
+<p>
+  I praksis betyr det at <code>license-config.ts</code> går fra én hardkodet liste til en
+  liten tabell over miljøer, og at <code>manifest.json</code> genereres fra en mal framfor
+  å ligge som en fast fil. Verdien erstattes ved bygging, med <code>prod</code> som
+  fallback — slik at røyktestene, som kjører gjennom <code>tsx</code> og ikke Vite,
+  fortsetter å treffe produksjon uten endring.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="devserver"><span class="num">08</span> Dev-lisensserveren</h2>
+<p class="lede">Uten et sted å prøve migrasjoner er «vi tester før vi publiserer» bare en intensjon.</p>
+
+<p>
+  Du har bedt om at vi holder oss til ett repo og ett Vercel-prosjekt. Det står seg:
+  Vercel har <em>miljøer</em> innenfor samme prosjekt, så løsningen er en
+  <code>dev</code>-gren som ruller ut til Preview, med egne miljøvariabler som peker på et
+  <strong>eget Supabase-prosjekt</strong> på gratisplanen.
+</p>
+
+<div class="callout warn">
+  <span class="tag">Dette er også svaret på Å1 fra adminplanen</span>
+  <p>
+    Vi har et utestående spørsmål om hvorvidt Preview-miljøet i Vercel har
+    <code>DATABASE_URL</code> satt — i så fall har hver gren-utrulling i dag en offentlig
+    URL med full tilgang til <em>produksjonsdataene</em>. Å gi Preview sin egen database
+    løser begge tingene på én gang: dev får et sted å være, og produksjonsdataene slutter
+    å ligge bak en tilfeldig gren-URL.
+  </p>
+</div>
+
+<p>
+  Dev-databasen skal ha <strong>syntetiske data</strong>, ikke en kopi av produksjon. Vi
+  behandler opplysninger som avslører lese- og skrivevansker; en kopi ville spredt dem til
+  et miljø med lavere beskyttelse og flere som har tilgang. Et lite seed-skript som lager
+  en testkunde, et par pooler og hundre falske adresser er både tryggere og mer nyttig —
+  det gir alltid samme utgangspunkt.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="port"><span class="num">09</span> Porten før utgivelse</h2>
+<p class="lede">Én kommando som må være grønn. Ikke en huskeliste.</p>
+
+<p>
+  Vi har 150 tester, men de kjøres fordi jeg husker å kjøre dem. Det holder ikke når to
+  butikker skal holdes i takt. <code>pnpm sjekk</code> samler alt, og
+  <code>utgi</code> nekter å pakke hvis noe er rødt:
+</p>
+
+<pre><code>pnpm sjekk
+  ├─ typesjekk i alle pakker
+  ├─ test-normalize      uttale og tekstnormalisering
+  ├─ test-license        lisenslogikk
+  ├─ test-license-client klientens tilstandsmaskin
+  ├─ test-registrering   selvregistrering
+  ├─ test-tilgang        roller og kundeavgrensning
+  ├─ test-passord        passordkravet
+  ├─ test-okt            økter, forsegling, reservekoder
+  ├─ test-panel-passord  panelets forslag mot serverens regel
+  ├─ test-png            ikongenerering
+  └─ friskhetsvakt       er dist/ eldre enn kildene?</code></pre>
+
+<p>
+  Friskhetsvakten fortjener en merknad: den finnes allerede i
+  <code>test-normalize.mts</code> fordi vi <em>har</em> blitt lurt av den før. Du meldte
+  at uttalen var uendret, jeg lette i normaliseringskoden, og feilen var at
+  <code>offscreen.js</code> var bygget to minutter før siste kildeendring. Den vakten skal
+  gjelde hele pakken, ikke bare én fil — å sende en gammel build til to butikker samtidig
+  er nøyaktig den feilen som er verst å oppdage i etterkant.
+</p>
+
+<h3>Manuell sjekkliste i tillegg</h3>
+<p>Fem ting maskinen ikke kan svare på, som skal gjøres på betainstallasjonen før noe blir offentlig:</p>
+<ol>
+  <li>Marker tekst på en ekte nettside og få den lest opp.</li>
+  <li>Logg inn med en fersk prøvelisens fra <code>/registrer</code>.</li>
+  <li>Slå av nettet og bekreft at opplesingen fortsatt virker.</li>
+  <li>Sjekk at «Om Ordlyd» viser riktig versjonsnummer og riktig butikklenke.</li>
+  <li>Installer i den <em>andre</em> nettleseren og gjenta punkt 1.</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 id="arbeidsflyt"><span class="num">10</span> Hvordan vi jobber her</h2>
+<p class="lede">Du spurte hvordan vi holder dette ryddig i denne dialogen. Fire vaner.</p>
+
+<div class="kort">
+  <div class="dh"><span class="did">A1</span><span class="dt">Si hvilket nivå du snakker om</span></div>
+  <p>
+    «Rull ut til dev» og «utgi 1.1.0» skal bety to forskjellige ting, og jeg skal aldri
+    gjette hvilket. Sier du ingenting, går alt til dev.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">A2</span><span class="dt">Backend og utvidelse har ulik tyngde</span></div>
+  <p>
+    Backend kan rulles ut når som helst — det har vi gjort et titalls ganger i dag.
+    Utvidelsen kan ikke det: hver pakke er opptil sju dagers gjennomgang hos Microsoft og
+    tilsvarende hos Google, og en feil rettes ikke før neste runde. Derfor samler vi
+    utvidelsesendringer opp og sender sjeldnere.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">A3</span><span class="dt">Én endring som rører begge, testes i begge</span></div>
+  <p>
+    Lisensklienten er delt mellom utvidelsen og fremtidige PC-applikasjoner. Endrer vi noe
+    der, skal røyktesten mot produksjon kjøres <em>og</em> betainstallasjonen sjekkes for
+    hånd — ikke fordi det pleier å gå galt, men fordi konsekvensen er at alle mister
+    lisensen samtidig.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">A4</span><span class="dt">Utgivelser dokumenteres når de skjer</span></div>
+  <p>
+    <code>CHANGELOG.md</code> og <code>docs/utgivelse.html</code> oppdateres i samme
+    commit som versjonsbumpen. Butikkene spør om hva som er nytt, og svaret skal ikke
+    rekonstrueres fra git-loggen en uke senere.
+  </p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="faseplan"><span class="num">11</span> Faseplan</h2>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Trinn</th><th>Innhold</th><th>Resultat</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>B1</strong></td>
+  <td>Miljøbryter i bygget: <code>license-config.ts</code> med miljøtabell, generert manifest, tonet ikon og eget navn for dev og beta. <code>pnpm sjekk</code> som samlet port, og <code>utgi</code> som nekter å pakke på rødt.</td>
+  <td>Du kan bygge dev og prod uten å forveksle dem.</td>
+</tr>
+<tr>
+  <td><strong>B2</strong></td>
+  <td>Dev-miljø: eget Supabase-prosjekt, Preview-variabler ryddet, seed-skript med syntetiske data.</td>
+  <td>Migrasjoner kan prøves før produksjon. Å1 fra adminplanen lukkes.</td>
+</tr>
+<tr>
+  <td><strong>B3</strong></td>
+  <td>Produktnøkkel og butikkanal: alias på serveren, <code>butikk</code>-felt i klienten, <code>platform</code> tas i bruk, <code>/version</code> svarer med riktig butikklenke.</td>
+  <td>En Chrome-klient får riktige rettigheter og riktig oppdateringslenke.</td>
+</tr>
+<tr>
+  <td><strong>B4</strong><br><span class="chip warn">avhenger av L4</span></td>
+  <td>Stemme og ordbok til CDN. Pakken fra 111 MB til noen få.</td>
+  <td>Forsvarlig på Chromebook. Forutsetning for skolebruk.</td>
+</tr>
+<tr>
+  <td><strong>B5</strong></td>
+  <td>Chrome-konto (5 USD), betaoppføring privat med deg som tester, butikkbilder generert i begge formater, gjenbruk av svarene til Microsoft.</td>
+  <td>Ekte butikkinstallasjon å teste mot. Oppgave 22 kan endelig lukkes.</td>
+</tr>
+<tr>
+  <td><strong>B6</strong></td>
+  <td>Chromebook-måling på ekte maskinvare, deretter offentlig Chrome-lansering og oppdaterte veiledninger med begge nettleserne.</td>
+  <td>Ute i Chrome Web Store.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  <strong>B1 til B3 rører ikke pakken som ligger hos Microsoft nå.</strong> De er
+  byggverktøy og server. Først B4 gir en ny pakke — og det er med vilje: vi vil ikke sende
+  inn noe nytt mens 1.0.0 er til gjennomgang.
+</p>
+
+<!-- ============================================================ -->
+<h2 id="risiko"><span class="num">12</span> Risiko</h2>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Risiko</th><th>Konsekvens</th><th>Tiltak</th></tr></thead>
+<tbody>
+<tr>
+  <td>111 MB på skole-Chromebook</td>
+  <td><span class="chip crit">kritisk</span> Skoleeier sier nei etter første utrulling, og da er døra lukket en stund.</td>
+  <td>L4 før vi tilbyr det til skoler. Chromebook-måling før vi lover ytelse.</td>
+</tr>
+<tr>
+  <td>Ulik versjon ute i de to butikkene</td>
+  <td><span class="chip warn">høy</span> Support blir gjetting: «hvilken versjon har du?» krever at brukeren vet hvilken nettleser hun bruker.</td>
+  <td>Samme nummer begge steder, aldri gjenbruk. Sjekksum som beviser samme fil.</td>
+</tr>
+<tr>
+  <td>Gammel build sendt til butikk</td>
+  <td><span class="chip warn">høy</span> Har skjedd før i dette prosjektet, i det små. I to butikker samtidig er det verre.</td>
+  <td>Friskhetsvakt over hele pakken, ikke bare én fil. <code>utgi</code> stopper på rødt.</td>
+</tr>
+<tr>
+  <td>Preview-utrulling mot produksjonsdata</td>
+  <td><span class="chip crit">kritisk</span> Offentlig URL med full tilgang.</td>
+  <td>B2. Fortsatt uavklart siden forrige plan.</td>
+</tr>
+<tr>
+  <td><code>&lt;all_urls&gt;</code> avvises av Chrome</td>
+  <td><span class="chip warn">høy</span> Uten den kan ikke Ordlyd lese opp der eleven er.</td>
+  <td>Samme begrunnelse som til Microsoft, som allerede er godtatt der. Ha den klar før innsending, ikke etter avslag.</td>
+</tr>
+<tr>
+  <td>Dev-database med ekte persondata</td>
+  <td><span class="chip crit">kritisk</span> Helseopplysninger i et miljø med lavere beskyttelse.</td>
+  <td>Syntetisk seed. Aldri kopi av produksjon — skrives inn i driftsrutinen.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="avgjorelser"><span class="num">13</span> Avgjørelser jeg trenger</h2>
+
+<div class="kort">
+  <div class="dh"><span class="did">V1</span><span class="dt">Skal Chrome-lanseringen vente på L4?</span></div>
+  <p>
+    Vi <em>kan</em> publisere 111 MB til Chrome i morgen. Til en vanlig PC-bruker er det
+    helt greit. Til en Chromebook er det ikke det. Alternativene er å lansere nå og rydde
+    etterpå, eller å ta L4 først og lansere én gang med noe vi kan tilby skoler direkte.
+  </p>
+  <p class="verdict">Min anbefaling: B1–B3 nå, L4, så Chrome. Én lansering er lettere å stå for enn en lansering og en unnskyldning.</p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">V2</span><span class="dt">Hva skjer med <code>lisens.ordlyd.lead.no</code>?</span></div>
+  <p>Sett opp DNS-en, eller ta den ut av manifestet. Begge deler er greit — å la den stå ubrukt er det ikke.</p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">V3</span><span class="dt">Eget Supabase-prosjekt til dev?</span></div>
+  <p>Gratisplanen holder. Alternativet er å dele database med produksjon, og da er det ikke et testmiljø — det er produksjon med en annen URL.</p>
+</div>
+
+<footer>
+  Ordlyd · plan for Chrome-utgivelse og utgivelseskjede ·
+  bygger på lisensserverplanen (L4) og adminplanen (Å1)
+</footer>
+
+</div>
