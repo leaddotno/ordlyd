@@ -116,10 +116,67 @@ export async function settPassord(accessToken: string, nyttPassord: string): Pro
 
 export interface Paamelding {
   faktorId: string;
-  /** SVG som kan vises direkte i panelet. */
-  qrKode: string;
+  /** Rå SVG, klar til å legges rett inn i siden. Tom hvis vi ikke fikk en. */
+  qrSvg: string;
+  /** Trygg data-URI til et <img>, som alternativ. Tom hvis vi ikke fikk en. */
+  qrBilde: string;
   /** Hemmeligheten i tekst, for den som taster den inn manuelt. */
   hemmelighet: string;
+  /** otpauth://-adressen. På telefon åpner den authenticator-appen direkte. */
+  uri: string;
+}
+
+/**
+ * Gjør Supabases `qr_code` om til noe panelet trygt kan vise.
+ *
+ * Feltet er udokumentert og kan være rå SVG, en data-URI med SVG i
+ * klartekst, eller base64. Den midterste formen er en felle: rå SVG
+ * inneholder `#` i fargekoder, og i en URI starter `#` et fragment —
+ * nettleseren kutter da bildet ved første farge og viser ingenting.
+ * Det var nettopp det som skjedde.
+ *
+ * All tolkning gjøres her, én gang, slik at panelet bare får to
+ * muligheter: ferdig SVG, eller en data-URI som er trygg i et <img>.
+ */
+export function tolkQrKode(raa: string): { svg: string; bilde: string } {
+  const v = (raa ?? "").trim();
+  if (!v) return { svg: "", bilde: "" };
+
+  if (v.startsWith("<svg") || v.startsWith("<?xml")) return { svg: v, bilde: "" };
+
+  if (v.startsWith("data:")) {
+    const komma = v.indexOf(",");
+    if (komma < 0) return { svg: "", bilde: "" };
+    const hode = v.slice(5, komma).toLowerCase();
+    const kropp = v.slice(komma + 1);
+
+    if (hode.includes("base64")) {
+      // Base64 er allerede trygt i en URI. Er det SVG, pakker vi det
+      // likevel ut, så panelet slipper å forholde seg til to former.
+      if (hode.includes("svg")) {
+        try {
+          return { svg: Buffer.from(kropp, "base64").toString("utf8"), bilde: "" };
+        } catch {
+          return { svg: "", bilde: v };
+        }
+      }
+      return { svg: "", bilde: v };
+    }
+
+    // Ikke base64: innholdet kan være URL-kodet eller helt rått.
+    let tekst = kropp;
+    try {
+      tekst = decodeURIComponent(kropp);
+    } catch {
+      /* var ikke kodet — bruk som det er */
+    }
+    if (tekst.trimStart().startsWith("<svg") || tekst.trimStart().startsWith("<?xml")) {
+      return { svg: tekst.trim(), bilde: "" };
+    }
+    return { svg: "", bilde: "" };
+  }
+
+  return { svg: "", bilde: "" };
 }
 
 export async function startTotp(accessToken: string, navn: string): Promise<Paamelding> {
@@ -128,10 +185,18 @@ export async function startTotp(accessToken: string, navn: string): Promise<Paam
     token: accessToken,
     kropp: { factor_type: "totp", friendly_name: navn },
   });
+  const { svg, bilde } = tolkQrKode(svar.totp?.qr_code ?? "");
+  if (!svg && !bilde) {
+    // Ikke en feil — hemmeligheten og otpauth-adressen holder — men
+    // verdt å se i loggen hvis formatet endrer seg igjen.
+    console.warn("[lisensserver] fikk ingen brukbar QR-kode fra Supabase");
+  }
   return {
     faktorId: svar.id,
-    qrKode: svar.totp?.qr_code ?? "",
+    qrSvg: svg,
+    qrBilde: bilde,
     hemmelighet: svar.totp?.secret ?? "",
+    uri: svar.totp?.uri ?? "",
   };
 }
 

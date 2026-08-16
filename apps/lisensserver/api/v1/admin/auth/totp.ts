@@ -65,7 +65,7 @@ export default vercelHandler("POST", async (req) => {
     const nyttSegl = forsegle(pepper, { ...steg, faktorId: p.faktorId });
     return {
       status: 200,
-      body: { qrKode: p.qrKode, hemmelighet: p.hemmelighet },
+      body: { qrSvg: p.qrSvg, qrBilde: p.qrBilde, hemmelighet: p.hemmelighet, uri: p.uri },
       cookies: [settKapsel(TOTRINN_KAPSEL, nyttSegl, TOTRINN_LEVETID_SEK)],
     };
   }

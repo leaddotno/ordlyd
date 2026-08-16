@@ -63,7 +63,10 @@ export default vercelHandler("POST", async (req) => {
     const token = await bekreftMeg();
     if (!token) return unauthorized();
     const p = await startTotp(token, `Ordlyd panel — ${admin.navn}`);
-    return ok({ faktorId: p.faktorId, qrKode: p.qrKode, hemmelighet: p.hemmelighet });
+    return ok({
+      faktorId: p.faktorId, qrSvg: p.qrSvg, qrBilde: p.qrBilde,
+      hemmelighet: p.hemmelighet, uri: p.uri,
+    });
   }
 
   if (handling === "totrinn-aktiver") {

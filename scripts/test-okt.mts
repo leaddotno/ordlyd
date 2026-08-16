@@ -8,6 +8,7 @@ import {
   forsegle, aapne, lagReservekoder, normaliserReservekode,
   settKapsel, slettKapsel, lesKapsler, nyHemmelighet,
 } from "../apps/lisensserver/src/okt.js";
+import { tolkQrKode } from "../apps/lisensserver/src/supabase-auth.js";
 
 let feil = 0;
 let n = 0;
@@ -84,6 +85,34 @@ sjekk("alle ti er ulike", new Set(koder).size === 10);
 sjekk("små bokstaver normaliseres", normaliserReservekode(koder[0].toLowerCase()) === koder[0]);
 sjekk("manglende bindestreker normaliseres", normaliserReservekode(koder[0].replace(/-/g, "")) === koder[0]);
 sjekk("mellomrom normaliseres", normaliserReservekode(koder[0].replace(/-/g, " ")) === koder[0]);
+
+/* --- QR-koden fra Supabase, som er udokumentert og kan komme i flere former --- */
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#ffffff"/></svg>';
+
+sjekk("rå SVG gjenkjennes", tolkQrKode(SVG).svg === SVG);
+sjekk("XML-erklæring foran SVG gjenkjennes", tolkQrKode(`<?xml version="1.0"?>${SVG}`).svg.includes("<svg"));
+
+/*
+ * Fella som faktisk traff: rå SVG inne i en data-URI. Fargekoden
+ * #ffffff gjør at nettleseren leser resten som et fragment og viser
+ * ingenting — bildet blir tomt uten at noe feiler synlig.
+ */
+const raaUri = `data:image/svg+xml;utf-8,${SVG}`;
+sjekk("RÅ SVG I DATA-URI pakkes ut framfor å gis til <img>", tolkQrKode(raaUri).svg === SVG, tolkQrKode(raaUri));
+sjekk("og den gir ingen bilde-URI som inneholder #", tolkQrKode(raaUri).bilde === "");
+
+const kodetUri = `data:image/svg+xml;utf-8,${encodeURIComponent(SVG)}`;
+sjekk("URL-kodet SVG i data-URI pakkes ut", tolkQrKode(kodetUri).svg === SVG, tolkQrKode(kodetUri));
+
+const b64Uri = `data:image/svg+xml;base64,${Buffer.from(SVG).toString("base64")}`;
+sjekk("base64-SVG pakkes ut", tolkQrKode(b64Uri).svg === SVG);
+
+const png = "data:image/png;base64,iVBORw0KGgo=";
+sjekk("PNG beholdes som bilde-URI", tolkQrKode(png).bilde === png && tolkQrKode(png).svg === "");
+
+sjekk("tom verdi gir tomt, ikke krasj", tolkQrKode("").svg === "" && tolkQrKode("").bilde === "");
+sjekk("tull gir tomt, ikke krasj", tolkQrKode("bare tekst").svg === "" && tolkQrKode("bare tekst").bilde === "");
+sjekk("ekstern URL avvises framfor å bryte innholdspolicyen", tolkQrKode("https://eksempel.no/qr.png").bilde === "");
 
 console.log(feil === 0 ? `\nALLE ${n} OK` : `\n${feil} av ${n} FEILET`);
 process.exit(feil === 0 ? 0 : 1);

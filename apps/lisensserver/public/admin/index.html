@@ -192,10 +192,24 @@
           sifrene appen viser.
         </p>
         <div id="qr" style="background:#fff;padding:.8rem;border-radius:6px;display:inline-block"></div>
-        <p class="hint" style="margin-top:.7rem">
-          Får du ikke skannet? Skriv inn denne nøkkelen manuelt:
-          <code id="hemmelighet" style="user-select:all"></code>
+
+        <p class="hint" style="margin-top:.9rem">
+          <a id="otpLenke" href="#" class="hidden"><strong>Åpne i authenticator-appen →</strong></a>
         </p>
+        <p class="hint" id="otpLenkeHint" style="margin-top:-.5rem"></p>
+
+        <details style="margin-top:.6rem">
+          <summary style="cursor:pointer;font-size:.85rem">Skriv inn nøkkelen manuelt i stedet</summary>
+          <p class="hint" style="margin:.6rem 0 .3rem">
+            Velg «Skriv inn kode manuelt» i appen, og bruk denne. Store og små bokstaver
+            spiller ingen rolle, og mellomrommene er bare til for å gjøre den lesbar.
+          </p>
+          <code id="hemmelighet" style="user-select:all;display:block;padding:.5rem;
+                font-size:1.05rem;letter-spacing:.06em;word-break:break-all"></code>
+          <div class="actions">
+            <button type="button" class="small" id="kopierHemmelighet">Kopier nøkkelen</button>
+          </div>
+        </details>
         <form id="oppsettForm">
           <label for="oKode">Kode fra appen</label>
           <input type="text" id="oKode" autocomplete="one-time-code" inputmode="numeric"
@@ -523,6 +537,64 @@ async function visPanel() {
   $("lKode").value = "";
 }
 
+/**
+ * Tegner oppsettssteget.
+ *
+ * Serveren har allerede tolket det Supabase sendte, så her finnes bare
+ * to former: ferdig SVG, eller en data-URI som er trygg i et <img>.
+ * Er det ingen av delene, skal siden fortsatt være brukbar — otpauth-
+ * lenken og nøkkelen er det som faktisk trengs. En tom hvit boks der
+ * QR-en skulle vært er verre enn ingen boks.
+ */
+function visOppsett(o) {
+  const boks = $("qr");
+  boks.innerHTML = "";
+  if (o.qrSvg) {
+    boks.innerHTML = o.qrSvg;
+  } else if (o.qrBilde) {
+    const img = document.createElement("img");
+    img.src = o.qrBilde;
+    img.alt = "QR-kode for authenticator-appen";
+    img.style.display = "block";
+    boks.append(img);
+  } else {
+    boks.classList.add("hidden");
+  }
+
+  // På telefon åpner otpauth:// authenticator-appen direkte, med kontoen
+  // ferdig utfylt. Da slipper man både skanning og tasting.
+  const lenke = $("otpLenke");
+  if (o.uri) {
+    lenke.href = o.uri;
+    lenke.classList.remove("hidden");
+    $("otpLenkeHint").textContent = o.qrSvg || o.qrBilde
+      ? "Er du på telefonen? Trykk lenken over i stedet for å skanne."
+      : "Trykk lenken over hvis du åpner panelet på telefonen.";
+  } else {
+    lenke.classList.add("hidden");
+    $("otpLenkeHint").textContent = "";
+  }
+
+  // Grupper på fire gjør en 32-tegns nøkkel mulig å taste uten å miste
+  // plassen. Appene bryr seg ikke om mellomrom.
+  const rå = (o.hemmelighet || "").replace(/\s+/g, "");
+  $("hemmelighet").textContent = rå.match(/.{1,4}/g)?.join(" ") ?? rå;
+  $("kopierHemmelighet").onclick = () => {
+    navigator.clipboard.writeText(rå)
+      .then(() => melding($("loginMsg"), "Nøkkelen er kopiert.", "ok"))
+      .catch(() => melding($("loginMsg"), "Klarte ikke kopiere — merk teksten og kopier.", "err"));
+  };
+
+  // Er det verken QR eller lenke, brett ut den manuelle nøkkelen med en
+  // gang framfor å gjemme den bak en detalj ingen finner.
+  if (!o.qrSvg && !o.qrBilde && !o.uri) {
+    $("hemmelighet").closest("details").open = true;
+  }
+
+  visSteg("oppsett");
+  $("oKode").focus();
+}
+
 /** Reservekodene vises én gang, og panelet åpnes først når de er kvittert ut. */
 function visReservekoder(koder) {
   $("reservekoder").innerHTML = koder
@@ -577,25 +649,7 @@ $("loginForm").addEventListener("submit", async (e) => {
       const o = await api("/api/v1/admin/auth/totp", {
         method: "POST", body: { handling: "oppsett-start" },
       });
-      // Supabase kan gi QR-koden enten som rå SVG eller som data-URI.
-      // Begge holder seg innenfor policyen; en ekstern URL ville ikke
-      // gjort det, og avvises derfor framfor å gi et tomt felt.
-      const qr = o.qrKode || "";
-      $("qr").innerHTML = "";
-      if (qr.trimStart().startsWith("<svg")) {
-        $("qr").innerHTML = qr;
-      } else if (qr.startsWith("data:")) {
-        const img = document.createElement("img");
-        img.src = qr;
-        img.alt = "QR-kode for authenticator-appen";
-        img.style.display = "block";
-        $("qr").append(img);
-      } else {
-        $("qr").textContent = "Fikk ikke vist QR-koden — bruk nøkkelen under.";
-      }
-      $("hemmelighet").textContent = o.hemmelighet || "";
-      visSteg("oppsett");
-      $("oKode").focus();
+      visOppsett(o);
       return;
     }
     melding($("loginMsg"), "Uventet svar fra serveren.", "err");
