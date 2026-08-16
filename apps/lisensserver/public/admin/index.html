@@ -546,7 +546,27 @@ $("loginForm").addEventListener("submit", async (e) => {
   $("loginBtn").disabled = true;
   melding($("loginMsg"), "", "ok");
   try {
-    const r = await api("/api/v1/admin/auth/login", { method: "POST", body: { epost, passord } });
+    /*
+     * Rått kall her: en 401 fra selve passordsteget betyr feil
+     * legitimasjon og skal si nettopp det. Bruker vi den vanlige api(),
+     * havner ALLE senere 401-er i samme sekk — og da får man
+     * «feil passord» selv når passordet var riktig og det var
+     * totrinnssteget som feilet. Det er en feilmelding som sender folk
+     * på jakt etter feil ting.
+     */
+    const { status, json } = await api("/api/v1/admin/auth/login", {
+      method: "POST", body: { epost, passord }, raatt: true,
+    });
+    if (status === 401) return melding($("loginMsg"), "Feil e-post eller passord.", "err");
+    if (status === 429) {
+      return melding($("loginMsg"),
+        "For mange forsøk. Vent et kvarter og prøv igjen.", "err");
+    }
+    if (status !== 200) {
+      return melding($("loginMsg"),
+        FEILTEKST[json?.feil] ?? json?.feil ?? `Serveren svarte ${status}.`, "err");
+    }
+    const r = json;
     if (r.trinn === "innlogget") return await visPanel();
     if (r.trinn === "totrinn") {
       visSteg("totpForm");
@@ -580,8 +600,7 @@ $("loginForm").addEventListener("submit", async (e) => {
     }
     melding($("loginMsg"), "Uventet svar fra serveren.", "err");
   } catch (err) {
-    melding($("loginMsg"), err.message === "Du er ikke logget inn."
-      ? "Feil e-post eller passord." : err.message, "err");
+    melding($("loginMsg"), err.message, "err");
   } finally {
     $("loginBtn").disabled = false;
   }

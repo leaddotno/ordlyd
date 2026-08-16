@@ -121,7 +121,13 @@ export function aapne(pepper: string, forseglet: string, naaSek: number): Mellom
     ]).toString("utf8");
     const steg = JSON.parse(klar) as Mellomsteg;
     if (typeof steg?.utloper !== "number" || steg.utloper < naaSek) return null;
-    if (!steg.adminId || !steg.accessToken || !steg.faktorId) return null;
+    /*
+     * faktorId er med vilje IKKE påkrevd her. Ved førstegangs oppsett
+     * finnes det ingen faktor ennå — den lages i steget denne
+     * forseglingen skal bære. Krevde vi den, ville den aller første
+     * innloggingen på en ny konto vært umulig.
+     */
+    if (!steg.adminId || !steg.accessToken) return null;
     return steg;
   } catch {
     // Feil autentiseringsmerke, tuklet kapsel eller ugyldig JSON.
