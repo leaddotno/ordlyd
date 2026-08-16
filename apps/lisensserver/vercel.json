@@ -21,6 +21,12 @@
       "permanent": false
     },
     {
+      "source": "/admin/",
+      "missing": [{ "type": "host", "value": "panel.ordlyd.no" }],
+      "destination": "https://panel.ordlyd.no/admin/",
+      "permanent": false
+    },
+    {
       "source": "/admin/:sti*",
       "missing": [{ "type": "host", "value": "panel.ordlyd.no" }],
       "destination": "https://panel.ordlyd.no/admin/:sti*",
