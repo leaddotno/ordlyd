@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ordlyd",
   "short_name": "Ordlyd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Leser tekst, bokstaver og ord, gir ordprediksjon og har bokmåls- og nynorskordbok. Alt, inkludert talesyntesen, kjører lokalt.",
   "homepage_url": "https://www.ordlyd.no/",
   "minimum_chrome_version": "116",
@@ -12,7 +12,11 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["offscreen", "storage", "alarms"],
+  "permissions": [
+    "offscreen",
+    "storage",
+    "alarms"
+  ],
   "host_permissions": [
     "https://lisens.ordlyd.no/*",
     "https://lisens.ordlyd.lead.no/*",
@@ -34,8 +38,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true,
       "match_about_blank": true

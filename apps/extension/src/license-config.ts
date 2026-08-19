@@ -21,8 +21,21 @@
  */
 
 import type { PublicKeySet } from "@ordlyd/license-client";
+import { BUTIKK } from "./butikk.js";
 
-export const PRODUCT = "edge-extension";
+/**
+ * Produktnøkkelen mot lisensserveren.
+ *
+ * Rettighetene er de samme uansett butikk — en lisens bryr seg ikke om
+ * hvor du lastet ned utvidelsen. Men serveren trenger å skille de to for
+ * å kunne sende «Oppdater» til riktig butikk, og for å se hvilken
+ * nettleser folk faktisk bruker.
+ *
+ * Serveren behandler `chrome-extension` som et alias for
+ * `edge-extension` når rettigheter slås opp, slik at ingen eksisterende
+ * lisenspool måtte endres da Chrome kom til.
+ */
+export const PRODUCT = BUTIKK === "chrome" ? "chrome-extension" : "edge-extension";
 
 /**
  * Forsøkes i rekkefølge. En adresse som ikke svarer (ukjent DNS-navn,

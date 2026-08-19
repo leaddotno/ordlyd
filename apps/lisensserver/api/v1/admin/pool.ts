@@ -12,7 +12,13 @@ import { loesInnlogget, erNektet, krevPanelhode, somAktor } from "../../../src/a
 import { krevEndring, krevKunde } from "../../../src/tilgang.js";
 
 export const KJENTE_FUNKSJONER = ["tts", "ordbok", "stavekontroll", "prediksjon", "skriveekko"];
-export const KJENTE_PRODUKTER = ["edge-extension", "win-desktop"];
+/*
+ * `edge-extension` dekker BEGGE nettleserbutikkene: kvitteringen speiler
+ * nøkkelen til `chrome-extension` når den bygges (se medButikkalias i
+ * logic.ts), slik at én pool tjener både Edge og Chrome. Nøkkelen står
+ * likevel her, for den dagen noe skal gjelde bare én av dem.
+ */
+export const KJENTE_PRODUKTER = ["edge-extension", "chrome-extension", "win-desktop"];
 export const KJENTE_PLANER = ["medlem", "skole", "prove", "apen"] as const;
 
 export default vercelHandler("POST", async (req) => {

@@ -25,6 +25,34 @@ import {
 } from "@ordlyd/license-core";
 import type { AktorType, Db, LicensePool, PoolEntry, Tenant } from "./types.js";
 
+/**
+ * Speiler rettighetene mellom nettleserbutikkene.
+ *
+ * Lisenspoolene ble opprettet før Chrome kom til, og har derfor bare
+ * `edge-extension`. En Chrome-bygget klient spør etter
+ * `chrome-extension` og ville funnet ingenting — altså en bruker med
+ * gyldig lisens uten funksjoner.
+ *
+ * Vi kunne migrert alle poolene, men rettighetene er de SAMME uansett
+ * butikk: en lisens bryr seg ikke om hvor utvidelsen ble lastet ned.
+ * Derfor speiles nøkkelen når kvitteringen bygges, og ingen pool må
+ * røres — hverken de som finnes i dag eller de en kundeadmin lager i
+ * morgen.
+ *
+ * Andre produkter (win-desktop) berøres ikke.
+ */
+const NETTLESERPAR = ["edge-extension", "chrome-extension"] as const;
+
+export function medButikkalias(
+  products: Record<string, { features: string[] }>,
+): Record<string, { features: string[] }> {
+  const [edge, chrome] = NETTLESERPAR;
+  const ut = { ...products };
+  if (ut[edge] && !ut[chrome]) ut[chrome] = ut[edge];
+  else if (ut[chrome] && !ut[edge]) ut[edge] = ut[chrome];
+  return ut;
+}
+
 export const ISSUER = "https://lisens.ordlyd.no";
 
 /** Ratebegrensning: maks forsøk per nøkkel innenfor vinduet. */
@@ -362,7 +390,7 @@ async function issueReceipt(
     sub: `code:${entry.emailHash}`,
     tenant: tenant.slug,
     install: installId,
-    products: pool.products,
+    products: medButikkalias(pool.products),
     iat: nowSec,
     softExp: nowSec + RECEIPT_SOFT_TTL_SEC,
     exp: nowSec + RECEIPT_TTL_SEC,

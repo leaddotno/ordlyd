@@ -6,6 +6,7 @@
  */
 
 import { visLogoEllerTekst } from "./logo.js";
+import { UTVIDELSESSIDE, NETTLESER } from "./butikk.js";
 import type { LicenseState } from "@ordlyd/license-client";
 import type { VersionInfoResponse, CheckUpdateResponse } from "./messages.js";
 
@@ -183,7 +184,7 @@ $("taIBruk").addEventListener("click", () => {
 $("kopierAdresse").addEventListener("click", async () => {
   const btn = $<HTMLButtonElement>("kopierAdresse");
   try {
-    await navigator.clipboard.writeText("edge://extensions");
+    await navigator.clipboard.writeText(UTVIDELSESSIDE);
     btn.textContent = "Kopiert ✓";
   } catch {
     btn.textContent = "Kunne ikke kopiere";
@@ -192,6 +193,19 @@ $("kopierAdresse").addEventListener("click", async () => {
 });
 
 /* ---------------------------- Oppstart ---------------------------- */
+
+/*
+ * Adressen til utvidelsessiden fylles inn fra koden framfor å stå i
+ * HTML-en. HTML-filen er delt mellom begge butikkpakkene, og en
+ * hardkodet «edge://extensions» der ville vært feil i Chrome-pakken —
+ * og usynlig feil, siden siden ser helt riktig ut.
+ */
+for (const el of document.querySelectorAll("[data-utvidelsesside]")) {
+  el.textContent = UTVIDELSESSIDE;
+}
+for (const el of document.querySelectorAll("[data-nettleser]")) {
+  el.textContent = NETTLESER;
+}
 
 void (async () => {
   try {

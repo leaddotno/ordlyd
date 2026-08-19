@@ -1,13 +1,15 @@
 {
   "name": "@ordlyd/extension",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "prebuild": "pnpm --filter @ordlyd/license-core build && node ../../scripts/build-icons.mjs && node ../../scripts/copy-assets.mjs",
     "build": "vite build && vite build --config vite.content.config.ts",
-    "package": "pnpm build && node ../../scripts/package-extension.mjs",
-    "typecheck": "tsc --noEmit"
+    "package": "node ../../scripts/pakk-butikker.mjs",
+    "typecheck": "tsc --noEmit",
+    "package-edge": "pnpm build && node ../../scripts/package-extension.mjs",
+    "package-chrome": "pnpm build && node ../../scripts/package-extension.mjs --chrome"
   },
   "dependencies": {
     "@ordlyd/license-client": "workspace:*",

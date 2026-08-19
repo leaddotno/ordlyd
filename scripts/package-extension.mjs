@@ -1,5 +1,14 @@
 /**
- * Pakker utvidelsen som en ZIP klar for Edge Add-ons (Partner Center).
+ * Pakker utvidelsen som en ZIP klar for butikk.
+ *
+ *   node scripts/package-extension.mjs              → Edge (standard)
+ *   node scripts/package-extension.mjs --chrome     → Chrome Web Store
+ *
+ * Én pakke per butikk, med hver sitt navn, slik at Chrome-pakken ikke
+ * inneholder Edge-betegnelser og omvendt. Skriptet SJEKKER dette til
+ * slutt framfor å stole på det: en butikkstreng i feil pakke er stille
+ * feil som først oppdages av en bruker som får en beskjed hun ikke kan
+ * følge.
  *
  * Skriver ZIP-en selv med Nodes innebygde zlib, av to grunner: ingen ny
  * avhengighet, og full kontroll over hva som havner i pakka. Et
@@ -16,6 +25,21 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "apps", "extension", "dist");
+
+const BUTIKK = process.argv.includes("--chrome") ? "chrome" : "edge";
+const BUTIKKNAVN = BUTIKK === "chrome" ? "Chrome Web Store" : "Microsoft Edge Add-ons";
+
+/**
+ * Strengen som IKKE skal finnes i denne pakken. `edge://` i en
+ * Chrome-pakke gir brukeren en adresse som ikke finnes i nettleseren
+ * hennes — og siden teksten ser helt riktig ut, oppdages det aldri av
+ * oss, bare av henne.
+ */
+const FORBUDT = BUTIKK === "chrome"
+  ? [{ streng: "edge://", hvorfor: "finnes ikke i Chrome" },
+     { streng: "edge-extension", hvorfor: "feil produktnøkkel for Chrome-pakken" }]
+  : [{ streng: "chrome://extensions", hvorfor: "finnes ikke i Edge" },
+     { streng: "chrome-extension\"", hvorfor: "feil produktnøkkel for Edge-pakken" }];
 
 /**
  * Bare det utvidelsen faktisk trenger. Alt annet i dist er byggerester
@@ -181,13 +205,33 @@ for (const s of ["16", "32", "48", "128"]) {
 }
 if (manifest.version === "0.0.1") mangler.push("versjonen er fortsatt 0.0.1");
 if ((manifest.description ?? "").length > 132) mangler.push("description er over 132 tegn");
+
+/*
+ * Butikkryddighet: den andre butikkens betegnelser skal ikke finnes i
+ * denne pakken. Bare tekstfilene sjekkes — stemmer, ordbøker og
+ * kjøretid er binære og kan inneholde hva som helst tilfeldig.
+ *
+ * Dette er en vakt mot at noen legger tilbake en hardkodet streng
+ * senere. Den koster millisekunder og fanger en feil som ellers bare
+ * oppdages av brukeren.
+ */
+const TEKSTFILER = /\.(js|html|json|css)$/i;
+for (const f of filer.filter((x) => TEKSTFILER.test(x.rel))) {
+  const innhold = readFileSync(f.full, "utf8");
+  for (const { streng, hvorfor } of FORBUDT) {
+    if (innhold.includes(streng)) {
+      mangler.push(`${f.rel} inneholder «${streng}» — ${hvorfor}`);
+    }
+  }
+}
+
 if (mangler.length) {
   console.error("Kan ikke pakke:\n" + mangler.map((m) => `  ✗ ${m}`).join("\n"));
   process.exit(1);
 }
 
 const zip = lagZip(filer);
-const utfil = join(ROOT, `ordlyd-${manifest.version}.zip`);
+const utfil = join(ROOT, `ordlyd-${BUTIKK}-${manifest.version}.zip`);
 writeFileSync(utfil, zip);
 
 const mb = (n) => (n / 1048576).toFixed(1);
