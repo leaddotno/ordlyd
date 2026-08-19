@@ -157,3 +157,106 @@ Argumentet for å la den stå åpen er at vi ikke driver stedfesting. Argumentet
 krysse er at underrapportering er den feilen som får en utvidelse fjernet, mens
 overrapportering bare krever en forklaring. Jeg anbefaler å krysse, og å la
 personvernerklæringen forklare hva vi faktisk gjør — den beskriver alt dette fra før.
+
+---
+
+## Testveiledning
+
+Lisenskoden må lages først — se «Lag testlisensen» nederst. Bytt ut `XXX XXXX`.
+
+Feltet er konfidensielt hos Google og vises ikke på oppføringen.
+
+### Testkontolegitimasjon — engelsk (anbefalt)
+
+```
+Test account for review
+
+E-mail:        chrome-review@ordlyd.no
+Licence code:  XXX XXXX
+
+How to activate:
+1. Pin Ordlyd to the toolbar: click the puzzle-piece icon in Chrome, then the pin next to Ordlyd.
+2. Click the Ordlyd icon to open the panel.
+3. Enter the e-mail address and licence code above, then press Aktiver (Activate).
+
+The account has every feature enabled and no expiry date.
+It was created for the Chrome review and is not used by anyone else.
+
+Note: the licence code is not a password to a web service. It only controls which
+features the extension unlocks, and cannot be used to sign in anywhere else.
+
+The interface is in Norwegian, as the extension is a Norwegian-language reading aid.
+Aktiver = Activate. Innstillinger = Settings. Om Ordlyd = About Ordlyd.
+```
+
+### Testkontolegitimasjon — norsk
+
+```
+Testkonto for gjennomgang
+
+E-post:      chrome-review@ordlyd.no
+Lisenskode:  XXX XXXX
+
+Slik aktiverer du:
+1. Fest Ordlyd i verktøylinja: trykk puslespill-ikonet i Chrome og trykk nålen ved Ordlyd.
+2. Trykk Ordlyd-ikonet for å åpne panelet.
+3. Skriv inn e-postadressen og lisenskoden over, og trykk Aktiver.
+
+Kontoen har alle funksjoner slått på og løper uten sluttdato.
+Den er opprettet for Chrome-gjennomgangen og brukes ikke av andre.
+
+Merk: lisenskoden er ikke et passord til en nettjeneste. Den kontrollerer bare
+hvilke funksjoner utvidelsen låser opp, og den kan ikke brukes til å logge inn
+noe annet sted.
+```
+
+### Ytterligere veiledning — engelsk (anbefalt), 440 tegn
+
+```
+Pin Ordlyd to the toolbar first (puzzle-piece icon, then the pin), otherwise it is hard to find.
+
+After activation: select any text on any web page. A small button appears next to the selection — click it to have the text read aloud with a Norwegian voice.
+
+The first playback takes a few seconds while the speech model loads locally. After that it is instant, and works offline.
+
+Writing help appears on its own in text fields as you type.
+```
+
+### Ytterligere veiledning — norsk, 441 tegn
+
+```
+Fest Ordlyd i verktøylinja først (puslespill-ikonet → nålen), ellers er den vanskelig å finne.
+
+Etter aktivering: marker tekst på en hvilken som helst nettside. En liten knapp dukker opp ved markeringen — trykk den for å få teksten lest opp med norsk stemme.
+
+Første opplesing tar noen sekunder mens talemodellen lastes inn lokalt. Deretter er den umiddelbar, og virker uten nett.
+
+Skrivehjelpen vises av seg selv i tekstfelt når du skriver.
+```
+
+### Hvorfor engelsk betyr mer her enn i de andre feltene
+
+De andre svarene er påstander en gjennomgang kan kontrollere mot koden. Dette er en
+*oppskrift* som skal følges. Klarer ikke den som gjennomgår å følge stegene, får hun ikke
+verifisert kjernefunksjonen — og det er i seg selv en avvisningsgrunn.
+
+Grensesnittet er dessuten på norsk. Den engelske versjonen har derfor en liten ordliste
+til slutt (Aktiver, Innstillinger, Om Ordlyd), slik at hun finner knappene selv om hun
+ikke leser norsk. Den detaljen er antakelig verdt mer enn resten av teksten.
+
+### Lag testlisensen
+
+I panelet på panel.ordlyd.no:
+
+1. **Kunder og pooler** → fold ut kunden som ble brukt til Edge-sertifiseringen.
+2. Trykk **Importer** på review-poolen.
+3. Lim inn `chrome-review@ordlyd.no` og trykk **Importer og generer koder**.
+4. Koden vises i tabellen. **Den vises bare én gang** — kopier den med én gang.
+
+Koden er sju siffer og vises som `XXX XXXX`. Lim den inn slik den står; klienten tåler
+mellomrommet.
+
+Egen adresse for Chrome framfor å gjenbruke Edge-lisensen: da ser du i revisjonsloggen
+hvilken butikks gjennomgang som er innom, og du kan stenge én av dem uten å røre den
+andre.
+
