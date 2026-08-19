@@ -260,3 +260,79 @@ Egen adresse for Chrome framfor å gjenbruke Edge-lisensen: da ser du i revisjon
 hvilken butikks gjennomgang som er innom, og du kan stenge én av dem uten å røre den
 andre.
 
+---
+
+## Vertstillatelse — revidert etter Googles forhåndsvarsel
+
+Google varslet før innsending at brede vertstillatelser «kan kreve grundig
+gjennomgang», og foreslo `activeTab` eller bestemte nettsteder. Det er ikke en
+avvisning, men begrunnelsen bør svare direkte på forslaget framfor å la det stå
+ubesvart. Bruk denne i stedet for versjonen lenger opp.
+
+### Engelsk (anbefalt) — 944 tegn
+
+```
+1. Our own licence server (3 listed hosts) — contacted only to activate and renew a licence. Two of them are backup endpoints for the same service.
+
+2. Content script on all sites
+
+We evaluated activeTab and it cannot deliver the core function. Ordlyd is a reading aid for people with dyslexia. The central interaction is: the user selects text on any page, and a Read-aloud button appears next to the selection. That requires listening for selectionchange before the user acts. activeTab injects only after the user clicks our toolbar icon, so the button could never appear — the user would have to leave the text, find the toolbar and click. The writing aids have the same constraint: they listen for input events in text fields as the user types.
+
+Listing specific sites is not possible either: pupils read and write wherever their school assigns.
+
+The script only reads the user's selection. No page content, URL or title leaves the device.
+```
+
+### Norsk — 937 tegn
+
+```
+1. Vår egen lisensserver (de 3 oppførte vertene) — kontaktes bare for å aktivere og fornye lisens. To av dem er reservepunkter for samme tjeneste.
+
+2. Innholdsskript på alle nettsteder
+
+Vi har vurdert activeTab, og den kan ikke levere kjernefunksjonen. Ordlyd er et lesehjelpemiddel for personer med dysleksi. Den sentrale samhandlingen er: brukeren markerer tekst på en side, og en «Les opp»-knapp dukker opp ved markeringen. Det krever at vi lytter på selectionchange før brukeren gjør noe. activeTab injiserer først etter trykk på ikonet i verktøylinja, så knappen kunne aldri dukket opp — brukeren måtte forlatt teksten og trykket i verktøylinja. Skrivehjelpen har samme begrensning: den lytter på input i tekstfelt mens brukeren skriver.
+
+Å liste bestemte nettsteder er heller ikke mulig: elever leser og skriver der skolen bestemmer.
+
+Skriptet leser bare brukerens markering. Verken sideinnhold, URL eller tittel forlater maskinen.
+```
+
+### Hvorfor activeTab ikke er et alternativ
+
+Innholdsskriptet lytter på `selectionchange`, `input`, `keydown` og `focusin`. Alle fire
+krever at skriptet er **på plass før** brukeren gjør noe. `activeTab` injiserer først
+etter at brukeren har trykket på ikonet i verktøylinja, og da er markeringen alt gjort.
+
+Konsekvensen for de tre kjernefunksjonene:
+
+| Funksjon | Med activeTab |
+|---|---|
+| «Les opp»-knapp ved markeringen | Umulig. Knappen kan ikke dukke opp før skriptet finnes. |
+| Ordforslag og skriveekko i tekstfelt | Umulig. Krever at vi lytter mens brukeren skriver. |
+| Ordbokoppslag | Ville virket, som eneste av de tre. |
+
+For målgruppa er dette ikke en liten forskjell. Å markere tekst og få en knapp der du
+allerede ser, mot å markere, flytte blikket og musa til verktøylinja, trykke, og finne
+tilbake — det er nettopp den friksjonen et lesehjelpemiddel skal fjerne.
+
+### Alternativet som faktisk finnes: valgfrie tillatelser
+
+Det finnes en tredje vei vi bør bygge, men ikke i dag:
+`optional_host_permissions` med `https://*/*`, ingen bred tillatelse i manifestet, og
+`chrome.scripting.registerContentScripts()` etter at brukeren har sagt ja i vår egen
+oppstartsskjerm.
+
+- Fordel: rask gjennomgang for alltid etter, og brukeren velger selv — også per nettsted.
+- Krever kode: deklarerte `content_scripts` kan ikke bruke valgfrie tillatelser, så
+  registreringen må skje ved kjøring etter samtykket.
+- **Den uavklarte risikoen:** på administrerte Chromebooker er det ikke sikkert at en
+  skoleadministrator kan pre-godkjenne tillatelsen. `runtime_allowed_hosts` i
+  ExtensionSettings styrer *blokkering*, og om den også *gir* en valgfri tillatelse er
+  fortsatt et åpent spørsmål i W3C-arbeidsgruppa. Slår det ikke til, må hver elev klikke
+  seg gjennom en tillatelsesdialog — og det er nettopp den gruppa som er minst rustet for
+  det.
+
+Derfor: send inn nå med den reviderte begrunnelsen, og gjør valgfrie tillatelser til en
+undersøkelse før 1.1.0 — der første oppgave er å finne ut om skoleadministratorer faktisk
+kan pre-godkjenne. Svaret på det avgjør om det er en forbedring eller en forverring.
+
