@@ -91,3 +91,69 @@ versjon, er svaret **fortsatt nei**: reglene om ekstern kode gjelder JavaScript 
 WebAssembly, og ONNX-modellvekter og ordlister er *data*. WASM-en må da bli liggende i
 pakken — flyttes den ut, blir svaret ja, og hele gjennomgangen blir en annen sak.
 Nevn nedlastingen i notatene til sertifiseringen den gangen.
+
+---
+
+## Databruk — hvilke bokser som skal krysses
+
+Verifisert mot koden, ikke mot hukommelsen. Utvidelsen sender bare tre slags
+forespørsler, og bare til vår egen lisensserver:
+
+| Kall | Innhold |
+|---|---|
+| Aktivering | e-postadresse, lisenskode, produkt, versjon |
+| Fornying (daglig) | installasjons-ID, installasjonshemmelighet, produkt, versjon |
+| Versjonssjekk | bare produktnavnet |
+
+Serveren mottar i tillegg IP-adressen, som enhver HTTPS-forespørsel gjør, og lagrer
+en pepret hash av de tre første tallgruppene i 30 dager til misbrukstelling.
+
+Ingen `fetch` i utvidelsen går noe annet sted enn til filer inne i pakken
+(`chrome.runtime.getURL`). Verken URL, sidetittel eller markert tekst forlater
+maskinen noen gang.
+
+### Kryss av
+
+| Kategori | Kryss | Hvorfor |
+|---|---|---|
+| Personlig identifiserende informasjon | **JA** | E-postadressen sendes ved aktivering. |
+| Autentiseringsinformasjon | **JA** | Lisenskoden og installasjonshemmeligheten er legitimasjon. |
+| Posisjon | **JA** | IP-adresse står eksplisitt som eksempel, og vi lagrer en hash avledet av den. |
+| Helseinformasjon | nei | Vi spør ikke om og sender ikke diagnose, symptomer eller historikk. |
+| Økonomisk informasjon | nei | Ingen betaling skjer i utvidelsen. |
+| Personlig kommunikasjon | nei | Markert tekst leses lokalt og sendes aldri. |
+| Nettlogg | nei | Vi leser aldri URL eller sidetittel. |
+| Brukeraktivitet | nei | Tastetrykk behandles lokalt for ordforslag, aldri overført. |
+| Innhold på nettsteder | nei | Behandles lokalt av talemotoren, aldri overført. |
+
+Alle tre sertifiseringene nederst kan krysses: vi selger ikke og overfører ikke
+brukerdata, bruker dem ikke til noe utenfor enkeltformålet, og bruker dem ikke til
+kredittvurdering.
+
+### Om helseinformasjon — og hvorfor det ikke er selvmotsigende
+
+Jeg har tidligere skrevet at Ordlyd behandler *helseopplysninger etter
+personvernforordningen artikkel 9*. Det står fortsatt. De to svarene handler om ulike
+spørsmål:
+
+- **GDPR** spør hva som kan *utledes*. At noen har lisens på et dyslektikerhjelpemiddel
+  antyder en lese- og skrivevanske, og derfor behandler vi lista med den forsiktigheten
+  særlige kategorier krever.
+- **Chrome** spør hva du *samler inn*, med konkrete eksempler: pulsdata, medisinsk
+  historikk, symptomer, diagnoser, prosedyrer. Ingen av dem finnes i systemet vårt.
+
+Å krysse Helseinformasjon ville dessuten stått offentlig på oppføringen som «denne
+utvidelsen samler inn helseopplysninger». Det er ikke sant, og for et verktøy rettet mot
+en sårbar gruppe er det en påstand som skremmer folk bort fra noe de har rett på.
+
+### Om posisjon — en vurdering, ikke en fasit
+
+Her er det rom for skjønn. Vi bruker ikke IP til å finne ut *hvor* noen er, og vi lagrer
+aldri hele adressen. Men Google lister «IP-adresse» eksplisitt som eksempel i den
+kategorien, og vi gjør mer enn å motta den i en logg: vi regner ut og lagrer en verdi
+avledet av den, i 30 dager.
+
+Argumentet for å la den stå åpen er at vi ikke driver stedfesting. Argumentet for å
+krysse er at underrapportering er den feilen som får en utvidelse fjernet, mens
+overrapportering bare krever en forklaring. Jeg anbefaler å krysse, og å la
+personvernerklæringen forklare hva vi faktisk gjør — den beskriver alt dette fra før.
