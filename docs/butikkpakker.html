@@ -1,0 +1,444 @@
+<title>To butikkpakker — Edge og Chrome</title>
+<style>
+  :root {
+    --ground: #eef1f1; --surface: #fafbfb; --surface-2: #e6ebeb;
+    --line: #cdd6d6; --line-soft: #dde4e4;
+    --text: #142124; --text-soft: #4a5b5f; --text-faint: #6d7f83;
+    --petrol: #0e3d43; --petrol-soft: #14585f; --brass: #8a6412;
+    --ok: #1c6647; --ok-bg: #dcebe3;
+    --warn: #8a5f08; --warn-bg: #f2e8d2;
+    --crit: #97302a; --crit-bg: #f2dedc;
+    --code-bg: #e8eded;
+    --skygge: 0 1px 2px rgba(16,32,36,.06), 0 8px 24px -16px rgba(16,32,36,.28);
+    --serif: Constantia, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono: "Cascadia Mono", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0b1215; --surface: #111c20; --surface-2: #17252a;
+      --line: #2b3d42; --line-soft: #223236;
+      --text: #dde7e8; --text-soft: #a3b4b7; --text-faint: #7d9094;
+      --petrol: #7fc6cc; --petrol-soft: #a5d8dc; --brass: #d4a648;
+      --ok: #6fc79b; --ok-bg: #143024;
+      --warn: #d9ad55; --warn-bg: #33280f;
+      --crit: #e8938c; --crit-bg: #371917;
+      --code-bg: #16242a;
+      --skygge: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 1.25rem 6rem; background: var(--ground); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 58rem; margin: 0 auto; }
+  .masthead { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--line); margin-bottom: 2.5rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint); margin: 0 0 .9rem;
+  }
+  h1 { font-family: var(--serif); font-size: 2.4rem; line-height: 1.15; margin: 0 0 1rem; letter-spacing: -.015em; font-weight: 600; }
+  .standfirst { font-size: 1.12rem; color: var(--text-soft); margin: 0; max-width: 46rem; }
+  h2 {
+    font-family: var(--serif); font-size: 1.55rem; font-weight: 600;
+    margin: 3.2rem 0 .5rem; letter-spacing: -.01em; scroll-margin-top: 1rem;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: .78rem; color: var(--brass);
+    letter-spacing: .1em; display: block; margin-bottom: .3rem; font-weight: 400;
+  }
+  h3 { font-size: 1.02rem; margin: 1.9rem 0 .4rem; letter-spacing: -.005em; }
+  .lede { color: var(--text-soft); font-size: 1.03rem; margin: 0 0 1.4rem; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .42rem; }
+  code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .1em .35em; border-radius: 3px; }
+  a { color: var(--petrol-soft); }
+  strong { font-weight: 650; }
+
+  .kort {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.15rem 1.35rem; margin: 0 0 1.2rem; box-shadow: var(--skygge);
+  }
+  .dh { display: flex; gap: .7rem; align-items: baseline; margin-bottom: .5rem; }
+  .did {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em;
+    background: var(--petrol); color: var(--surface); padding: .18em .5em;
+    border-radius: 3px; white-space: nowrap;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .did { color: #06171a; } }
+  .dt { font-weight: 650; }
+  .verdict { border-left: 3px solid var(--brass); padding-left: .8rem; color: var(--text-soft); margin: .7rem 0 0; }
+
+  .callout { border-radius: 7px; padding: .9rem 1.15rem; margin: 1.3rem 0; border: 1px solid transparent; }
+  .callout.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .callout.crit { background: var(--crit-bg); border-color: color-mix(in srgb, var(--crit) 25%, transparent); }
+  .callout.ok { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+  .callout p:last-child { margin-bottom: 0; }
+  .tag { display: inline-block; font-family: var(--mono); font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; margin-bottom: .4rem; }
+  .callout.warn .tag { color: var(--warn); }
+  .callout.crit .tag { color: var(--crit); }
+  .callout.ok .tag { color: var(--ok); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 7px; margin: 0 0 1.3rem; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .89rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .67rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); font-weight: 400; background: var(--surface-2); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  pre { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 7px; padding: .9rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: .67rem; letter-spacing: .05em; text-transform: uppercase; padding: .16em .5em; border-radius: 3px; white-space: nowrap; }
+  .chip.ok { background: var(--ok-bg); color: var(--ok); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.crit { background: var(--crit-bg); color: var(--crit); }
+  .toc { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.35rem; margin-bottom: 2.5rem; }
+  .toc p { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 .6rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .92rem; }
+  .toc li { margin-bottom: .2rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--text-faint); }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Ordlyd · fase B · iverksatt</p>
+  <h1>To butikkpakker, én kodebase</h1>
+  <p class="standfirst">
+    Edge er godkjent og publisert. Dette dokumentet beskriver oppsettet som nå er bygget:
+    én ZIP for Edge og én for Chrome, uten spor av den andre butikken i hver av dem, og
+    med en kommando som lager begge og nekter å levere hvis de blander seg.
+    Chrome-pakken ligger klar til opplasting.
+  </p>
+</header>
+
+<div class="callout ok">
+  <span class="tag">Status</span>
+  <p>
+    <strong>Alt i dette dokumentet er bygget, testet og rullet ut.</strong>
+    <code>ordlyd-edge-1.0.1.zip</code> og <code>ordlyd-chrome-1.0.1.zip</code> ligger i
+    prosjektrota. Serverendringen som gjør at en Chrome-klient får rettigheter er live og
+    verifisert mot produksjon. Det som står igjen er butikkarbeidet i kapittel 06 — det må
+    du gjøre, jeg har ikke tilgang til Partner Center eller Chrome-dashbordet.
+  </p>
+</div>
+
+<div class="toc">
+  <p>Innhold</p>
+  <ol>
+    <li><a href="#funn">Hva som faktisk var Edge-spesifikt</a></li>
+    <li><a href="#modellen">Modellen: butikkvalg ved bygging</a></li>
+    <li><a href="#vakten">Vakten mot at pakkene blander seg</a></li>
+    <li><a href="#server">Serversiden: rettigheter uten migrering</a></li>
+    <li><a href="#kommando">Én kommando, to pakker</a></li>
+    <li><a href="#publiser">Publisering til Chrome — steg for steg</a></li>
+    <li><a href="#videre">Rutinen framover</a></li>
+    <li><a href="#igjen">Det som fortsatt står igjen</a></li>
+  </ol>
+</div>
+
+<h2 id="funn"><span class="num">01</span> Hva som faktisk var Edge-spesifikt</h2>
+<p class="lede">Jeg gikk gjennom hele utvidelsen. Tre treff, og bare ett av dem synlig for brukeren.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Sted</th><th>Hva</th><th>Konsekvens i Chrome</th></tr></thead>
+<tbody>
+<tr>
+  <td><code>om.html</code> og <code>om.ts</code></td>
+  <td><code>edge://extensions</code> — adressen brukeren får beskjed om å åpne for å oppdatere manuelt</td>
+  <td><span class="chip crit">synlig feil</span> Adressen finnes ikke i Chrome. Brukeren følger oppskriften og kommer ingen vei.</td>
+</tr>
+<tr>
+  <td><code>license-config.ts</code></td>
+  <td><code>PRODUCT = "edge-extension"</code></td>
+  <td><span class="chip warn">skjult</span> Ingen umiddelbar feil, men serveren kan ikke skille butikkene — og «Oppdater» kan ikke peke til riktig sted.</td>
+</tr>
+<tr>
+  <td>Kommentarer i to filer</td>
+  <td>Nevner Edge i forbifarten</td>
+  <td><span class="chip ok">ingen</span> Kommentarer fjernes i produksjonsbygget. Lot dem stå — de er korrekte.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="callout crit">
+  <span class="tag">Den ene som betydde noe</span>
+  <p>
+    <code>edge://extensions</code> i en Chrome-pakke er den verste sorten feil: teksten ser
+    <em>helt riktig ut</em>. Ingen butikkgjennomgang fanger den, ingen test fanger den, og
+    vi ville aldri oppdaget den selv. Bare en bruker som prøvde å følge oppskriften — og hun
+    ville trolig konkludert med at det var hun som gjorde noe galt.
+  </p>
+</div>
+
+<h2 id="modellen"><span class="num">02</span> Modellen: butikkvalg ved bygging</h2>
+<p class="lede">Alt butikkavhengig på ett sted, bakt inn når pakken lages.</p>
+
+<p>
+  Ny fil <code>apps/extension/src/butikk.ts</code> er nå det eneste stedet i kodebasen som
+  vet hvilken butikk pakken er for:
+</p>
+
+<pre><code>export const BUTIKK = /* "edge" eller "chrome", satt ved bygging */;
+export const UTVIDELSESSIDE = BUTIKK === "chrome" ? "chrome://extensions" : "edge://extensions";
+export const NETTLESER      = BUTIKK === "chrome" ? "Chrome" : "Edge";
+export const BUTIKKNAVN     = BUTIKK === "chrome" ? "Chrome Web Store" : "Microsoft Edge Add-ons";</code></pre>
+
+<p>
+  Verdien kommer fra <code>ORDLYD_BUTIKK</code> og erstattes av Vite gjennom
+  <code>define</code>. <strong>Valget skjer ved bygging, ikke ved kjøring</strong> — og det
+  er hele poenget med to pakker. En kjøretidssjekk («hvilken nettleser er jeg i?») ville
+  lagt begge variantene i begge pakkene, og da inneholder Chrome-pakken fortsatt ordet
+  «edge».
+</p>
+
+<p>
+  Den faller tilbake på <code>"edge"</code> der <code>define</code> ikke gjelder — typesjekk
+  og røyktester som kjører gjennom <code>tsx</code>. Da fortsetter de å virke uten ekstra
+  oppsett.
+</p>
+
+<h3>Adressen ut av HTML-en</h3>
+<p>
+  <code>om.html</code> er delt mellom begge pakkene, så en hardkodet streng der ville vært
+  feil i den ene uansett. Den er derfor byttet til en plassholder som koden fyller inn:
+</p>
+<pre><code>&lt;code data-utvidelsesside&gt;…&lt;/code&gt;      i om.html
+el.textContent = UTVIDELSESSIDE          i om.ts, ved oppstart</code></pre>
+<p>
+  Samme mønster finnes for <code>data-nettleser</code>, klart til bruk neste gang en tekst
+  må si «Edge» eller «Chrome».
+</p>
+
+<h2 id="vakten"><span class="num">03</span> Vakten mot at pakkene blander seg</h2>
+<p class="lede">Kravet ditt er at Chrome-pakken ikke har Edge-betegnelser. Det er ikke nok å gjøre det riktig én gang.</p>
+
+<p>
+  Pakkeskriptet leser gjennom <em>hver</em> tekstfil i pakken før ZIP-en skrives, og nekter
+  å levere hvis den andre butikkens betegnelser finnes:
+</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Pakke</th><th>Forbudt innhold</th><th>Hvorfor</th></tr></thead>
+<tbody>
+<tr><td>Chrome</td><td><code>edge://</code></td><td>Finnes ikke i Chrome</td></tr>
+<tr><td>Chrome</td><td><code>edge-extension</code></td><td>Feil produktnøkkel</td></tr>
+<tr><td>Edge</td><td><code>chrome://extensions</code></td><td>Finnes ikke i Edge</td></tr>
+<tr><td>Edge</td><td>produktnøkkelen for Chrome</td><td>Feil produktnøkkel</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>
+  Bare tekstfiler sjekkes — stemmer, ordbøker og WASM-kjøretid er binære og kan inneholde
+  hva som helst tilfeldig.
+</p>
+
+<p>
+  <strong>Verifisert uavhengig av vakten.</strong> Jeg leste inni begge de ferdige ZIP-ene
+  etterpå og bekreftet at <code>edge://</code> bare finnes i Edge-pakken og
+  <code>chrome://extensions</code> bare i Chrome-pakken — 1049 filer i hver, ingen
+  blanding. En vakt som bare bekrefter seg selv er ikke en vakt.
+</p>
+
+<h2 id="server"><span class="num">04</span> Serversiden: rettigheter uten migrering</h2>
+<p class="lede">Her lå den ene feilen som ville rammet ekte brukere.</p>
+
+<p>
+  Alle lisenspoolene i produksjon ble opprettet før Chrome fantes, og har bare
+  <code>edge-extension</code>. En Chrome-klient spør etter <code>chrome-extension</code> —
+  og ville funnet ingen rettigheter. Resultatet: en bruker med helt gyldig lisens uten
+  funksjoner, og en feil som ser ut som et lisensproblem framfor et produktnøkkelproblem.
+</p>
+
+<p>
+  Vi kunne migrert alle poolene. Men rettighetene er de <em>samme</em> uansett butikk — en
+  lisens bryr seg ikke om hvor utvidelsen ble lastet ned. Derfor speiles nøkkelen når
+  kvitteringen bygges:
+</p>
+
+<pre><code>medButikkalias({ "edge-extension": { features: [...] } })
+  → { "edge-extension": {...}, "chrome-extension": {...} }   samme liste</code></pre>
+
+<p>
+  <strong>Ingen pool må røres</strong> — hverken de som finnes i dag eller de en kundeadmin
+  lager i morgen. Ni tester dekker det, inkludert at <code>win-desktop</code> ikke smittes
+  og at eksplisitt oppsatte, ulike lister ikke overskrives.
+</p>
+
+<p>
+  Verifisert mot produksjon: en innlogging med <code>product: "chrome-extension"</code>
+  returnerer nå en kvittering med fem funksjoner under begge nøklene. Edge-veien er
+  uendret.
+</p>
+
+<h3>Versjonsendepunktet</h3>
+<p>
+  <code>/api/v1/version</code> faller tilbake fra <code>chrome-extension</code> til
+  <code>edge-extension</code>. Siden pakkene alltid har samme versjon, trenger du bare én
+  oppføring i <code>LATEST_VERSIONS</code> — og en glemt Chrome-oppføring gir ikke «ukjent
+  versjon» hos brukeren. Endepunktet svarer også med butikklenke per kanal, styrt av
+  <code>EDGE_ADDON_ID</code> og <code>CHROME_ITEM_ID</code>. Er de ikke satt, sendes
+  <code>null</code> framfor en halv lenke.
+</p>
+
+<h2 id="kommando"><span class="num">05</span> Én kommando, to pakker</h2>
+
+<pre><code>pnpm --filter @ordlyd/extension package</code></pre>
+
+<p>Den bygger og pakker <strong>begge</strong> butikkene, og skriver til slutt:</p>
+
+<pre><code>  EDGE    ordlyd-edge-1.0.1.zip    111.2 MB
+          sha256 4df4353a6f03af2c…
+  CHROME  ordlyd-chrome-1.0.1.zip  111.2 MB
+          sha256 9e221532a4975456…</code></pre>
+
+<div class="callout ok">
+  <span class="tag">Hvorfor det ikke finnes en kommando for bare én</span>
+  <p>
+    Du ba om at Chrome oppdateres hver gang Edge gjør det. Den tryggeste måten å holde et
+    slikt krav er å gjøre det umulig å glemme: standardkommandoen lager begge. Det finnes
+    fortsatt <code>package-edge</code> og <code>package-chrome</code> for feilsøking, men
+    ingen grunn til å bruke dem i en utgivelse.
+  </p>
+  <p>
+    Skriptet stopper med feil hvis de to sjekksummene er <em>like</em>. Like summer betyr at
+    butikkflagget ikke slo gjennom i bygget — og da hadde du lastet opp samme pakke to
+    steder uten å merke det.
+  </p>
+</div>
+
+<h2 id="publiser"><span class="num">06</span> Publisering til Chrome — steg for steg</h2>
+<p class="lede">Dette er det du må gjøre. Alt annet er klart.</p>
+
+<div class="kort">
+  <div class="dh"><span class="did">1</span><span class="dt">Opprett utviklerkonto</span></div>
+  <p>
+    <a href="https://chrome.google.com/webstore/devconsole">chrome.google.com/webstore/devconsole</a>
+    — logg inn med en Google-konto du eier langsiktig, <strong>ikke</strong> en du kan miste
+    tilgang til. Engangsavgift <strong>5 USD</strong>. Ingen årsavgift, ingen avgift per
+    utvidelse.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">2</span><span class="dt">Last opp pakken</span></div>
+  <p>
+    «New Item» → last opp <code>ordlyd-chrome-1.0.1.zip</code>.
+    <strong>Ikke Edge-pakken.</strong> Filnavnet sier hvilken det er.
+  </p>
+  <p class="verdict">111 MB tar noen minutter å laste opp. La fanen stå åpen.</p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">3</span><span class="dt">Sett synlighet til privat først</span></div>
+  <p>
+    Under <em>Distribution</em>: velg <strong>Private</strong> og legg inn din egen
+    Google-adresse som tester. Da kan du installere fra en ekte butikkoppføring uten at
+    noen andre ser den. Bytt til <em>Public</em> når du har sjekket punktene i kapittel 07.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">4</span><span class="dt">Fyll ut oppføringen</span></div>
+  <p>
+    Teksten fra Edge kan gjenbrukes ordrett — beskrivelse, enkeltformål, begrunnelse per
+    tillatelse. De ligger i <code>docs/partner-center-svar.md</code>.
+    Personvernerklæringen skal peke på <code>https://www.ordlyd.no/personvern</code>.
+  </p>
+  <p>
+    Skjermbilder må være <strong>1280×800</strong> eller <strong>640×400</strong>, og liten
+    kampanjeflis <strong>440×280</strong>. Andre mål enn hos Microsoft — si fra, så
+    genererer jeg dem fra samme kilder.
+  </p>
+</div>
+
+<div class="kort">
+  <div class="dh"><span class="did">5</span><span class="dt">Send inn, og hent ID-en etterpå</span></div>
+  <p>
+    Når oppføringen finnes, får den en 32-tegns ID. Sett den som
+    <code>CHROME_ITEM_ID</code> i Vercel, og <code>EDGE_ADDON_ID</code> for Edge-siden. Da
+    peker «Oppdater» i Om-siden til riktig butikk for hver bruker.
+  </p>
+</div>
+
+<div class="callout warn">
+  <span class="tag">Om Edge-pakken</span>
+  <p>
+    <code>ordlyd-edge-1.0.1.zip</code> bør også lastes opp til Partner Center, slik at de to
+    butikkene er i takt fra første dag. Endringen er liten — adressen hentes nå fra koden
+    framfor HTML-en — men lar du Edge stå på 1.0.0 mens Chrome er på 1.0.1, har du to ulike
+    pakker med to ulike numre å holde orden på fra start.
+  </p>
+  <p>
+    Dette er din avgjørelse. Vil du unngå en ny gjennomgangsrunde hos Microsoft rett etter
+    godkjenningen, er det helt forsvarlig å la Edge følge ved neste funksjonsendring.
+  </p>
+</div>
+
+<h2 id="videre"><span class="num">07</span> Rutinen framover</h2>
+
+<pre><code>1.  Gjør endringen
+2.  Bump versjon i apps/extension/public/manifest.json og package.json
+3.  pnpm --filter @ordlyd/extension package        → begge ZIP-ene
+4.  Last opp edge-ZIP til Partner Center
+5.  Last opp chrome-ZIP til Chrome Web Store
+6.  Oppdater LATEST_VERSIONS i Vercel når BEGGE er godkjent</code></pre>
+
+<p><strong>Sjekk før du bytter en oppføring til offentlig,</strong> på den private installasjonen:</p>
+<ol>
+  <li>Marker tekst på en ekte nettside og få den lest opp.</li>
+  <li>Logg inn med en fersk prøvelisens fra <code>/registrer</code>.</li>
+  <li>Åpne «Om Ordlyd» og bekreft at adressen under oppdatering stemmer med nettleseren du er i.</li>
+  <li>Slå av nettet og bekreft at opplesingen fortsatt virker.</li>
+</ol>
+<p>
+  Punkt 3 er nytt, og det er nettopp det denne runden handlet om. Det tar fem sekunder og
+  fanger den ene feilen ingen andre ville sett.
+</p>
+
+<div class="callout warn">
+  <span class="tag">Rekkefølgen på punkt 6</span>
+  <p>
+    <code>LATEST_VERSIONS</code> skal først oppdateres når begge butikkene har godkjent.
+    Gjør du det tidligere, får brukerne i den butikken som ennå venter beskjed om at det
+    finnes en nyere versjon de ikke kan få.
+  </p>
+</div>
+
+<h2 id="igjen"><span class="num">08</span> Det som fortsatt står igjen</h2>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Sak</th><th>Hvor det står</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>111 MB er for mye for en skole-Chromebook.</strong> Godtatt av begge butikkene, men en Chromebook med 32 GB lagring merker det. L4 — stemme og ordbok til CDN — bør komme før Ordlyd tilbys skoler på Chromebook.</td>
+  <td>Kap. 03 i Chrome-planen</td>
+</tr>
+<tr>
+  <td><code>lisens.ordlyd.lead.no</code> står i manifestet uten at DNS er satt opp. Sett den opp, eller ta den ut.</td>
+  <td>Uavklart siden Chrome-planen</td>
+</tr>
+<tr>
+  <td>Preview-miljøet i Vercel: har det <code>DATABASE_URL</code>? I så fall har hver gren-utrulling en offentlig URL med produksjonsdata.</td>
+  <td>Å1 i adminplanen</td>
+</tr>
+<tr>
+  <td>Ytelsesmåling på en ekte, gjerne eldre Chromebook før vi anbefaler den til en skole.</td>
+  <td>B6 i Chrome-planen</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<footer>
+  Ordlyd 1.0.1 · to butikkpakker, verifisert mot produksjon ·
+  <code>ordlyd-edge-1.0.1.zip</code> · <code>ordlyd-chrome-1.0.1.zip</code>
+</footer>
+
+</div>
